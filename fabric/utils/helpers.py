@@ -311,7 +311,7 @@ def exec_shell_command(cmd: str | list[str]) -> str | list[str]:
         return output.decode()
     elif isinstance(cmd, list):
         for c in cmd:
-            result, output, error, status = GLib.spawn_command_line_sync(" ".join(c))
+            result, output, error, status = GLib.spawn_command_line_sync(c)
             if status != 0:
                 yield error.decode()
             yield output.decode()

@@ -1,0 +1,21 @@
+/* uncomment if you do have pywal configured */
+/* @import url("/home/USER/.cache/wal/colors-widgets.css"); */
+@import url("examples/fallback_colors.css");
+
+* {
+    all: unset;
+    transition: color 0.5s ease;
+    color: alpha(var(--foreground), 0.8);
+    font-family: "Iosevka Nerd Font";
+    font-weight: 700;
+}
+
+#clock > label {
+    font-size: 86px;
+    font-weight: 900;
+}
+
+#date > label {
+    font-size: 24px;
+    padding-bottom: 6px;
+}

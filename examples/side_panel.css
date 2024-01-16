@@ -1,0 +1,57 @@
+/* uncomment if you do have pywal configured */
+/* @import url("/home/USER/.cache/wal/colors-widgets.css"); */
+@import url("examples/fallback_colors.css");
+
+:vars {
+    --window-bg: alpha(var(--background), 0.6);
+    --module-bg: alpha(var(--background), 0.4);
+    --border-color: var(--color11);
+}
+
+* {
+    all: unset;
+    font-family: "Iosevka Nerd Font";
+    font-weight: 500;
+    font-size: 18px;
+    color: var(--foreground);
+}
+
+#main-window {
+    border: solid 2px;
+    border-color: var(--color11);
+    background-color: var(--window-bg);
+    border-radius: 100px;
+}
+
+#date-time > label {
+    font-weight: 900;
+    font-size: 28px;
+}
+
+#header {
+    background: linear-gradient(
+        90deg,
+        alpha(var(--color11), 0.2),
+        alpha(var(--background), 0.2),
+        var(--module-bg)
+    );
+    border: solid 1px var(--border-color);
+    border-radius: 8px;
+}
+
+#circular-progress-bar {
+    color: var(--module-bg);
+    border: solid 10px var(--border-color);
+}
+
+#circular-progress-bars-sep {
+    background-color: var(--module-bg);
+    padding: 4px;
+    margin: 16px 0px;
+    border-radius: 100px;
+}
+#circular-progress-bar-container {
+    background-color: var(--module-bg);
+    border-radius: 100px;
+    padding: 8px;
+}

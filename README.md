@@ -16,7 +16,7 @@ Also Fabric is configured in python which make's it easier than ever!
 	 \- head over to examples
 1. X11 and Wayland ready!
 2. All python modules are accessible to you!
-3. Code  auto-completions ready!, see the stubs guide for more info
+3. Code  auto-completions ready!, see the stubs guide for more info: TBD
 5. Less resource usage
 	since everything can be written within the widget code this will no longer require you using external scripts, this will decrease this widget resource usage
 # How to Install?

@@ -7,7 +7,7 @@ pkgrel=1
 pkgdesc="next-gen GTK+ based desktop widgets python framework"
 arch=(any)
 url="http://github.com/Fabric-Development/fabric"
-license=('GPL3')
+license=('')
 groups=()
 depends=(
     gtk3

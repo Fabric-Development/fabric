@@ -1,6 +1,6 @@
 # Maintainer: Yousef El-Darsh <yousef.eldarsh@gmail.com>
 
-pkgname=fabric
+pkgname=python-fabric-git
 reponame=fabric
 pkgver=0.0.1
 pkgrel=1
@@ -31,11 +31,9 @@ optdepends=(
     "python-psutil: for system stats, this package is a dependency of the bar example file"
 )
 provides=(
-    fabric
     python-fabric
 )
 conflicts=(
-    fabric
     python-fabric
 )
 

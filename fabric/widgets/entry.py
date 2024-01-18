@@ -42,4 +42,3 @@ class Entry(Gtk.Entry, Widget):
             name,
             size,
         )
-

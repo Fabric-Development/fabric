@@ -492,14 +492,17 @@ class Language(Button):
                 )
             )
         )
-        keyboards = devices.get("keyboards")
-        if keyboards is None:
+        if devices is None or devices.get("keyboards") is None:
             return logger.warning(
-                f"[Language] Got no keyboards from hyprctl with data\n{devices}"
+                f"[Language] Got no devices from hyprctl with data\n{devices}"
             )
+        keyboards = devices.get("keyboards")
+        language = None
         for i, kb in enumerate(keyboards):
             if kb.get("name") == self.keyboard_name:
                 language = keyboards[i].get("active_keymap")
+                if language is None:
+                    continue
                 logger.debug(f"[Language] Got language: {language}")
                 GLib.idle_add(
                     self.set_label,
@@ -508,8 +511,14 @@ class Language(Button):
                     ),
                 )
                 break
-        return logger.info(
-            f"[Language] Set language: {language} for keyboard: {self.keyboard_name}"
+        return (
+            logger.info(
+                f"[Language] Set language: {language} for keyboard: {self.keyboard_name}"
+            )
+            if language is not None
+            else logger.info(
+                f"[Language] Could not find language for keyboard: {self.keyboard_name}, gotten keyboards: {keyboards}"
+            )
         )
 
     def on_activelayout(self, obj, event: SignalEvent):
@@ -524,5 +533,5 @@ class Language(Button):
                 ),
             )
         return logger.debug(
-            f"[Language] Keyboard: {keyboard_name}, Language: {language}"
+            f"[Language] Keyboard: {keyboard_name}, Language: {language}, Match: {keyboard_name == self.keyboard_name}"
         )

@@ -33,6 +33,7 @@ class StatusBar(Window):
             exclusive=True,
             visible=True,
         )
+        self.center_box = CenterBox(name="main-window")
         self.workspaces = Workspaces(
             buttons_list=[
                 WorkspaceButton(label=FormattedString("")),
@@ -71,7 +72,6 @@ class StatusBar(Window):
         )
         self.date_time = DateTime(name="date-time")
         self.system_tray = SystemTray(name="system-tray")
-        self.center_box = CenterBox()
         self.center_box.add_left(self.workspaces)
         self.center_box.add_center(self.active_window)
         self.circular_progress_bar_1 = CircularProgressBar(
@@ -103,7 +103,6 @@ class StatusBar(Window):
         self.center_box.add_right(self.date_time)
         self.center_box.add_right(self.language)
         invoke_repeater(1000, self.update_progress_bars)
-        self.center_box.set_name("main-window")
         self.add(self.center_box)
         self.show_all()
 

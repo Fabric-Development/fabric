@@ -1,0 +1,80 @@
+Metadata-Version: 2.1
+Name: pycairo
+Version: 1.25.1
+Summary: Python interface for cairo
+Home-page: https://pycairo.readthedocs.io
+Maintainer: Christoph Reiter
+Maintainer-email: reiter.christoph@gmail.com
+License: LGPL-2.1-only OR MPL-1.1
+Project-URL: Source, https://github.com/pygobject/pycairo
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: Implementation :: CPython
+Classifier: Programming Language :: Python :: Implementation :: PyPy
+Classifier: License :: OSI Approved :: GNU Lesser General Public License v2 (LGPLv2)
+Classifier: License :: OSI Approved :: Mozilla Public License 1.1 (MPL 1.1)
+Requires-Python: >=3.8
+License-File: COPYING
+License-File: COPYING-LGPL-2.1
+License-File: COPYING-MPL-1.1
+
+.. image:: https://raw.githubusercontent.com/pygobject/pycairo/main/docs/images/pycairo.svg
+   :align: center
+   :width: 370px
+
+|
+
+Pycairo is a Python module providing bindings for the `cairo graphics library
+<https://cairographics.org/>`__. It depends on **cairo >= 1.15.10** and works
+with **Python 3.8+** and **PyPy3**. Pycairo, including this documentation, is
+licensed under the `LGPL-2.1-only OR MPL-1.1 <https://spdx.dev/ids>`__.
+
+The Pycairo bindings are designed to match the cairo C API as closely as
+possible, and to deviate only in cases which are clearly better implemented in
+a more ‘Pythonic’ way.
+
+.. code:: shell
+
+    pip install pycairo
+
+Installing Pycairo requires cairo including its headers. For more info see
+"`Getting Started
+<https://pycairo.readthedocs.io/en/latest/getting_started.html>`__".
+
+----
+
+.. code:: python
+
+    import cairo
+
+    with cairo.SVGSurface("example.svg", 200, 200) as surface:
+        context = cairo.Context(surface)
+        x, y, x1, y1 = 0.1, 0.5, 0.4, 0.9
+        x2, y2, x3, y3 = 0.6, 0.1, 0.9, 0.5
+        context.scale(200, 200)
+        context.set_line_width(0.04)
+        context.move_to(x, y)
+        context.curve_to(x1, y1, x2, y2, x3, y3)
+        context.stroke()
+        context.set_source_rgba(1, 0.2, 0.2, 0.6)
+        context.set_line_width(0.02)
+        context.move_to(x, y)
+        context.line_to(x1, y1)
+        context.move_to(x2, y2)
+        context.line_to(x3, y3)
+        context.stroke()
+
+.. image:: https://raw.githubusercontent.com/pygobject/pycairo/main/docs/images/example.svg
+    :width: 320px
+    :align: center
+
+----
+
+Features of the Pycairo bindings:
+
+* Provides an object oriented interface to cairo.
+* Queries the error status of objects and translates them to exceptions.
+* Provides a C API that can be used by other Python extensions.
+* Fully typed and documented API.
+
+For more information visit https://pycairo.readthedocs.io

@@ -1,3 +1,4 @@
+fabric @ git+https://github.com/Fabric-Development/fabric.git@07f531de818f4a75a69fced1cfefecd03550e5a2
 loguru==0.7.2
 psutil==5.9.6
 pycairo==1.25.1

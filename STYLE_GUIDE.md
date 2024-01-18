@@ -36,7 +36,7 @@ Logging should be executed using [loguru](https://github.com/Delgan/loguru). adh
 
 _If uncertain about where to log, feel free to inquire in the pull request, or someone may suggest a suitable location._
 
-# Condition Statements
+## Conditional Statements
 In our code-base we use inline if/else statements if this condition will change the fate of a single object, for example
 ```python
 x = "the x object" if unexcpected_feature is not True else "the x man"

@@ -153,7 +153,7 @@ class SidePanel(Window):
         self.cpu_circular_progress_bar.percentage = psutil.cpu_percent()
         self.memory_circular_progress_bar.percentage = psutil.virtual_memory().percent
         self.battery_circular_progress_bar.percentage = (
-            psutil.sensors_battery().percentage
+            psutil.sensors_battery().percent
             if psutil.sensors_battery() is not None
             else 82
         )

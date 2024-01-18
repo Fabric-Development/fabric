@@ -33,7 +33,10 @@ ClockWidget()
 
 def apply_style(*args):
     logger.info("[Desktop Widget] CSS applied")
-    return set_stylesheet_from_file("examples/desktop_widget.css")
+    current_script_directory = os.path.dirname(os.path.abspath(__file__))
+    css_file_path = os.path.join(current_script_directory, "desktop_widget.css")
+
+    return set_stylesheet_from_file(css_file_path)
 
 
 if __name__ == "__main__":

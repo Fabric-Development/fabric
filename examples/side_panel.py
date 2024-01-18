@@ -172,7 +172,10 @@ SidePanel()
 
 def apply_style(*args):
     logger.info("[Side Panel] CSS applied")
-    return set_stylesheet_from_file("examples/side_panel.css")
+    current_script_directory = os.path.dirname(os.path.abspath(__file__))
+    css_file_path = os.path.join(current_script_directory, "side_panel.css")
+
+    return set_stylesheet_from_file(css_file_path)
 
 
 if __name__ == "__main__":

@@ -32,17 +32,18 @@ it's really simple to get fabric working, you just...
 	for arch linux you do `pacman -S python` to get the latest version of python
 
 3. get Cairo, GTK, GObject introspection and other dependency's
-
+     
 	this step does depend on your system, this command will work for arch linux to install the dependency's using `pacman`
-
+	
 	`sudo pacman -S gtk3 cairo gtk-layer-shell libgirepository gobject-introspection gobject-introspection-runtime python python-pip python-gobject python-cairo python-loguru pkgconf`
-	 (tip: you can use the `PKGBUILD` file to automate the process on Arch)
 
 	 if you're not on Arch, you will have to figure out yourself what is the package names for your distro
 
-4. install fabric
+5. install fabric
 
-    you can install fabric globally using `pip install git+https://github.com/Fabric-Development/fabric.git` although we **don't** prefer this way because it might cause dependency issues, it's better to use a [virtual environment](https://docs.python.org/3/library/venv), to get fabric in a virtual environment you'll have to do the following
+    > Fabric is available under the arch user repository with the name `python-fabric-git`
+
+    you also can install fabric globally using `pip install git+https://github.com/Fabric-Development/fabric.git` although we **don't** prefer this way because it might cause dependency issues, it's better to use a [virtual environment](https://docs.python.org/3/library/venv), to get fabric in a virtual environment you'll have to do the following
 
     make a new folder for your new project
 

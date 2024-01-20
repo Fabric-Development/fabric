@@ -22,6 +22,44 @@ class Signal:
     args: tuple[Type | object] = ()
 
 
+class SignalContainer(dict):
+    """
+    a class that conatins signals to get added later to the __gsignals__ field,
+    it provides you a high level of functionality to work with since
+    it converts passed `Signal` objects into a `dict` object so
+    it can probably be used with __gsignals__
+    """
+
+    def __init__(self, *args: list[Signal]):
+        _signals = {}
+        for sig in args:
+            sig: Signal
+            if isinstance(sig, Signal) is True:
+                _signals[sig.name] = (
+                    sig.flags
+                    if isinstance(sig.flags, GObject.SignalFlags) == True
+                    else {
+                        "run-last": GObject.SignalFlags.RUN_LAST,
+                        "run-first": GObject.SignalFlags.RUN_FIRST,
+                        "run-cleanup": GObject.SignalFlags.RUN_CLEANUP,
+                        "no-recurse": GObject.SignalFlags.NO_RECURSE,
+                        "detailed": GObject.SignalFlags.DETAILED,
+                        "action": GObject.SignalFlags.ACTION,
+                        "no-hooks": GObject.SignalFlags.NO_HOOKS,
+                        "must-collect": GObject.SignalFlags.MUST_COLLECT,
+                        "deprecated": GObject.SignalFlags.DEPRECATED,
+                        "accumulator-first-run": GObject.SignalFlags.ACCUMULATOR_FIRST_RUN,
+                    }.get(
+                        sig.flags, GObject.SignalFlags.RUN_FIRST
+                    ),  # no inline switch? (FIXME: use getattr)
+                    sig.rtype,
+                    sig.args,
+                )
+            else:
+                continue
+        super().__init__(_signals)
+
+
 @dataclass(frozen=True)
 class SignalCallback:
     name: str
@@ -29,41 +67,11 @@ class SignalCallback:
 
 
 class Service(GObject.Object):
-    def __init__(self, signals: list[Signal] | Signal):
-        self.__gsignals__: dict
-        if not isinstance(signals, list) and isinstance(signals, Signal):
-            signals = [signals]
-        for signal in signals:
-            self.__gsignals__[signal.name] = (
-                signal.flags
-                if isinstance(signal.flags, GObject.SignalFlags) == True
-                else {
-                    "run-last": GObject.SignalFlags.RUN_LAST,
-                    "run-first": GObject.SignalFlags.RUN_FIRST,
-                    "run-cleanup": GObject.SignalFlags.RUN_CLEANUP,
-                    "no-recurse": GObject.SignalFlags.NO_RECURSE,
-                    "detailed": GObject.SignalFlags.DETAILED,
-                    "action": GObject.SignalFlags.ACTION,
-                    "no-hooks": GObject.SignalFlags.NO_HOOKS,
-                    "must-collect": GObject.SignalFlags.MUST_COLLECT,
-                    "deprecated": GObject.SignalFlags.DEPRECATED,
-                    "accumulator-first-run": GObject.SignalFlags.ACCUMULATOR_FIRST_RUN,
-                }.get(
-                    signal.flags, GObject.SignalFlags.RUN_FIRST
-                ),  # no inline switch? (FIXME: use getattr)
-                signal.rtype,
-                signal.args,
-            )
-        for signal in self.__gsignals__.keys():
-            GObject.signal_new(
-                signal,
-                self.__class__,
-                self.__gsignals__[signal][0],
-                self.__gsignals__[signal][1],
-                self.__gsignals__[signal][2],
-            )
-        super().__init__()
-        self.registered_signals: list[SignalCallback] = []
+    __gsignals__ = {}
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._registered_callbacks: list[SignalCallback] = []
 
     def disconnect(self, reference: SignalCallback | Callable | str) -> list[int]:
         """disconnects a signal
@@ -82,19 +90,19 @@ class Service(GObject.Object):
         """
         signal_objects = []
         if isinstance(reference, SignalCallback):
-            if reference in self.registered_signals:
+            if reference in self._registered_callbacks:
                 signal_objects.append(signal)
         elif isinstance(reference, Callable):  # reference is a function.
-            for signal in self.registered_signals:
+            for signal in self._registered_callbacks:
                 if signal.callback == reference:
                     signal_objects.append(signal)
                     break
         else:  # maybe its a string, if string so remove every object with same string.
-            for signal in self.registered_signals:
+            for signal in self._registered_callbacks:
                 if signal.name == reference:
                     signal_objects.append(signal)
         if len(signal_objects) > 0:
-            [self.registered_signals.remove(x) for x in signal_objects]
+            [self._registered_callbacks.remove(x) for x in signal_objects]
             return [self.disconnect_by_func(x.reference) for x in signal_objects]
         else:
             raise ReferenceError(
@@ -117,5 +125,5 @@ class Service(GObject.Object):
         :rtype: tuple[object, SignalCallback]
         """
         sc = SignalCallback(name=signal_spec, callback=callback)
-        self.registered_signals.append(sc)
+        self._registered_callbacks.append(sc)
         return super().connect(signal_spec, callback), sc

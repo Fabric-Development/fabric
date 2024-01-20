@@ -5,7 +5,7 @@ import os
 import asyncio
 from loguru import logger
 from dataclasses import dataclass
-from fabric.service import Service, Signal
+from fabric.service import Service, Signal, SignalContainer
 from gi.repository import (
     Gio,
     GLib,
@@ -98,12 +98,14 @@ class Connection(Service):
     this is a subclass of GObject.
     """
 
+    __gsignals__ = SignalContainer(*HYPRLAND_SIGNALS)
+
     def __init__(self, commands_only: bool = False, **kwargs):
         """
         :param commands_only: set to `True` if you're going to use this connection for sending commands only, defaults to False
         :type commands_only: bool, optional
         """
-        super().__init__(HYPRLAND_SIGNALS, **kwargs)
+        super().__init__(**kwargs)
         self.ready = False
         self.HYPRLAND_SIGNATURE = os.getenv("HYPRLAND_INSTANCE_SIGNATURE")
         self.HYPRLAND_EVENTS_SOCKET = (

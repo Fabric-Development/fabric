@@ -295,7 +295,7 @@ def cooldown(cooldown_time: int, error: Callable = None):
     return decorator
 
 
-def exec_shell_command(cmd: str | list[str]) -> str | list[str]:
+def exec_shell_command(cmd: str) -> str | bool:
     """
     executes a shell command and returns the output
 
@@ -304,17 +304,13 @@ def exec_shell_command(cmd: str | list[str]) -> str | list[str]:
     :return: the output of the command
     :rtype: str or list of str
     """
-    if isinstance(cmd, str):
+    if isinstance(cmd, str) is True:
         result, output, error, status = GLib.spawn_command_line_sync(cmd)
         if status != 0:
             return error.decode()
         return output.decode()
-    elif isinstance(cmd, list):
-        for c in cmd:
-            result, output, error, status = GLib.spawn_command_line_sync(c)
-            if status != 0:
-                yield error.decode()
-            yield output.decode()
+    else:
+        return False
 
 
 def invoke_repeater(interval: int, func: Callable, *args, **kwargs) -> int:

@@ -56,6 +56,16 @@ class Window(Window):
         style_append: bool = False,
         style_add_brackets: bool = True,
         title: str | None = "fabric",
+        tooltip_text: str | None = None,
+        tooltip_markup: str | None = None,
+        h_align: Literal["fill", "start", "end", "center", "baseline"]
+        | Gtk.Align
+        | None = None,
+        v_align: Literal["fill", "start", "end", "center", "baseline"]
+        | Gtk.Align
+        | None = None,
+        h_expand: bool = False,
+        v_expand: bool = False,
         name: str | None = None,
         default_size: tuple[int] | None = None,
         **kwargs,
@@ -70,7 +80,14 @@ class Window(Window):
             style_append,
             style_add_brackets,
             title,
+            tooltip_text,
+            tooltip_markup,
+            h_align,
+            v_align,
+            h_expand,
+            v_expand,
             name,
+            default_size,
             **kwargs,
         )
         layer = (

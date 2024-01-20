@@ -1,4 +1,5 @@
 import gi
+from typing import Literal
 from fabric.utils.helpers import compile_css
 
 gi.require_version("Gtk", "3.0")
@@ -14,6 +15,16 @@ class Widget(Gtk.Widget):
         style_compiled: bool = True,
         style_append: bool = False,
         style_add_brackets: bool = True,
+        tooltip_text: str | None = None,
+        tooltip_markup: str | None = None,
+        h_align: Literal["fill", "start", "end", "center", "baseline"]
+        | Gtk.Align
+        | None = None,
+        v_align: Literal["fill", "start", "end", "center", "baseline"]
+        | Gtk.Align
+        | None = None,
+        h_expand: bool = False,
+        v_expand: bool = False,
         name: str | None = None,
         size: tuple[int] | None = None,
         **kwargs,
@@ -23,6 +34,34 @@ class Widget(Gtk.Widget):
         self.style_provider: Gtk.CssProvider = None
         size = (size, size) if isinstance(size, int) is True else size
         super().set_name(name) if name is not None else None
+        super().set_tooltip_text(tooltip_text) if tooltip_text is not None else None
+        super().set_tooltip_markup(
+            tooltip_markup
+        ) if tooltip_markup is not None else None
+        super().set_halign(
+            {
+                "fill": Gtk.Align.FILL,
+                "start": Gtk.Align.START,
+                "end": Gtk.Align.END,
+                "center": Gtk.Align.CENTER,
+                "baseline": Gtk.Align.BASELINE,
+            }.get(h_align.lower(), Gtk.Align.START)
+        ) if h_align is not None else None
+        super().set_valign(
+            {
+                "fill": Gtk.Align.FILL,
+                "start": Gtk.Align.START,
+                "end": Gtk.Align.END,
+                "center": Gtk.Align.CENTER,
+                "baseline": Gtk.Align.BASELINE,
+            }.get(v_align.lower(), Gtk.Align.START)
+        ) if v_align is not None else None
+        super().set_hexpand(
+            True if h_expand is True else False
+        ) if h_expand is not None else None
+        super().set_vexpand(
+            True if v_expand is True else False
+        ) if v_expand is not None else None
         super().set_size_request(*size) if size is not None else None
         self.set_style(
             style, style_compiled, style_append, style_add_brackets

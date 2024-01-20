@@ -25,13 +25,23 @@ class Window(Window):
         all_visible: bool = True,
         exclusive: bool = True,
         children: Gtk.Widget | None = None,
-        name: str | None = None,
         style: str | None = None,
         style_compiled: bool = True,
         style_append: bool = False,
         style_add_brackets: bool = True,
-        ignore_empty_check: bool = False,
+        tooltip_text: str | None = None,
+        tooltip_markup: str | None = None,
+        h_align: Literal["fill", "start", "end", "center", "baseline"]
+        | Gtk.Align
+        | None = None,
+        v_align: Literal["fill", "start", "end", "center", "baseline"]
+        | Gtk.Align
+        | None = None,
+        h_expand: bool = False,
+        v_expand: bool = False,
+        name: str | None = None,
         default_size: tuple[int, int] | None = None,
+        ignore_empty_check: bool = False,
         **kwarg,
     ):
         """
@@ -60,6 +70,12 @@ class Window(Window):
             style_compiled,
             style_append,
             style_add_brackets,
+            tooltip_text,
+            tooltip_markup,
+            h_align,
+            v_align,
+            h_expand,
+            v_expand,
             name,
             default_size,
             **kwarg,

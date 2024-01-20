@@ -11,7 +11,7 @@ from fabric.widgets.wayland import Window
 from fabric.widgets.overlay import Overlay
 from fabric.widgets.date_time import DateTime
 from fabric.utils.helpers import set_stylesheet_from_file, monitor_file
-from fabric.widgets.circularprogressbar import CircularProgressBar
+from fabric.widgets.circular_progress_bar import CircularProgressBar
 
 PYWAL = False
 PROFILE_PICTURE = os.path.expanduser("~/Pictures/Other/profile.jpg")

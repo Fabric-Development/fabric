@@ -10,6 +10,7 @@ from gi.repository import Gdk, Gtk
 
 
 class CircularProgressBar(Gtk.DrawingArea, Widget):
+    """a circular progress bar widget drawn with cairo"""
     def __init__(
         self,
         percentage: int = 0,
@@ -47,8 +48,6 @@ class CircularProgressBar(Gtk.DrawingArea, Widget):
         **kwargs,
     ):
         """
-        a circular progress bar widget drawn with cairo
-
         :param percentage: the initial percentage of the progress bar value can be between 0 and 100, defaults to 0
         :type percentage: int, optional
         :param line_width: the width of the line, if None falls back to the highest value of `border-[top|bottom|left|right]-width` or `min-[width|height]` gotten from the style, defaults to None
@@ -65,16 +64,34 @@ class CircularProgressBar(Gtk.DrawingArea, Widget):
         :type pie: bool | None, optional
         :param angle: the angle of the progress bar AKA the start angle, defaults to 0
         :type angle: int | None, optional
-        :param visible: if the widget is visible, defaults to True
+        :param visible: whether the widget is initially visible, defaults to True
         :type visible: bool, optional
-        :param all_visible: if the widget and its children are visible, defaults to False
+        :param all_visible: whether all child widgets are initially visible, defaults to False
         :type all_visible: bool, optional
-        :param style: the css style, defaults to None
+        :param style: inline css style string, defaults to None
         :type style: str | None, optional
-        :param name: the name of the widget, defaults to None
+        :param style_compiled: whether the passed css should get compiled before applying, defaults to True
+        :type style_compiled: bool, optional
+        :param style_append: whether the passed css should be appended to the existing css, defaults to False
+        :type style_append: bool, optional
+        :param style_add_brackets: whether the passed css should be wrapped in brackets if they were missing, defaults to True
+        :type style_add_brackets: bool, optional
+        :param tooltip_text: the text added to the tooltip, defaults to None
+        :type tooltip_text: str | None, optional
+        :param tooltip_markup: the markup added to the tooltip, defaults to None
+        :type tooltip_markup: str | None, optional
+        :param h_align: the horizontal alignment, defaults to None
+        :type h_align: Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None, optional
+        :param v_align: the vertical alignment, defaults to None
+        :type v_align: Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None, optional
+        :param h_expand: the horizontal expansion, defaults to False
+        :type h_expand: bool, optional
+        :param v_expand: the vertical expansion, defaults to False
+        :type v_expand: bool, optional
+        :param name: the name of the widget it can be used to style the widget, defaults to None
         :type name: str | None, optional
-        :param size: the size of the widget, defaults to (24, 24)
-        :type size: tuple[int, int] | int | None, optional
+        :param size: the size of the widget, defaults to None
+        :type size: tuple[int] | None, optional
         """
         Gtk.DrawingArea.__init__(self, **kwargs)
         if percentage < 0 or percentage > 100 or not isinstance(percentage, int):

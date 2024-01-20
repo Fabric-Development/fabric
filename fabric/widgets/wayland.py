@@ -45,21 +45,47 @@ class Window(Window):
         **kwarg,
     ):
         """
-        :param layer: The window layer. Can be one of `"background"`, `"bottom"`, `"top"`, `"overlay"`.
-        :param anchor: The anchor of the window. it can be a string of the anchor values, for example `"left top right bottom"`.
-        :param margin: The margin of the window. it can be a string of the margin values using the css format (`"top[px] right[px] bottom[px] left[px]"`).
-        :param visible: Whether the window is initially visible.
-        :param all_visible: Whether all child widgets are initially visible.
-        :param exclusive: Whether the window is exclusive.
-        :param children: The child widget of the window. (NOTE: windows cannot have more than one child widget)
-        :param title: The title of the layer window.
-        :param name: The name of the widget. translates to the css class.
-        :param style: The css style of the this widget.
-        :param ignore_empty_check: Whether to ignore if this window is empty or not before showing it.
-        :param default_size: The default window size.
-        :param kwarg: Additional keyword arguments passed to the `Gtk.Window` super class.
-
-        :returns: None
+        :param layer: the window layer, defaults to "background"
+        :type layer: Literal["background", "bottom", "top", "overlay"] | GtkLayerShell.Layer
+        :param anchor: the window anchor it can be one of "top", "bottom", "left", "right" or two or more values separated by space like "top right", defaults to ""
+        :type anchor: str, optional
+        :param margin: the window margin in the format of "top right bottom left" AKA css values, defaults to "0px 0px 0px 0px"
+        :type margin: str, optional
+        :param title: the window title which will be displayed in the window title bar, defaults to "fabric"
+        :type title: str | None, optional
+        :param children: the child widget (single widget), defaults to None
+        :type children: Gtk.Widget | None, optional
+        :param visible: whether the widget is initially visible, defaults to True
+        :type visible: bool, optional
+        :param all_visible: whether all child widgets are initially visible, defaults to False
+        :type all_visible: bool, optional
+        :param style: inline css style string, defaults to None
+        :type style: str | None, optional
+        :param style_compiled: whether the passed css should get compiled before applying, defaults to True
+        :type style_compiled: bool, optional
+        :param style_append: whether the passed css should be appended to the existing css, defaults to False
+        :type style_append: bool, optional
+        :param style_add_brackets: whether the passed css should be wrapped in brackets if they were missing, defaults to True
+        :type style_add_brackets: bool, optional
+        :param tooltip_text: the text added to the tooltip, defaults to None
+        :type tooltip_text: str | None, optional
+        :param tooltip_markup: the markup added to the tooltip, defaults to None
+        :type tooltip_markup: str | None, optional
+        :param h_align: the horizontal alignment, defaults to None
+        :type h_align: Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None, optional
+        :param v_align: the vertical alignment, defaults to None
+        :type v_align: Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None, optional
+        :param h_expand: the horizontal expansion, defaults to False
+        :type h_expand: bool, optional
+        :param v_expand: the vertical expansion, defaults to False
+        :type v_expand: bool, optional
+        :param name: the name of the widget it can be used to style the widget, defaults to None
+        :type name: str | None, optional
+        :param size: the size of the widget, defaults to None
+        :type size: tuple[int] | None, optional
+        :param default_size: the default size of the window, defaults to None
+        :type default_size: tuple[int, int] | None, optional        :param ignore_empty_check: _description_, defaults to False
+        :type ignore_empty_check: bool, optional
         """
         super().__init__(
             title,

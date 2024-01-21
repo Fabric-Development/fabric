@@ -9,6 +9,7 @@ from gi.repository import Gtk
 
 class Window(Gtk.Window, Widget):
     """a normal top-level window"""
+
     def __init__(
         self,
         title: str | None = "fabric",

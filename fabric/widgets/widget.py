@@ -8,6 +8,7 @@ from gi.repository import Gtk
 
 class Widget(Gtk.Widget):
     """the base widget, all other widgets should inherit from this class"""
+
     def __init__(
         self,
         visible: bool = True,

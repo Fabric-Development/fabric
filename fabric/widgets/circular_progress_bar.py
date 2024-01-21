@@ -11,6 +11,7 @@ from gi.repository import Gdk, Gtk
 
 class CircularProgressBar(Gtk.DrawingArea, Widget):
     """a circular progress bar widget drawn with cairo"""
+
     def __init__(
         self,
         percentage: int = 0,

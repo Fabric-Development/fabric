@@ -8,6 +8,7 @@ from gi.repository import Gtk
 
 class Box(Gtk.Box, Container):
     """a box able to hold widgets as a container"""
+
     def __init__(
         self,
         spacing: int | None = None,

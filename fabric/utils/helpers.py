@@ -1,10 +1,10 @@
 import gi
 import re
 import time
+from typing import Callable, Literal, Iterable
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk, GObject, Gio, GLib
-from typing import Callable, Literal, Iterable
 
 
 def get_gdk_rgba(color: str | Iterable) -> Gdk.RGBA:

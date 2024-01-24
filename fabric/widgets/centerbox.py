@@ -20,6 +20,13 @@ class CenterBox(Box):
         center_widgets: list[Gtk.Widget] | Gtk.Widget | None = None,
         right_widgets: list[Gtk.Widget] | Gtk.Widget | None = None,
         spacing: int | None = None,
+        orientation: Literal[
+            "horizontal",
+            "vertical",
+            "h",
+            "v",
+        ]
+        | Gtk.Orientation = None,
         visible: bool = True,
         all_visible: bool = False,
         style: str | None = None,
@@ -40,9 +47,19 @@ class CenterBox(Box):
         size: tuple[int] | None = None,
         **kwargs,
     ):
+        _orientation = (
+            orientation
+            if isinstance(orientation, Gtk.Orientation)
+            else {
+                "horizontal": Gtk.Orientation.HORIZONTAL,
+                "vertical": Gtk.Orientation.VERTICAL,
+                "h": Gtk.Orientation.HORIZONTAL,
+                "v": Gtk.Orientation.VERTICAL,
+            }.get(orientation, Gtk.Orientation.HORIZONTAL)
+        )
         super().__init__(
             spacing,
-            "v",
+            "h" if _orientation == Gtk.Orientation.VERTICAL else "v",
             None,
             visible,
             all_visible,
@@ -61,7 +78,7 @@ class CenterBox(Box):
             **kwargs,
         )
         self.widgets_container = Box(
-            orientation="h",
+            orientation="v" if _orientation == Gtk.Orientation.VERTICAL else "h",
         )
 
         self.left_widgets = Box()

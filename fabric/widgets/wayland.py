@@ -5,7 +5,7 @@ from fabric.widgets.window import Window
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("GtkLayerShell", "0.1")
-from gi.repository import Gtk, GtkLayerShell
+from gi.repository import Gtk, Gdk, GtkLayerShell
 
 
 class Window(Window):
@@ -21,9 +21,10 @@ class Window(Window):
         anchor: str = "",
         margin: str = "0px 0px 0px 0px",
         title: str | None = "fabric",
+        exclusive: bool = True,
+        monitor_id: int | None = None,
         visible: bool = True,
         all_visible: bool = True,
-        exclusive: bool = True,
         children: Gtk.Widget | None = None,
         style: str | None = None,
         style_compiled: bool = True,
@@ -53,6 +54,10 @@ class Window(Window):
         :type margin: str, optional
         :param title: the window title which will be displayed in the window title bar, defaults to "fabric"
         :type title: str | None, optional
+        :param exclusive: whether this window should reserve space or not, defaults to True
+        :type exclusive: bool, optional
+        :param monitor_id: the monitor this window should open at, None means to let the compositor decides which monitor to open at, defaults to None
+        :type monitor_id: int | None, optional
         :param children: the child widget (single widget), defaults to None
         :type children: Gtk.Widget | None, optional
         :param visible: whether the widget is initially visible, defaults to True
@@ -84,7 +89,8 @@ class Window(Window):
         :param size: the size of the widget, defaults to None
         :type size: tuple[int] | None, optional
         :param default_size: the default size of the window, defaults to None
-        :type default_size: tuple[int, int] | None, optional        :param ignore_empty_check: _description_, defaults to False
+        :type default_size: tuple[int, int] | None, optional
+        :param ignore_empty_check: whether to disable the checks on this window if it was empty or not before showing it (because this freaks up some compositors) or not, defaults to False
         :type ignore_empty_check: bool, optional
         """
         super().__init__(
@@ -108,6 +114,7 @@ class Window(Window):
         )
         self.ignore_empty_check = ignore_empty_check
         GtkLayerShell.init_for_window(self)
+        self.set_monitor(monitor_id) if monitor_id is not None else None
         GtkLayerShell.set_namespace(self, title)
         GtkLayerShell.auto_exclusive_zone_enable(self) if exclusive else None
         layer = (
@@ -173,3 +180,10 @@ class Window(Window):
         for edge in edges:
             GtkLayerShell.set_anchor(self, edge, True)
         return
+
+    def set_monitor(self, monitor_id: int) -> None | bool:
+        display = Gdk.Display().get_default()
+        monitor = display.get_monitor(monitor_id) if display is not None else None
+        return (
+            GtkLayerShell.set_monitor(self, monitor) if monitor is not None else False
+        )

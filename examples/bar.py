@@ -127,7 +127,7 @@ if __name__ == "__main__":
         )
         monitor.connect("changed", apply_style)
 
-    # initlize style
+    # initialize style
     apply_style()
 
     fabric.start()

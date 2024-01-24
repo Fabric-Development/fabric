@@ -115,7 +115,7 @@ class WorkspaceButton(Button):
         self._urgent: bool = False
         self._empty: bool = False
 
-    def initlize_button(self):
+    def initialize_button(self):
         self._active = False
 
     def set_active(self):
@@ -220,7 +220,7 @@ class Workspaces(WorkspacesEventBox):
 
     def on_ready(self, obj):
         logger.info("[Workspaces] Connected to the hyprland socket")
-        return self.initlize_workspaces()
+        return self.initialize_workspaces()
 
     def on_workspace(self, obj, event: SignalEvent):
         GLib.idle_add(self.set_active_workspace, (int(event.data[0]) - 1))
@@ -266,7 +266,7 @@ class Workspaces(WorkspacesEventBox):
             f"[Workspaces] Workspace {urgent_workspace} setted to urgent"
         )
 
-    def initlize_workspaces(self):
+    def initialize_workspaces(self):
         open_ws = json.loads(
             str(
                 connection.send_command(
@@ -344,9 +344,9 @@ class Workspaces(WorkspacesEventBox):
             button._urgent = False
             button.bake_label()
             workspaces_buttons.append(button)
-        return self.initlize_buttons(workspaces_buttons)
+        return self.initialize_buttons(workspaces_buttons)
 
-    def initlize_buttons(self, workspaces_buttons: list[WorkspaceButton]):
+    def initialize_buttons(self, workspaces_buttons: list[WorkspaceButton]):
         for button in workspaces_buttons:
             if not button.can_appear and button.visible:
                 button.show()
@@ -410,7 +410,7 @@ class ActiveWindow(Button):
         )
         self.show()
 
-    def initlize_active_window(self):
+    def initialize_active_window(self):
         win_data: dict = json.loads(
             str(
                 (
@@ -440,11 +440,11 @@ class ActiveWindow(Button):
         )
 
     def on_ready(self, obj):
-        self.initlize_active_window()
+        self.initialize_active_window()
         return logger.info("[ActiveWindow] Connected to the hyprland socket")
 
     def on_closewindow(self, obj, event: SignalEvent):
-        self.initlize_active_window()
+        self.initialize_active_window()
         return logger.info(f"[ActiveWindow] Closed window 0x{event.data[0]}")
 
     def on_activewindow(self, obj, event: SignalEvent):
@@ -483,10 +483,10 @@ class Language(Button):
         self.show()
 
     def on_ready(self, obj):
-        self.initlize_language()
+        self.initialize_language()
         return logger.info("[Language] Connected to the hyprland socket")
 
-    def initlize_language(self):
+    def initialize_language(self):
         devices = json.loads(
             str(
                 (

@@ -74,9 +74,7 @@ class Fabricate(Service):
             self.emit("polling-shell-command", callable)
             return (
                 self.invoke_shell_with_interval(callable, interval),
-                print(self.do_invoke_shell(callable))
-                if self._initial_poll is True
-                else None,
+                self.do_invoke_shell(callable) if self._initial_poll is True else None,
             )
 
     def invoke_shell_with_interval(self, cmd: str, interval: int):
@@ -113,7 +111,7 @@ class Fabricate(Service):
         else:
             return False
 
-    @property
+    @Property(value_type=object)
     def value(self):
         return self._value
 

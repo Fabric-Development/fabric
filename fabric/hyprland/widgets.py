@@ -206,14 +206,13 @@ class Workspaces(WorkspacesEventBox):
         self.buttons_map = {obj.id: obj for obj in self.buttons_list}
         bulk_connect(
             connection,
-            ["ready", "workspace", "createworkspace", "destroyworkspace", "urgent"],
-            [
-                self.on_ready,
-                self.on_workspace,
-                self.on_createworkspace,
-                self.on_destroyworkspace,
-                self.on_urgent,
-            ],
+            {
+                "ready": self.on_ready,
+                "workspace": self.on_workspace,
+                "createworkspace": self.on_createworkspace,
+                "destroyworkspace": self.on_destroyworkspace,
+                "urgent": self.on_urgent,
+            },
         )
         # self.connect("scroll-event", lambda *args: print(args))
         self.connect("scroll-event", self.scroll_handler)
@@ -403,8 +402,11 @@ class ActiveWindow(Button):
         self.formatter = formatter
         bulk_connect(
             connection,
-            ["ready", "activewindow", "closewindow"],
-            [self.on_ready, self.on_activewindow, self.on_closewindow],
+            {
+                "ready": self.on_ready,
+                "activewindow": self.on_activewindow,
+                "closewindow": self.on_closewindow,
+            },
         )
         self.show()
 
@@ -472,8 +474,10 @@ class Language(Button):
 
         bulk_connect(
             connection,
-            ["ready", "activelayout"],
-            [self.on_ready, self.on_activelayout],
+            {
+                "ready": self.on_ready,
+                "activelayout": self.on_activelayout,
+            },
         )
 
         self.show()

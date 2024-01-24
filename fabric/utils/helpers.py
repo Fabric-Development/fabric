@@ -133,41 +133,42 @@ def bulk_replace(
 
 
 def bulk_connect(
-    connecable: GObject.Object | object, signals: list[str], callbacks: list[Callable]
+    connectable: GObject.Object | object, mapping: dict[str:Callable]
 ) -> list[object | int]:
     """connects a list of signals to a list of callbacks to an object
 
-    :param connecable: the object to connect the signals to
-    :type connecable: GObject.Object | object
-    :param signals: the list of signals
-    :type signals: list[str]
-    :param callbacks: the list of callbacks
-    :type callbacks: list[Callable]
-    :return: a list of return values from the connect function
+    :param connectable: the object to connect the signals to
+    :type connectable: GObject.Object | object
+    :param mapping: the mapping of signals to callbacks, example: `{"signal-name": lambda *args: ...}`
+    :type mapping: dict[str: Callable]
     :rtype: list[object | int]
     """
-    return_list = []
-    for signal, callback in zip(signals, callbacks):
-        return_list.append(connecable.connect(signal, callback))
-    return return_list
+    return [
+        connectable.connect(signal, callback)
+        for signal, callback in zip(mapping.keys(), mapping.values())
+    ]
 
 
 def bulk_disconnect(
-    disconnecable: GObject.Object | object, signals: list[str]
+    disconnectable: GObject.Object | object, signals_or_funcs: list[str | Callable]
 ) -> list[int]:
     """does the opposite of bulk_connect
 
-    :param disconnecable: the object to disconnect the signals from
-    :type disconnecable: GObject.Object | object
-    :param signals: the list of signals
-    :type signals: list[str]
-    :return: a list of return values from the disconnect function
+    :param disconnectable: the object to disconnect the signals from
+    :type disconnectable: GObject.Object | object
+    :param signals_or_funcs: the list of signals/callbacks to disconnect
+    :type signals: list[str | Callable]
+    :return: a list of return values from the `disconnect` function
     :rtype: list[int]
     """
-    return_list = []
-    for signal in signals:
-        return_list.append(disconnecable.disconnect(signal))
-    return return_list
+    return [
+        (
+            disconnectable.disconnect(x)
+            if callable(x) is False
+            else disconnectable.disconnect_by_func(x)
+        )
+        for x in signals_or_funcs
+    ]
 
 
 def clamp(value, min_value, max_value):

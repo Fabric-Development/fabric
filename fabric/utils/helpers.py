@@ -306,10 +306,13 @@ def exec_shell_command(cmd: str) -> str | bool:
     :rtype: str or list of str
     """
     if isinstance(cmd, str) is True:
-        result, output, error, status = GLib.spawn_command_line_sync(cmd)
-        if status != 0:
-            return error.decode()
-        return output.decode()
+        try:
+            result, output, error, status = GLib.spawn_command_line_sync(cmd)
+            if status != 0:
+                return error.decode()
+            return output.decode()
+        except:
+            return False
     else:
         return False
 

@@ -3,7 +3,12 @@ from typing import Literal
 from fabric.utils.helpers import compile_css
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk
+from gi.repository import Gtk, Gdk
+import logging
+
+# shhhh
+logging.captureWarnings(True)
+logging.getLogger("gi.overrides").setLevel(logging.ERROR)
 
 
 class Widget(Gtk.Widget):
@@ -144,3 +149,62 @@ class Widget(Gtk.Widget):
         for cls in classes:
             self.get_style_context().add_class(cls)
         return
+
+    def change_cursor(
+        self,
+        cursor: Literal[
+            "default",
+            "help",
+            "pointer",
+            "context-menu",
+            "progress",
+            "wait",
+            "cell",
+            "crosshair",
+            "text",
+            "vertical-text",
+            "alias",
+            "copy",
+            "no-drop",
+            "move",
+            "not-allowed",
+            "grab",
+            "grabbing",
+            "all-scroll",
+            "col-resize",
+            "row-resize",
+            "n-resize",
+            "e-resize",
+            "s-resize",
+            "w-resize",
+            "ne-resize",
+            "nw-resize",
+            "sw-resize",
+            "se-resize",
+            "ew-resize",
+            "ns-resize",
+            "nesw-resize",
+            "nwse-resize",
+            "zoom-in",
+            "zoom-out",
+        ]
+        | Gdk.Cursor
+        | Gdk.CursorType
+        | None = None,
+    ) -> bool | None:
+        display = Gdk.Display.get_default()
+        window = self.get_window()
+        if display is None or window is None:
+            return False
+        return (
+            window.set_cursor(Gdk.Cursor.new_from_name(display, cursor))
+            if self.is_hovered()
+            else window.set_cursor(Gdk.Cursor.new_from_name(display, "default"))
+        )
+
+    def is_hovered(self, event: Gdk.Event | None = None) -> bool:
+        x, y = self.get_pointer()
+        allocation = self.get_allocation()
+        if event:
+            x, y = event.get_coords()
+        return 0 < x < allocation.width and 0 < y < allocation.height

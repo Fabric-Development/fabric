@@ -34,6 +34,7 @@ class Fabricate(Service):
             **kwargs,
         )
         self._value = value
+        self._value_str = str(value)
         self._poll_from = poll_from
         self._interval = interval
         self._stop_when = stop_when
@@ -111,16 +112,26 @@ class Fabricate(Service):
         else:
             return False
 
-    @Property(value_type=object)
+    def stop_polling(self):
+        self._poll = False
+        return
+
+    @Property(value_type=object, flags="read-write")
     def value(self):
         return self._value
 
     @value.setter
     def value(self, value):
         self._value = value
+        self.value_str = str(value)
         self.emit("changed", value)
         return
 
-    def stop_polling(self):
-        self._poll = False
+    @Property(value_type=str, flags="read-write")
+    def value_str(self):
+        return self._value_str
+
+    @value_str.setter
+    def value_str(self, value: str):
+        self._value_str = str(value)
         return

@@ -1,6 +1,8 @@
 import gi
 import re
+import os
 import time
+import inspect
 from typing import Callable, Literal, Iterable
 
 gi.require_version("Gtk", "3.0")
@@ -332,3 +334,25 @@ def invoke_repeater(interval: int, func: Callable, *args, **kwargs) -> int:
     :rtype: int
     """
     return GLib.timeout_add(interval, func, *args, **kwargs)
+
+
+def get_relative_path(path: str) -> str:
+    """
+    converts a path to a relative path according to callers `__file__` variable
+    NOTE: This function only works if the caller `__file__` variable is set
+    means only if you're running a python FILE (not using IDLE)
+    else it will fallback to the current working directory as `__file__`
+
+    :param path: the path to convert
+    :type path: str
+    :return: the relative path
+    :rtype: str
+    """
+    prev_globals = inspect.stack()[1][0].f_globals
+    file_var = (
+        os.path.dirname(os.path.abspath(prev_globals["__file__"]))
+        if "__file__" in prev_globals
+        else os.getcwd()
+    )
+    path = os.path.join(file_var, path)
+    return path

@@ -1,8 +1,25 @@
 /* uncomment if you do have pywal configured */
 /* @import url("/home/USER/.cache/wal/colors-widgets.css"); */
-@import url("examples/fallback_colors.css");
 
 * {
+    --background: #150d16;
+    --foreground: #f5dbc4;
+    --color0: #150d16;
+    --color1: #72448D;
+    --color2: #9C5995;
+    --color3: #D5719F;
+    --color4: #9A62F3;
+    --color5: #E075DF;
+    --color6: #F98F9F;
+    --color7: #f5dbc4;
+    --color8: #ab9989;
+    --color9: #72448D;
+    --color10: #9C5995;
+    --color11: #D5719F;
+    --color12: #9A62F3;
+    --color13: #E075DF;
+    --color14: #F98F9F;
+    --color15: #f5dbc4;
     all: unset;
     transition: color 0.5s ease;
     color: alpha(var(--foreground), 0.8);

@@ -22,7 +22,7 @@ class Window(Window):
         margin: str = "0px 0px 0px 0px",
         title: str | None = "fabric",
         exclusive: bool = True,
-        monitor_id: int | None = None,
+        monitor: int | Gdk.Monitor | None = None,
         visible: bool = True,
         all_visible: bool = True,
         children: Gtk.Widget | None = None,
@@ -56,8 +56,8 @@ class Window(Window):
         :type title: str | None, optional
         :param exclusive: whether this window should reserve space or not, defaults to True
         :type exclusive: bool, optional
-        :param monitor_id: the monitor this window should open at, None means to let the compositor decides which monitor to open at, defaults to None
-        :type monitor_id: int | None, optional
+        :param monitor: the monitor this window should open at, None means to let the compositor decides which monitor to open at, defaults to None
+        :type monitor: int | Gdk.Monitor | None, optional
         :param children: the child widget (single widget), defaults to None
         :type children: Gtk.Widget | None, optional
         :param visible: whether the widget is initially visible, defaults to True
@@ -114,7 +114,7 @@ class Window(Window):
         )
         self.ignore_empty_check = ignore_empty_check
         GtkLayerShell.init_for_window(self)
-        self.set_monitor(monitor_id) if monitor_id is not None else None
+        self.set_monitor(monitor) if monitor is not None else None
         GtkLayerShell.set_namespace(self, title)
         GtkLayerShell.auto_exclusive_zone_enable(self) if exclusive else None
         layer = (
@@ -181,9 +181,12 @@ class Window(Window):
             GtkLayerShell.set_anchor(self, edge, True)
         return
 
-    def set_monitor(self, monitor_id: int) -> None | bool:
-        display = Gdk.Display().get_default()
-        monitor = display.get_monitor(monitor_id) if display is not None else None
+    def set_monitor(self, monitor: int | Gdk.Monitor) -> None | bool:
+        if isinstance(monitor, int):
+            display = Gdk.Display().get_default()
+            monitor = display.get_monitor(monitor) if display is not None else None 
+        elif isinstance(monitor, Gdk.Monitor):
+            monitor = monitor
         return (
             GtkLayerShell.set_monitor(self, monitor) if monitor is not None else False
         )

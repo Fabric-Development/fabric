@@ -184,7 +184,7 @@ class Window(Window):
     def set_monitor(self, monitor: int | Gdk.Monitor) -> None | bool:
         if isinstance(monitor, int):
             display = Gdk.Display().get_default()
-            monitor = display.get_monitor(monitor) if display is not None else None 
+            monitor = display.get_monitor(monitor) if display is not None else None
         elif isinstance(monitor, Gdk.Monitor):
             monitor = monitor
         return (

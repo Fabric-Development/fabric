@@ -1,7 +1,7 @@
 /* uncomment if you do have pywal configured */
 /* @import url("/home/USER/.cache/wal/colors-widgets.css"); */
 
-* {
+:vars {
     --background: #150d16;
     --foreground: #f5dbc4;
     --color0: #150d16;
@@ -20,6 +20,9 @@
     --color13: #E075DF;
     --color14: #F98F9F;
     --color15: #f5dbc4;
+}
+
+* {
     all: unset;
     transition: color 0.5s ease;
     color: alpha(var(--foreground), 0.8);

@@ -16,6 +16,7 @@ from fabric.utils.helpers import (
     bulk_replace,
     bulk_connect,
     exec_shell_command,
+    get_relative_path,
 )
 
 
@@ -94,33 +95,37 @@ class VerticalBar(Window):
             label="",
             name="time-separator",
         )
-        self.time_sep.set_style_classes(["day"])
         self.time_sep_var = Fabricate(
             value="",
-            poll_from=lambda _: "" if time.strftime("%p").lower() == "am" else "",
-            interval=4002,
+            poll_from=lambda _: [
+                "",
+                self.time_sep.set_style_classes(["day"]),
+            ][0]
+            if time.strftime("%p").lower() == "am"
+            else [
+                "",
+                self.time_sep.set_style_classes(["night"]),
+            ][0],
+            interval=1000,
         )
-        self.time_sep_var.connect(
-            "changed",
-            lambda _, value: (
-                self.time_sep.set_label(value),
-                self.time_sep.set_style_classes(["night"])
-                if value == ""
-                else self.time_sep.set_style_classes(["day"]),
-            ),
+        self.time_sep.bind_property(
+            "label",
+            self.time_sep_var,
+            "value-str",
+            1,
         )
         self.center_box = CenterBox(name="main-window", orientation="v")
         self.run_button = Button(
             name="run-button",
             tooltip_text="Show Applications Menu",
             child=Image(
-                image_file="examples/vertical_bar_assets/applications.svg",
+                image_file=get_relative_path("assets/applications.svg"),
             ),
         )
         self.power_button = Button(
             name="power-button",
             tooltip_text="Show Power Menu",
-            child=Image(image_file="examples/vertical_bar_assets/power.svg"),
+            child=Image(image_file=get_relative_path("assets/power.svg")),
         )
         for btn in [self.run_button, self.power_button]:
             bulk_connect(
@@ -145,7 +150,7 @@ class VerticalBar(Window):
                         orientation="v",
                         children=[
                             Image(
-                                image_file="examples/vertical_bar_assets/language.svg",
+                                image_file=get_relative_path("assets/language.svg"),
                             ),
                             Language(
                                 # NOTE: This is an example of how to use the Language widget,
@@ -219,7 +224,7 @@ class VerticalBar(Window):
                         orientation="v",
                         children=[
                             Image(
-                                image_file="examples/vertical_bar_assets/battery.svg",
+                                image_file=get_relative_path("assets/battery.svg"),
                             ),
                             self.battery_label,
                         ],
@@ -230,7 +235,7 @@ class VerticalBar(Window):
                         orientation="v",
                         children=[
                             Image(
-                                image_file="examples/vertical_bar_assets/ram.svg",
+                                image_file=get_relative_path("assets/ram.svg"),
                             ),
                             self.memory_label,
                         ],
@@ -241,7 +246,7 @@ class VerticalBar(Window):
                         orientation="v",
                         children=[
                             Image(
-                                image_file="examples/vertical_bar_assets/cpu.svg",
+                                image_file=get_relative_path("assets/cpu.svg"),
                             ),
                             self.cpu_label,
                         ],
@@ -280,5 +285,5 @@ class VerticalBar(Window):
 
 if __name__ == "__main__":
     VerticalBar()  # entery point
-    set_stylesheet_from_file("examples/vertical_bar.css")
+    set_stylesheet_from_file(get_relative_path("vertical_bar.css"))
     fabric.start()

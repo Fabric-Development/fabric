@@ -17,9 +17,10 @@ from fabric.utils.helpers import (
     bulk_replace,
     monitor_file,
     invoke_repeater,
+    get_relative_path,
 )
 
-PYWAL = True
+PYWAL = False
 
 
 class StatusBar(Window):
@@ -117,7 +118,7 @@ StatusBar()
 
 def apply_style(*args):
     logger.info("[Bar] CSS applied")
-    return set_stylesheet_from_file("examples/bar.css")
+    return set_stylesheet_from_file(get_relative_path("bar.css"))
 
 
 if __name__ == "__main__":

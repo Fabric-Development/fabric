@@ -5,7 +5,7 @@ from loguru import logger
 from fabric.widgets.box import Box
 from fabric.widgets.wayland import Window
 from fabric.widgets.date_time import DateTime
-from fabric.utils.helpers import set_stylesheet_from_file, monitor_file
+from fabric.utils.helpers import set_stylesheet_from_file, monitor_file, get_relative_path
 
 PYWAL = False
 
@@ -33,7 +33,7 @@ ClockWidget()
 
 def apply_style(*args):
     logger.info("[Desktop Widget] CSS applied")
-    return set_stylesheet_from_file("examples/desktop_widget.css")
+    return set_stylesheet_from_file(get_relative_path("desktop_widget.css"))
 
 
 if __name__ == "__main__":

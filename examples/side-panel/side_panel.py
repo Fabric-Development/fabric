@@ -10,7 +10,11 @@ from fabric.widgets.label import Label
 from fabric.widgets.wayland import Window
 from fabric.widgets.overlay import Overlay
 from fabric.widgets.date_time import DateTime
-from fabric.utils.helpers import set_stylesheet_from_file, monitor_file
+from fabric.utils.helpers import (
+    set_stylesheet_from_file,
+    monitor_file,
+    get_relative_path,
+)
 from fabric.widgets.circular_progress_bar import CircularProgressBar
 
 PYWAL = False
@@ -172,7 +176,7 @@ SidePanel()
 
 def apply_style(*args):
     logger.info("[Side Panel] CSS applied")
-    return set_stylesheet_from_file("examples/side_panel.css")
+    return set_stylesheet_from_file(get_relative_path("side_panel.css"))
 
 
 if __name__ == "__main__":

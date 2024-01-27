@@ -14,7 +14,7 @@ class CircularProgressBar(Gtk.DrawingArea, Widget):
 
     def __init__(
         self,
-        percentage: int = 0,
+        percentage: int | float = 0,
         line_width: int | None = None,
         line_style: Literal[
             "none",
@@ -51,7 +51,7 @@ class CircularProgressBar(Gtk.DrawingArea, Widget):
     ):
         """
         :param percentage: the initial percentage of the progress bar value can be between 0 and 100, defaults to 0
-        :type percentage: int, optional
+        :type percentage: int | float, optional
         :param line_width: the width of the line, if None falls back to the highest value of `border-[top|bottom|left|right]-width` or `min-[width|height]` gotten from the style, defaults to None
         :type line_width: int | None, optional
         :param line_style: the line style, defaults to "round"
@@ -98,9 +98,13 @@ class CircularProgressBar(Gtk.DrawingArea, Widget):
         :type size: tuple[int] | None, optional
         """
         Gtk.DrawingArea.__init__(self, **kwargs)
-        if percentage < 0 or percentage > 100 or not isinstance(percentage, int):
+        if (
+            percentage < 0
+            or percentage > 100
+            or not isinstance(percentage, (int, float))
+        ):
             raise ValueError(
-                f"percentage must be an integer with a value between 0 and 100",
+                f"percentage must be an integer or a float with a value between 0 and 100",
                 f"but got {percentage}",
             )
         self._line_width = line_width

@@ -98,9 +98,9 @@ class CircularProgressBar(Gtk.DrawingArea, Widget):
         :type size: tuple[int] | None, optional
         """
         Gtk.DrawingArea.__init__(self, **kwargs)
-        if percentage < 0 or percentage > 100 or not isinstance(percentage, int):
+        if percentage < 0 or percentage > 100 or not isinstance(percentage, (int, float)):
             raise ValueError(
-                f"percentage must be an integer with a value between 0 and 100",
+                f"percentage must be an integer or a float with a value between 0 and 100",
                 f"but got {percentage}",
             )
         self._line_width = line_width

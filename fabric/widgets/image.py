@@ -11,6 +11,7 @@ class Image(Gtk.Image, Widget):
         self,
         image_file: str | None = None,
         icon_name: str | None = None,
+        icon_size: int | None = 24,
         pixbuf: GdkPixbuf.Pixbuf | None = None,
         pixel_size: int | None = None,
         visible: bool = True,
@@ -38,6 +39,8 @@ class Image(Gtk.Image, Widget):
         :type image_file: str | None, optional
         :param icon_name: the name of the icon if any, defaults to None
         :type icon_name: str | None, optional
+        :param icon_size: the size of the icon if any, defaults to None
+        :type icon_size: int | None, optional
         :param pixbuf: the pixbuf if any, defaults to None
         :type pixbuf: GdkPixbuf.Pixbuf | None, optional
         :param pixel_size: the image pixel size, defaults to None
@@ -73,7 +76,9 @@ class Image(Gtk.Image, Widget):
         """
         Gtk.Image.__init__(self, **kwargs)
         self.set_from_file(image_file) if image_file is not None else None
-        self.set_from_icon_name(icon_name) if icon_name is not None else None
+        self.set_from_icon_name(
+            icon_name, icon_size
+        ) if icon_name is not None and icon_size is not None else None
         self.set_from_pixbuf(pixbuf) if pixbuf is not None else None
         self.set_pixel_size(pixel_size) if pixel_size is not None else None
         Widget.__init__(

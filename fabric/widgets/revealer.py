@@ -92,16 +92,17 @@ class Revealer(Gtk.Revealer, Container):
             **kwargs,
         )
         self.add(children) if children is not None else None
+        self.set_reveal_child(reveal_child) if reveal_child is not None else None
+        self.set_child_visible(child_visible) if child_visible is not None else None
         self.set_transition_type(
             transition_type
         ) if transition_type is not None else None
-        self.set_child_visible(child_visible) if child_visible is not None else None
-        self.set_reveal_child(reveal_child) if reveal_child is not None else None
         self.set_transition_duration(
             transition_duration
         ) if transition_duration is not None else None
         Container.__init__(
             self,
+            None,
             visible,
             all_visible,
             style,

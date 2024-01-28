@@ -9,6 +9,8 @@ Also Fabric is configured in python which make's it easier than ever!
 > [!NOTE]
 > Please note that Fabric is still a work in progress, also the API is a subject to change.
 
+For discussions and questions, [join us on discord](https://discord.gg/3sDbYc9SZP)
+
 ### key features
 1. **Simple** yet **Powerful**
 

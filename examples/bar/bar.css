@@ -92,7 +92,6 @@ button {
     background-color: var(--ws-hover);
 }
 
-#Mode,
 #date-time,
 #hyprland-language,
 #hyprland-window {
@@ -101,9 +100,9 @@ button {
     margin: 3px;
 }
 
-menu > menuitem > label,
-#date-time > label,
 #Mode > label,
+#date-time > label,
+menu > menuitem > label,
 #hyprland-language > label,
 #hyprland-window > label {
     font-weight: 900;
@@ -156,15 +155,16 @@ menu > menuitem:hover {
     background-color: var(--border-color);
 }
 
-#circular-progress-bar-1 {
-    border: solid 0px var(--border-color);
+#volume-circular-progress-bar,
+#ram-circular-progress-bar {
+    border: solid 10px var(--border-color);
 }
 
-#circular-progress-bar-2 {
+#cpu-circular-progress-bar {
     border: solid 0px alpha(var(--color9), 0.8);
 }
 
-#circular-progress-bar-con {
+#widgets-container {
     border-radius: 100px;
     background-color: var(--module-bg);
     padding: 3px;

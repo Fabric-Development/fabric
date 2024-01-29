@@ -4,9 +4,11 @@ import os
 import psutil
 from loguru import logger
 from fabric.widgets.box import Box
+from fabric.widgets.label import Label
 from fabric.system_tray import SystemTray
 from fabric.widgets.wayland import Window
 from fabric.widgets.overlay import Overlay
+from fabric.widgets.eventbox import EventBox
 from fabric.widgets.date_time import DateTime
 from fabric.widgets.centerbox import CenterBox
 from fabric.utils.string_formatter import FormattedString
@@ -21,6 +23,53 @@ from fabric.utils.helpers import (
 )
 
 PYWAL = False
+AUDIO_WIDGET = True
+
+if AUDIO_WIDGET is True:
+    try:
+        from fabric.audio.service import Audio
+    except:
+        AUDIO_WIDGET = False
+
+
+class VolumeWidget(Box):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.audio = Audio()
+
+        self.circular_progress_bar = CircularProgressBar(
+            name="volume-circular-progress-bar",
+            background_color=False,  # false = disabled
+            radius_color=False,
+            pie=True,
+        )
+
+        self.event_box = EventBox(
+            events="scroll",
+            children=Overlay(
+                children=self.circular_progress_bar,
+                overlays=Label(
+                    label="",
+                    style="margin: 0px 6px 0px 0px; font-size: 12px",  # because glyph icon is not centered
+                ),
+            ),
+        )
+
+        self.event_box.connect("scroll-event", self.on_scroll)
+        self.audio.connect("speaker-changed", self.update)
+        self.add(self.event_box)
+
+    def on_scroll(self, widget, event):
+        if event.direction == 0:
+            self.audio.speaker.volume += 8
+        elif event.direction == 1:
+            self.audio.speaker.volume -= 8
+
+    def update(self, *args):
+        if self.audio.speaker is None:
+            return
+        self.circular_progress_bar.percentage = self.audio.speaker.volume
+        return
 
 
 class StatusBar(Window):
@@ -36,6 +85,8 @@ class StatusBar(Window):
         )
         self.center_box = CenterBox(name="main-window")
         self.workspaces = Workspaces(
+            spacing=2,
+            name="workspaces",
             buttons_list=[
                 WorkspaceButton(label=FormattedString("")),
                 WorkspaceButton(label=FormattedString("")),
@@ -45,8 +96,6 @@ class StatusBar(Window):
                 WorkspaceButton(label=FormattedString("")),
                 WorkspaceButton(label=FormattedString("")),
             ],
-            spacing=2,
-            name="workspaces",
         )
         self.active_window = ActiveWindow(
             formatter=FormattedString(
@@ -73,43 +122,52 @@ class StatusBar(Window):
         )
         self.date_time = DateTime(name="date-time")
         self.system_tray = SystemTray(name="system-tray")
-        self.center_box.add_left(self.workspaces)
-        self.center_box.add_center(self.active_window)
-        self.circular_progress_bar_1 = CircularProgressBar(
-            name="circular-progress-bar-1",
+        self.ram_circular_progress_bar = CircularProgressBar(
+            name="ram-circular-progress-bar",
             background_color=False,  # false = disabled
             radius_color=False,
             pie=True,
         )
-        self.circular_progress_bar_2 = CircularProgressBar(
-            name="circular-progress-bar-2",
+        self.cpu_circular_progress_bar = CircularProgressBar(
+            name="cpu-circular-progress-bar",
             background_color=False,
             radius_color=False,
             pie=True,
         )
-        self.update_progress_bars()
         self.circular_progress_bars_overlay = Overlay(
-            children=self.circular_progress_bar_1,
-            overlays=self.circular_progress_bar_2,
+            children=self.ram_circular_progress_bar,
+            overlays=[
+                self.cpu_circular_progress_bar,
+                Label("", style="margin: 0px 6px 0px 0px; font-size: 12px"),
+            ],
         )
-        self.center_box.add_right(
-            Box(
-                children=[
-                    self.circular_progress_bars_overlay,
-                ],
-                name="circular-progress-bar-con",
-            )
+        self.volume = VolumeWidget() if AUDIO_WIDGET is True else None
+        self.widgets_container = Box(
+            spacing=2,
+            orientation="h",
+            name="widgets-container",
+            children=[
+                self.circular_progress_bars_overlay,
+            ],
         )
+        self.widgets_container.add(self.volume) if self.volume is not None else None
+
+        self.center_box.add_left(self.workspaces)
+        self.center_box.add_right(self.widgets_container)
+        self.center_box.add_center(self.active_window)
         self.center_box.add_right(self.system_tray)
         self.center_box.add_right(self.date_time)
         self.center_box.add_right(self.language)
-        invoke_repeater(1000, self.update_progress_bars)
         self.add(self.center_box)
+
+        invoke_repeater(1000, self.update_progress_bars)
+        self.update_progress_bars()  # initial call
+
         self.show_all()
 
     def update_progress_bars(self):
-        self.circular_progress_bar_1.percentage = psutil.virtual_memory().percent
-        self.circular_progress_bar_2.percentage = psutil.cpu_percent()
+        self.ram_circular_progress_bar.percentage = psutil.virtual_memory().percent
+        self.cpu_circular_progress_bar.percentage = psutil.cpu_percent()
         return True
 
 

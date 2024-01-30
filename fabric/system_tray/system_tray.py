@@ -27,7 +27,7 @@ def get_ixml(path_to_xml: str, interface: str):
 
 
 DBUS_FOLDER_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "dbus")
+    os.path.join(os.path.dirname(__file__), "..", "dbus_assets")
 )
 
 (

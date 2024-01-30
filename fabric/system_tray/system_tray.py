@@ -296,8 +296,8 @@ class SystemTray(Box):
             Gio.BusNameOwnerFlags.NONE,
             self.on_bus_acquired,
             None,
-            lambda *args: print(
-                "The bus is already registered before (or an error occured)"
+            lambda *args: logger.warning(
+                "[SystemTray] The bus is already registered before (or an error occured), another bar is probably running"
             ),
         )
 
@@ -368,9 +368,9 @@ class SystemTray(Box):
             invocation.return_value(None)
             conn.flush()
 
-        logger.debug(
-            f"STATUS NOTIFIER WATCHER:\n{sender} {path} {interface} {signal} {params} {invocation}\n",
-        )
+        # logger.debug(
+        #     f"STATUS_NOTIFIER_WATCHER:\n{sender} {path} {interface} {signal} {params} {invocation}\n",
+        # )
 
     def create_item(self, conn: Gio.DBusConnection, sender: str, path):
         self.items.append(sender + path)

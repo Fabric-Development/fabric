@@ -52,6 +52,7 @@ class SystemTrayItem(Button):
         self,
         dbus_name: str = None,
         dbus_object_path: str = None,
+        icon_size: int = 18,
     ):
         super().__init__()
         self.dbus_name = dbus_name
@@ -239,6 +240,7 @@ class SystemTrayItem(Button):
 class SystemTray(Box):
     def __init__(
         self,
+        icon_size: int = 18,
         spacing: int | None = None,
         orientation: Gtk.Orientation | str | None = None,
         visible: bool = True,
@@ -281,6 +283,7 @@ class SystemTray(Box):
             size,
             **kwargs,
         )
+        self.icon_size = icon_size
         self.connection: Gio.DBusConnection = None
         self.bus_owner_id: int = self.register_bus_name()
         self.items: list = []
@@ -371,7 +374,7 @@ class SystemTray(Box):
 
     def create_item(self, conn: Gio.DBusConnection, sender: str, path):
         self.items.append(sender + path)
-        button = SystemTrayItem(sender, path)
+        button = SystemTrayItem(sender, path, self.icon_size)
         self.registered_tray_buttons[sender + path] = button
         self.add(button)
         button.show()

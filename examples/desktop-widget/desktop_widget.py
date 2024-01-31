@@ -32,15 +32,14 @@ class ClockWidget(Window):
         )
 
 
-ClockWidget()
-
-
 def apply_style(*args):
     logger.info("[Desktop Widget] CSS applied")
     return set_stylesheet_from_file(get_relative_path("desktop_widget.css"))
 
 
 if __name__ == "__main__":
+    desktop_widget = ClockWidget()
+
     if PYWAL is True:
         monitor = monitor_file(
             f"/home/{os.getlogin()}/.cache/wal/colors-widgets.css", "none"

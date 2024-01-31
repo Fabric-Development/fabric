@@ -284,6 +284,7 @@ class VerticalBar(Window):
 
 
 if __name__ == "__main__":
-    VerticalBar()  # entery point
+    bar = VerticalBar()  # entery point
+
     set_stylesheet_from_file(get_relative_path("vertical_bar.css"))
     fabric.start()

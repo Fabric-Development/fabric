@@ -171,15 +171,14 @@ class SidePanel(Window):
         return f"{int(uptime_days)} {'days' if uptime_days > 1 else 'day'}, {int(uptime_hours)} {'hours' if uptime_hours > 1 else 'hour'}"
 
 
-SidePanel()
-
-
 def apply_style(*args):
     logger.info("[Side Panel] CSS applied")
     return set_stylesheet_from_file(get_relative_path("side_panel.css"))
 
 
 if __name__ == "__main__":
+    side_panel = SidePanel()
+
     if PYWAL is True:
         monitor = monitor_file(
             f"/home/{os.getlogin()}/.cache/wal/colors-widgets.css", "none"

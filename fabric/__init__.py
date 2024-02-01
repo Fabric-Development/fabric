@@ -15,17 +15,19 @@ def on_exec(client, hook, code, error):
 def start(open_client: bool = True):
     if open_client is True:
         logger.info("[Fabric] starting the DBus client")
-        old_client = get_fabric_session_bus()
-        if old_client is not None:
+        try:
+            old_client = get_fabric_session_bus()
             old_client.log(
+                "(si)",
                 "[Fabric] another client instance tried to run, but this instance is already running",
                 2,
             )
             logger.warning(
                 "[Fabric] another client instance is already running, skipping starting a DBus client"
             )
-        client = get_client()
-        client.connect("exec", on_exec)
+        except:
+            client = get_client()
+            client.connect("exec", on_exec)
     try:
         Gtk.main()
     except KeyboardInterrupt:

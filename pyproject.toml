@@ -3,7 +3,6 @@ name = "fabric"
 version = "0.0.1"
 dependencies = [
   "click",
-  "dbus-python",
   "pycairo",
   "PyGObject",
   "loguru",

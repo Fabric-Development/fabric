@@ -7,6 +7,7 @@ from loguru import logger
 from typing import Literal
 from fabric.widgets.box import Box
 from fabric.widgets.button import Button
+from fabric.utils.helpers import get_ixml
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("DbusmenuGtk3", "0.4")
@@ -20,30 +21,26 @@ from gi.repository import (
 )
 
 
-def get_ixml(path_to_xml: str, interface: str):
-    with open(path_to_xml, "r") as f:
-        file = f.read()
-    return interface, Gio.DBusNodeInfo.new_for_xml(file), file
-
-
-DBUS_FOLDER_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "dbus_assets")
-)
-
 (
-    STATUS_NOTIFIER_WATCHER_IFACE,
-    STATUS_NOTIFIER_WATCHER_NODE_INFO,
-    STATUS_NOTIFIER_WATCHER_IFACE_XML,
-) = get_ixml(
-    f"{DBUS_FOLDER_PATH}/org.kde.StatusNotifierWatcher.xml",
-    "org.kde.StatusNotifierWatcher",
+    STATUS_NOTIFIER_WATCHER_BUS_NAME,
+    STATUS_NOTIFIER_WATCHER_BUS_IFACE_NODE,
+    STATUS_NOTIFIER_WATCHER_BUS_PATH,
+) = (
+    *get_ixml(
+        "../dbus_assets/org.kde.StatusNotifierWatcher.xml",
+        "org.kde.StatusNotifierWatcher",
+    ),
+    "/StatusNotifierWatcher",
 )
 (
-    STATUS_NOTIFIER_ITEM_IFACE,
-    STATUS_NOTIFIER_ITEM_NODE_INFO,
-    STATUS_NOTIFIER_IFACE_XML,
-) = get_ixml(
-    f"{DBUS_FOLDER_PATH}/org.kde.StatusNotifierItem.xml", "org.kde.StatusNotifierItem"
+    STATUS_NOTIFIER_ITEM_BUS_NAME,
+    STATUS_NOTIFIER_ITEM_BUS_IFACE_NODE,
+    STATUS_NOTIFIER_IFACE_BUS_PATH,
+) = (
+    *get_ixml(
+        "../dbus_assets/org.kde.StatusNotifierItem.xml", "org.kde.StatusNotifierItem"
+    ),
+    None,
 )
 
 
@@ -60,10 +57,10 @@ class SystemTrayItem(Button):
         self.proxy: Gio.DBusProxy = Gio.DBusProxy.new_for_bus_sync(
             Gio.BusType.SESSION,
             Gio.DBusProxyFlags.NONE,
-            STATUS_NOTIFIER_ITEM_NODE_INFO.interfaces[0],
+            STATUS_NOTIFIER_ITEM_BUS_IFACE_NODE.interfaces[0],
             dbus_name,
             dbus_object_path,
-            STATUS_NOTIFIER_ITEM_IFACE,
+            STATUS_NOTIFIER_ITEM_BUS_NAME,
             None,
         )
         self.connection = self.proxy.get_connection()
@@ -72,7 +69,7 @@ class SystemTrayItem(Button):
             if self.proxy.get_cached_property("Menu") is not None
             else None
         )
-        self.icon_size = 18
+        self.icon_size = icon_size
         self.icon_theme = Gtk.IconTheme.get_default()
         self.set_image(Gtk.Image(pixbuf=self.icon)) if self.icon is not None else None
         self.set_tooltip_markup(
@@ -285,14 +282,14 @@ class SystemTray(Box):
         )
         self.icon_size = icon_size
         self.connection: Gio.DBusConnection = None
-        self.bus_owner_id: int = self.register_bus_name()
+        self.bus_owner_id: int = self.acquire_bus_name()
         self.items: list = []
         self.registered_tray_buttons: dict = {}
 
-    def register_bus_name(self) -> int:
+    def acquire_bus_name(self) -> int:
         return Gio.bus_own_name(
             Gio.BusType.SESSION,
-            STATUS_NOTIFIER_WATCHER_IFACE,
+            STATUS_NOTIFIER_WATCHER_BUS_NAME,
             Gio.BusNameOwnerFlags.NONE,
             self.on_bus_acquired,
             None,
@@ -305,11 +302,11 @@ class SystemTray(Box):
         self, conn: Gio.DBusConnection, name: str, user_data: object = None
     ):
         self.connection = conn
-        # we're now the owner of the bus
-        for interface in STATUS_NOTIFIER_WATCHER_NODE_INFO.interfaces:
+        # we now own the name
+        for interface in STATUS_NOTIFIER_WATCHER_BUS_IFACE_NODE.interfaces:
             if interface.name == name:
                 conn.register_object(
-                    "/StatusNotifierWatcher", interface, self.on_signal
+                    STATUS_NOTIFIER_WATCHER_BUS_PATH, interface, self.on_signal
                 )
         self.subscribe_to_signal(conn, "org.freedesktop.DBus", "NameOwnerChanged")
 
@@ -353,12 +350,10 @@ class SystemTray(Box):
                 self.remove_item(item)
             return
 
-        if signal == "Get" and params[1] in props:
+        elif signal == "Get" and params[1] in props:
             invocation.return_value(GLib.Variant("(v)", [props[params[1]]]))
-            conn.flush()
-        if signal == "GetAll":
+        elif signal == "GetAll":
             invocation.return_value(GLib.Variant("(a{sv})", [props]))
-            conn.flush()
         elif signal == "RegisterStatusNotifierItem":
             if params[0].startswith("/"):
                 path = params[0]
@@ -366,11 +361,8 @@ class SystemTray(Box):
                 path = "/StatusNotifierItem"
             self.create_item(conn, sender, path)
             invocation.return_value(None)
-            conn.flush()
+        conn.flush()
 
-        # logger.debug(
-        #     f"STATUS_NOTIFIER_WATCHER:\n{sender} {path} {interface} {signal} {params} {invocation}\n",
-        # )
 
     def create_item(self, conn: Gio.DBusConnection, sender: str, path):
         self.items.append(sender + path)

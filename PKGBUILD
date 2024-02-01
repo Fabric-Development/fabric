@@ -21,6 +21,7 @@ depends=(
     python-gobject
     python-cairo
     python-loguru
+    python-click
     pkgconf
 )
 makedepends=(

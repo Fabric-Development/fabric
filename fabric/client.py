@@ -1,20 +1,19 @@
-import dbus
-import dbus.service
 import inspect
 from inspect import FrameInfo
 from types import FrameType
 from typing import TypedDict
 from dis import Positions
-from dbus.mainloop.glib import DBusGMainLoop, threads_init
 from loguru import logger
 from fabric.service import *
 from fabric.utils.enum import ValueEnum
+from fabric.utils.helpers import get_ixml
+from gi.repository import Gio, GLib
 
-FABRIC_BUS_NAME = "org.Fabric.fabric"
-FABRIC_BUS_PATH = "/org/Fabric/fabric"
 
-threads_init()
-DBusGMainLoop(set_as_default=True)
+(FABRIC_BUS_NAME, FABRIC_BUS_IFACE_NODE, FABRIC_BUS_PATH) = (
+    *get_ixml("dbus_assets/org.Fabric.fabric.xml", "org.Fabric.fabric"),
+    "/org/Fabric/fabric",
+)
 
 
 class LogLevel(ValueEnum):
@@ -94,6 +93,7 @@ class Hook(Service):
         :return: a tuple that contains the given string of code and the exception (if any)
         :rtype: tuple[str, Exception | None]
         """
+        # TODO: redirect stdout and stderr to returned data / return the output of the code execution
         exc = None
         try:
             exec(
@@ -137,48 +137,97 @@ class Hook(Service):
         }
 
 
-class DbusClient(dbus.service.Object):
+class DbusClient(Service):
     def __init__(self, client: Service, **kwargs):
         self.client: Service = client
-        self.bus = dbus.SessionBus()
-        self.bus_name = dbus.service.BusName(FABRIC_BUS_NAME, bus=dbus.SessionBus())
-        super().__init__(self.bus_name, FABRIC_BUS_PATH, self.bus)
+        self.bus_connection: Gio.DBusConnection = None
+        self.bus_owner_id: int = self.acquire_bus_name()
+        super().__init__(**kwargs)
 
-    @dbus.service.method(FABRIC_BUS_NAME, in_signature="sb", out_signature="s")
-    def execute(self, source: str, raise_on_exception: bool | int = False) -> str:
-        data = self.client.execute(
-            source,
-            raise_on_exception
-            if isinstance(raise_on_exception, bool)
-            else True
-            if raise_on_exception == 1
-            else False
-            if raise_on_exception == 0
-            else False,
-        )
-        data = (str(data[0]), data[1].__repr__() if data[1] is not None else "")
-        return str(data)
-
-    @dbus.service.method(FABRIC_BUS_NAME, in_signature="si", out_signature="s")
-    def log(self, data: str, level: int | str = 0):
-        if isinstance(level, str):
-            level = LogLevel.get_member(level.upper())
-        return str(
-            logger.debug(data)
-            if level == 0
-            else logger.info(data)
-            if level == 1
-            else logger.warning(data)
-            if level == 2
-            else logger.error(data)
-            if level == 3
-            else logger.info(data)
+    def acquire_bus_name(self):
+        return Gio.bus_own_name(
+            Gio.BusType.SESSION,
+            FABRIC_BUS_NAME,
+            Gio.BusNameOwnerFlags.NONE,
+            self.on_bus_acquired,
+            None,
+            lambda *args: logger.warning(
+                "[DbusClient] The bus is already registered (or an error occured), another fabric instance is probably running"
+            ),
         )
 
-    @dbus.service.method(FABRIC_BUS_NAME, signature="s")
-    def file(self) -> str:
-        # TODO: use property instead
-        return str(self.client.hook.file)
+    def on_bus_acquired(
+        self, conn: Gio.DBusConnection, name: str, user_data: object = None
+    ):
+        self.bus_connection = conn
+        for interface in FABRIC_BUS_IFACE_NODE.interfaces:
+            print(interface.name)
+            if interface.name == name:
+                conn.register_object(FABRIC_BUS_PATH, interface, self.on_signal)
+
+    def subscribe_to_signal(
+        self, conn: Gio.DBusConnection, interface: str, signal: str = None
+    ):
+        return conn.signal_subscribe(
+            None,  # sender
+            interface,
+            signal,
+            None,  # path
+            None,
+            Gio.DBusSignalFlags.NONE,
+            self.on_signal,
+            None,  # user_data
+        )
+
+    def on_signal(
+        self,
+        conn: Gio.DBusConnection,
+        sender: str,
+        path: str,
+        interface: str,
+        signal: str,
+        params: GLib.Variant | tuple,
+        invocation: Gio.DBusMethodInvocation,
+        user_data: object = None,
+    ):
+        print(params, signal, interface)
+        props = {
+            "file": GLib.Variant("s", self.client.hook.file),
+        }
+        if signal == "Get" and params[1] in props:
+            invocation.return_value(GLib.Variant("(v)", [props[params[1]]]))
+        elif signal == "GetAll":
+            invocation.return_value(GLib.Variant("(a{sv})", [props]))
+        elif signal == "execute":
+            source, raise_on_exception = params
+            try:
+                data = self.client.execute(
+                    source,
+                    raise_on_exception
+                    if isinstance(raise_on_exception, bool)
+                    else True
+                    if raise_on_exception == 1
+                    else False
+                    if raise_on_exception == 0
+                    else False,
+                )
+                data = (str(data[0]), data[1].__repr__() if data[1] is not None else "")
+            except Exception as e:
+                data = (str(source), f"{e.__class__.__name__}: {str(e)}")
+            invocation.return_value(GLib.Variant("(ss)", data))
+        elif signal == "log":
+            data, level = params
+            if isinstance(level, str):
+                level = LogLevel.get_member(level.upper())
+
+            logger.debug(data) if level == 0 else logger.info(
+                data
+            ) if level == 1 else logger.warning(data) if level == 2 else logger.error(
+                data
+            ) if level == 3 else logger.info(data)
+
+            invocation.return_value(None)
+        return conn.flush()
 
 
 class Client(Service):
@@ -206,14 +255,17 @@ class Client(Service):
         return self.hook.execute(source, raise_on_exception)
 
 
-def get_fabric_session_bus() -> dbus.Interface | None:
-    try:
-        session_bus = dbus.SessionBus()
-        obj = session_bus.get_object(FABRIC_BUS_NAME, FABRIC_BUS_PATH)
-        iface = dbus.Interface(obj, FABRIC_BUS_NAME)
-        return iface
-    except dbus.exceptions.DBusException:
-        return None
+def get_fabric_session_bus() -> Gio.DBusProxy | None:
+    bus = Gio.DBusProxy.new_for_bus_sync(
+        Gio.BusType.SESSION,
+        Gio.DBusProxyFlags.NONE,
+        None,
+        FABRIC_BUS_NAME,
+        FABRIC_BUS_PATH,
+        FABRIC_BUS_NAME,
+        None,
+    )
+    return bus
 
 
 def get_hook() -> Hook:

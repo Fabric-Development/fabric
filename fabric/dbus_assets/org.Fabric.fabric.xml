@@ -1,0 +1,26 @@
+<node name="/org/Fabric/fabric">
+  <interface name="org.freedesktop.DBus.Peer">
+    <method name="Ping"/>
+    <method name="GetMachineId">
+    <arg direction="out" type="s" name="machine_uuid" />
+    </method>
+  </interface>
+  <interface name="org.freedesktop.DBus.Introspectable">
+    <method name="Introspect">
+      <arg direction="out" type="s" />
+    </method>
+  </interface>
+  <interface name="org.Fabric.fabric">
+    <property name="file" type="s" access="read"/>
+    <method name="execute">
+      <arg direction="in"  type="s" name="source" />
+      <arg direction="in"  type="b" name="raise_on_exception" />
+      <arg direction="out" type="s" />
+      <arg direction="out" type="s" />
+    </method>
+    <method name="log">
+      <arg direction="in"  type="s" name="data" />
+      <arg direction="in"  type="i" name="level" />
+    </method>
+  </interface>
+</node>

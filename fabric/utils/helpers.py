@@ -336,7 +336,7 @@ def invoke_repeater(interval: int, func: Callable, *args, **kwargs) -> int:
     return GLib.timeout_add(interval, func, *args, **kwargs)
 
 
-def get_relative_path(path: str) -> str:
+def get_relative_path(path: str, level: int = 1) -> str:
     """
     converts a path to a relative path according to callers `__file__` variable
     NOTE: This function only works if the caller `__file__` variable is set
@@ -345,10 +345,12 @@ def get_relative_path(path: str) -> str:
 
     :param path: the path to convert
     :type path: str
+    :param level: the stack level to get the `__file__` variable from. Defaults to 1
+    :type level: int, optional
     :return: the relative path
     :rtype: str
     """
-    prev_globals = inspect.stack()[1][0].f_globals
+    prev_globals = inspect.stack()[level][0].f_globals
     file_var = (
         os.path.dirname(os.path.abspath(prev_globals["__file__"]))
         if "__file__" in prev_globals
@@ -356,3 +358,10 @@ def get_relative_path(path: str) -> str:
     )
     path = os.path.join(file_var, path)
     return path
+
+
+def get_ixml(path_to_xml: str, interface_name: str):
+    path_to_xml = get_relative_path(path_to_xml, level=2)
+    with open(path_to_xml, "r") as f:
+        file = f.read()
+    return interface_name, Gio.DBusNodeInfo.new_for_xml(file)

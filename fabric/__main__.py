@@ -1,4 +1,3 @@
-import ast
 import click
 from fabric.client import get_fabric_session_bus
 
@@ -11,14 +10,15 @@ def main():
 @click.command(name="info", help="info about running fabric service")
 @click.option("--json", "-j", is_flag=True, help="to return the output in json format")
 def info(json: bool = False):
-    bus_object = get_fabric_session_bus()
-    if bus_object is None:
+    try:
+        bus_object = get_fabric_session_bus()
+        file = str(bus_object.file())
+    except:
         return (
             click.echo("fabric service is not running.")
             if json is False
             else click.echo({"file": "", "error": "fabric service is not running."})
         )
-    file = str(bus_object.file())
     return (
         click.echo(f"fabric service is running at file: {file}")
         if json is False
@@ -38,8 +38,10 @@ def info(json: bool = False):
 )
 @click.option("--json", "-j", is_flag=True, help="to return the output in json format")
 def execute(source: str, raise_on_exception: bool = False, json: bool = False):
-    bus_object = get_fabric_session_bus()
-    if bus_object is None:
+    try:
+        bus_object = get_fabric_session_bus()
+        data = bus_object.execute("(sb)", source, raise_on_exception)
+    except:
         return (
             click.echo("fabric service is not running.")
             if json is False
@@ -51,20 +53,13 @@ def execute(source: str, raise_on_exception: bool = False, json: bool = False):
                 }
             )
         )
-    data = bus_object.execute(source, raise_on_exception)
-    try:
-        decoded_data = ast.literal_eval(data)
-    except:
-        decoded_data = data
     return (
-        click.echo(decoded_data)
+        click.echo(data)
         if json is False
         else click.echo(
             {
                 "source": source,
-                "exception": decoded_data[1]
-                if isinstance(decoded_data, (tuple, list))
-                else decoded_data,
+                "exception": data[1] if isinstance(data, (tuple, list)) else data,
             }
         )
     )

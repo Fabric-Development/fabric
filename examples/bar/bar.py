@@ -28,7 +28,8 @@ AUDIO_WIDGET = True
 if AUDIO_WIDGET is True:
     try:
         from fabric.audio.service import Audio
-    except:
+    except Exception as e:
+        logger.error(e)
         AUDIO_WIDGET = False
 
 

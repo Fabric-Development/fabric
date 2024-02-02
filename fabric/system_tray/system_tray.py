@@ -363,7 +363,6 @@ class SystemTray(Box):
             invocation.return_value(None)
         conn.flush()
 
-
     def create_item(self, conn: Gio.DBusConnection, sender: str, path):
         self.items.append(sender + path)
         button = SystemTrayItem(sender, path, self.icon_size)

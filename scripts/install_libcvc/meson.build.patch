@@ -1,0 +1,16 @@
+diff --git a/meson.build b/meson.build
+index f0bfceb..e089432 100644
+--- a/meson.build
++++ b/meson.build
+@@ -110,11 +110,7 @@ configure_file(
+   configuration: conf
+ )
+ 
+-subdir('install-scripts')
+-subdir('po')
+-subdir('libcinnamon-desktop')
+ subdir('libcvc')
+-subdir('schemas')
+ 
+ 
+ pnp_message = '@0@: @1@'.format(

@@ -3,8 +3,20 @@ from loguru import logger
 from fabric.service import *
 from fabric.utils.helpers import bulk_connect
 
-gi.require_version("Cvc", "1.0")
-from gi.repository import Cvc
+
+class CvcImportError(ImportError):
+    def __init__(self, *args):
+        super().__init__(
+            "Cvc is not installed, please install it first, you can use automated installer in the git repository",
+            *args,
+        )
+
+
+try:
+    gi.require_version("Cvc", "1.0")
+    from gi.repository import Cvc
+except:
+    raise CvcImportError()
 
 
 class AudioStream(Service):

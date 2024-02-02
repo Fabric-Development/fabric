@@ -2,7 +2,6 @@
 # IDEA: implement this with another non-blocking dbus library, Gio is a bit broken
 # NOTE: this is a work in progress, for now it works as a widget
 import gi
-import os
 from loguru import logger
 from typing import Literal
 from fabric.widgets.box import Box
@@ -163,7 +162,7 @@ class SystemTrayItem(Button):
             if icon_name is not None
             else None
         )
-        return icon_pixbuf
+        return icon_pixbuf.scale_simple(self.icon_size, self.icon_size, GdkPixbuf.InterpType.BILINEAR)
 
     def create_menu(self, dbus_name: str, menu_object_path: str) -> DbusmenuGtk3.Menu:
         menu = DbusmenuGtk3.Menu().new(
@@ -213,7 +212,7 @@ class SystemTrayItem(Button):
             pix_map[1],
             pix_map[0] * 4,
         )
-        return pixbuf.scale_simple(icon_size, icon_size, GdkPixbuf.InterpType.HYPER)
+        return pixbuf
 
     def pixbuf_from_icon_name(
         self,

@@ -161,7 +161,6 @@ class DbusClient(Service):
     ):
         self.bus_connection = conn
         for interface in FABRIC_BUS_IFACE_NODE.interfaces:
-            print(interface.name)
             if interface.name == name:
                 conn.register_object(FABRIC_BUS_PATH, interface, self.on_signal)
 
@@ -190,7 +189,6 @@ class DbusClient(Service):
         invocation: Gio.DBusMethodInvocation,
         user_data: object = None,
     ):
-        print(params, signal, interface)
         props = {
             "file": GLib.Variant("s", self.client.hook.file),
         }

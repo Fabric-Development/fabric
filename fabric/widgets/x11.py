@@ -68,6 +68,7 @@ class Window(Window):
         v_expand: bool = False,
         name: str | None = None,
         default_size: tuple[int] | None = None,
+        ignore_empty_check: bool = False,
         **kwargs,
     ):
         """
@@ -117,6 +118,7 @@ class Window(Window):
         """
         # FIXME: improve me
         super().__init__(
+            title,
             children,
             visible,
             all_visible,
@@ -124,7 +126,6 @@ class Window(Window):
             style_compiled,
             style_append,
             style_add_brackets,
-            title,
             tooltip_text,
             tooltip_markup,
             h_align,
@@ -135,6 +136,7 @@ class Window(Window):
             default_size,
             **kwargs,
         )
+        self.ignore_empty_check = ignore_empty_check
         layer = (
             layer
             if isinstance(layer, Gdk.WindowTypeHint)
@@ -171,8 +173,7 @@ class Window(Window):
             }.get(geometry.lower(), Gdk.Gravity.CENTER)
         )
 
-        self.display = self.rectangle = None
-        self.get_primary_monitor_geometry()
+        self.display, self.rectangle, self.scale_factor = self.get_display_props()
 
         self.set_type_hint(layer)
         self.set_container_size(default_size) if default_size != None else None
@@ -203,21 +204,22 @@ class Window(Window):
         self,
     ):
         if self.display is None:
-            self.get_primary_monitor_geometry()
+            self.display, self.rectangle, self.scale_factor = self.get_display_props()
         self.set_app_paintable(True)
         self.set_keep_above(True)
         self.set_accept_focus(False)
         self.set_visual(self.display.get_default_screen().get_rgba_visual())
         return
 
-    def get_primary_monitor_geometry(self):
-        self.display = Gdk.Display.get_default()
-        self.rectangle = self.display.get_primary_monitor().get_geometry()
-        return self.display, self.rectangle
+    def get_display_props(self) -> tuple[Gdk.Display, Gdk.Rectangle, int]:
+        display = Gdk.Display.get_default()
+        rectangle = display.get_primary_monitor().get_geometry()
+        scale_factor = display.get_primary_monitor().get_scale_factor()
+        return display, rectangle, scale_factor
 
     def set_window_geometry(self, geometry: Gdk.Gravity):
         if self.rectangle is None:
-            self.get_primary_monitor_geometry()
+            self.display, self.rectangle, self.scale_factor = self.get_display_props()
         min_size, natural_size = self.get_preferred_size()
         min_width, min_height = min_size.width, min_size.height
         # natural_width, natural_height = natural_size.width, natural_size.height
@@ -256,6 +258,21 @@ class Window(Window):
         # placeholder for logging
         self.move(x, y)
         return self
+
+    def show(self):
+        # showing an empty window will result a glitched window
+        return (
+            super().show()
+            if (len(self.get_children()) >= 1) and not self.ignore_empty_check
+            else False
+        )
+
+    def show_all(self):
+        return (
+            super().show_all()
+            if (len(self.get_children()) >= 1) and not self.ignore_empty_check
+            else False
+        )
 
 
 if __name__ == "__main__":

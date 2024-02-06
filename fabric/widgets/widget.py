@@ -1,6 +1,6 @@
 import gi
 from typing import Literal
-from fabric.utils.helpers import compile_css
+from fabric.utils import compile_css
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk

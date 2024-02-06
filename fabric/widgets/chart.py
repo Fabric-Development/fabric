@@ -2,7 +2,7 @@
 import gi
 import cairo
 from typing import Literal
-from fabric.widgets.widget import Widget
+from fabric.widgets import Widget
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import GLib, Gtk, Gdk

@@ -5,7 +5,7 @@ import os
 from loguru import logger
 from fabric.widgets import Box, DateTime
 from fabric.widgets.wayland import Window
-from fabric.utils.helpers import (
+from fabric.utils import (
     set_stylesheet_from_file,
     monitor_file,
     get_relative_path,

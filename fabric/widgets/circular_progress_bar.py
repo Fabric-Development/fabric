@@ -2,8 +2,8 @@ import gi
 import math
 import cairo
 from typing import Literal, Iterable
-from fabric.widgets.widget import Widget
-from fabric.utils.helpers import get_gdk_rgba
+from fabric.widgets import Widget
+from fabric.utils import get_gdk_rgba
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gdk, Gtk

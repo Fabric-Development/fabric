@@ -162,7 +162,9 @@ class SystemTrayItem(Button):
             if icon_name is not None
             else None
         )
-        return icon_pixbuf.scale_simple(self.icon_size, self.icon_size, GdkPixbuf.InterpType.BILINEAR)
+        return icon_pixbuf.scale_simple(
+            self.icon_size, self.icon_size, GdkPixbuf.InterpType.BILINEAR
+        )
 
     def create_menu(self, dbus_name: str, menu_object_path: str) -> DbusmenuGtk3.Menu:
         menu = DbusmenuGtk3.Menu().new(

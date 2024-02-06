@@ -1,18 +1,21 @@
 """desktop status bar example"""
+
 import fabric
 import os
 import psutil
 from loguru import logger
-from fabric.widgets.box import Box
-from fabric.widgets.label import Label
+from fabric.widgets import (
+    Box,
+    Label,
+    Overlay,
+    EventBox,
+    DateTime,
+    CenterBox,
+    CircularProgressBar,
+)
 from fabric.system_tray import SystemTray
 from fabric.widgets.wayland import Window
-from fabric.widgets.overlay import Overlay
-from fabric.widgets.eventbox import EventBox
-from fabric.widgets.date_time import DateTime
-from fabric.widgets.centerbox import CenterBox
 from fabric.utils.string_formatter import FormattedString
-from fabric.widgets.circular_progress_bar import CircularProgressBar
 from fabric.hyprland.widgets import WorkspaceButton, Workspaces, ActiveWindow, Language
 from fabric.utils.helpers import (
     set_stylesheet_from_file,
@@ -101,11 +104,11 @@ class StatusBar(Window):
         self.active_window = ActiveWindow(
             formatter=FormattedString(
                 "{test_title(win_class)}",
-                test_title=lambda x, max_length=20: "Desktop"
-                if len(x) == 0
-                else x
-                if len(x) <= max_length
-                else x[: max_length - 3] + "...",
+                test_title=lambda x, max_length=20: (
+                    "Desktop"
+                    if len(x) == 0
+                    else x if len(x) <= max_length else x[: max_length - 3] + "..."
+                ),
             ),
             name="hyprland-window",
         )

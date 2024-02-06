@@ -33,21 +33,25 @@ class Window(Window):
         ]
         | Gdk.WindowTypeHint = "dock",
         geometry: Literal[
+            "center",
+            "center-auto",
             "north-west",
             "north",
             "north-east",
             "west",
-            "center",
             "east",
             "south-west",
             "south",
             "south-east",
         ]
         | Gdk.Gravity = "center",
+        above: bool = True,
+        below: bool = False,
         taskbar_hint: bool = False,
         pager_hint: bool = False,
-        decorated: bool = False,
         can_resize: bool = False,
+        can_focus: bool = False,
+        decorated: bool = False,
         children: list[Gtk.Widget] | Gtk.Widget | None = None,
         visible: bool = True,
         all_visible: bool = False,
@@ -116,6 +120,7 @@ class Window(Window):
         :param default_size: the default size of the window, defaults to None
         :type default_size: tuple[int] | None, optional
         """
+        # TODO: reflect the changes on the docstring
         # FIXME: improve me
         super().__init__(
             title,
@@ -137,6 +142,8 @@ class Window(Window):
             **kwargs,
         )
         self.ignore_empty_check = ignore_empty_check
+        self.above = above
+        self.below = below
         layer = (
             layer
             if isinstance(layer, Gdk.WindowTypeHint)
@@ -161,38 +168,40 @@ class Window(Window):
             geometry
             if isinstance(geometry, Gdk.Gravity)
             else {
+                "center-auto": "center-auto",
+                "center": Gdk.Gravity.CENTER,
                 "north-west": Gdk.Gravity.NORTH_WEST,
                 "north": Gdk.Gravity.NORTH,
                 "north-east": Gdk.Gravity.NORTH_EAST,
                 "west": Gdk.Gravity.WEST,
-                "center": Gdk.Gravity.CENTER,
                 "east": Gdk.Gravity.EAST,
                 "south-west": Gdk.Gravity.SOUTH_WEST,
                 "south": Gdk.Gravity.SOUTH,
                 "south-east": Gdk.Gravity.SOUTH_EAST,
             }.get(geometry.lower(), Gdk.Gravity.CENTER)
+            if isinstance(geometry, str)
+            else None
         )
 
-        self.display, self.rectangle, self.scale_factor = self.get_display_props()
+        self.display: Gdk.Display = None
+        self.rectangle: Gdk.Rectangle = None
+        self.scale_factor: int = None
 
         self.set_type_hint(layer)
-        self.set_container_size(default_size) if default_size != None else None
+        self.set_default_size(*default_size) if default_size is not None else None
+        self.set_accept_focus(can_focus) if can_focus is not None else None
 
         # setting some window props with EXTREME type checking
         self.set_skip_taskbar_hint(not taskbar_hint) if taskbar_hint == True else None
         self.set_skip_pager_hint(not pager_hint) if pager_hint == True else None
         self.set_decorated(decorated)
-        self.set_resizable(can_resize) if can_resize != None or type(
-            can_resize
-        ) == bool else None
+        self.set_resizable(can_resize) if can_resize is not None else None
         self.init_window()
 
-        if (isinstance(geometry, str) and geometry.lower() == "center") or (
-            isinstance(geometry, Gdk.Gravity) and geometry == Gdk.Gravity.CENTER
-        ):
+        if isinstance(geometry, Gdk.Gravity) and geometry == Gdk.Gravity.CENTER:
             # not using our way to handle window centering beacuse gdk already had one
-            self.set_position(Gtk.WindowPosition.CENTER_ALWAYS)
-        else:
+            self.set_position(Gtk.WindowPosition.CENTER)
+        elif geometry is not None:
             # auto remap window to it's proper position (when window size changes)
             self.set_window_geometry(geometry)
             self.connect(
@@ -206,9 +215,12 @@ class Window(Window):
         if self.display is None:
             self.display, self.rectangle, self.scale_factor = self.get_display_props()
         self.set_app_paintable(True)
-        self.set_keep_above(True)
-        self.set_accept_focus(False)
         self.set_visual(self.display.get_default_screen().get_rgba_visual())
+        return
+
+    def set_z_axis(self):
+        self.set_keep_above(self.above) if self.above is not None else None
+        self.set_keep_below(self.above) if self.below is not None else None
         return
 
     def get_display_props(self) -> tuple[Gdk.Display, Gdk.Rectangle, int]:
@@ -220,59 +232,57 @@ class Window(Window):
     def set_window_geometry(self, geometry: Gdk.Gravity):
         if self.rectangle is None:
             self.display, self.rectangle, self.scale_factor = self.get_display_props()
-        min_size, natural_size = self.get_preferred_size()
-        min_width, min_height = min_size.width, min_size.height
-        # natural_width, natural_height = natural_size.width, natural_size.height
+        aloc_size, natural_size = self.get_allocated_size()
+        aloc_width, aloc_height = aloc_size.width, aloc_size.height
         x, y = 0, 0
         match geometry:
+            case "center-auto":
+                x = self.rectangle.width // 2 - aloc_width // 2
+                y = self.rectangle.height // 2 - aloc_height // 2
             case Gdk.Gravity.NORTH_WEST:
                 x, y = 0, 0
             case Gdk.Gravity.NORTH:
                 y = 0
-                x = self.rectangle.width // 2 - min_width // 2
+                x = self.rectangle.width // 2 - aloc_width // 2
             case Gdk.Gravity.NORTH_EAST:
                 y = 0
-                x = self.rectangle.width - min_width
+                x = self.rectangle.width - aloc_width
             case Gdk.Gravity.WEST:
                 x = 0
-                y = self.rectangle.height // 2 - min_height // 2
-            case Gdk.Gravity.CENTER:
-                x = self.rectangle.width // 2 - min_width // 2
-                y = self.rectangle.height // 2 - min_height // 2
+                y = self.rectangle.height // 2 - aloc_height // 2
             case Gdk.Gravity.EAST:
-                x = self.rectangle.width - min_width
-                y = self.rectangle.height // 2 - min_height // 2
+                x = self.rectangle.width - aloc_width
+                y = self.rectangle.height // 2 - aloc_height // 2
             case Gdk.Gravity.SOUTH_WEST:
                 x = 0
-                y = self.rectangle.height - min_height
+                y = self.rectangle.height - aloc_height
             case Gdk.Gravity.SOUTH:
-                x = self.rectangle.width // 2 - min_width // 2
-                y = self.rectangle.height - min_height
+                x = self.rectangle.width // 2 - aloc_width // 2
+                y = self.rectangle.height - aloc_height
             case Gdk.Gravity.SOUTH_EAST:
-                x = self.rectangle.width - min_width
-                y = self.rectangle.height - min_height
+                x = self.rectangle.width - aloc_width
+                y = self.rectangle.height - aloc_height
             case _:  # Gravity.STATIC or default
-                return
+                return False
         x += self.rectangle.x
         y += self.rectangle.y
-        # placeholder for logging
-        self.move(x, y)
-        return self
+
+        return self.move(x, y)
 
     def show(self):
         # showing an empty window will result a glitched window
-        return (
+        if self.ignore_empty_check is False and len(self.get_children()) >= 1:
             super().show()
-            if (len(self.get_children()) >= 1) and not self.ignore_empty_check
-            else False
-        )
+            self.set_z_axis()
+            return
+        return False
 
     def show_all(self):
-        return (
+        if self.ignore_empty_check is False and len(self.get_children()) >= 1:
+            self.style_provider
             super().show_all()
-            if (len(self.get_children()) >= 1) and not self.ignore_empty_check
-            else False
-        )
+            self.set_z_axis()
+        return False
 
 
 if __name__ == "__main__":

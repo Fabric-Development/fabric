@@ -5,14 +5,15 @@ import os
 import time
 import psutil
 from loguru import logger
+from gi.repository import GLib
+from fabric.widgets import Box, Label, Overlay, DateTime
 from fabric.widgets.wayland import Window
-from fabric.widgets import Box, Label, Overlay, DateTime, CircularProgressBar
-from fabric.utils import (
-    invoke_repeater,
+from fabric.utils.helpers import (
     set_stylesheet_from_file,
     monitor_file,
     get_relative_path,
 )
+from fabric.widgets.circular_progress_bar import CircularProgressBar
 
 PYWAL = False
 PROFILE_PICTURE = os.path.expanduser("~/Pictures/Other/profile.jpg")
@@ -48,9 +49,9 @@ class SidePanel(Window):
             name="circular-progress-bar",
         )
         self.update_status()
-        invoke_repeater(1000, self.update_status)
-        invoke_repeater(
-            60000 * 15,
+        GLib.timeout_add_seconds(1, self.update_status)
+        GLib.timeout_add_seconds(
+            60 * 15,
             lambda: [self.uptime_label.set_label(self.get_current_uptime()), True][1],
         )
         self.add(

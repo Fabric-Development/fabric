@@ -1,7 +1,7 @@
 # TODO: connector
 import gi
 from typing import Literal
-from fabric.widgets import Widget
+from fabric.widgets.widget import Widget
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk

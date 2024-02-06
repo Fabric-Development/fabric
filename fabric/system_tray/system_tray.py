@@ -4,9 +4,9 @@
 import gi
 from loguru import logger
 from typing import Literal
-from fabric.widgets import Box
-from fabric.widgets import Button
-from fabric.utils import get_ixml
+from fabric.widgets.box import Box
+from fabric.widgets.button import Button
+from fabric.utils.helpers import get_ixml
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("DbusmenuGtk3", "0.4")

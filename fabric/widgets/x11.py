@@ -1,6 +1,6 @@
 import gi
 from typing import Literal
-from fabric.widgets import Window
+from fabric.widgets.window import Window
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk, GLib
@@ -277,8 +277,8 @@ class Window(Window):
 
 if __name__ == "__main__":
     from fabric.widgets.revealer import Revealer
-    from fabric.widgets import Button
-    from fabric.widgets import Box
+    from fabric.widgets.button import Button
+    from fabric.widgets.box import Box
     from fabric import start
 
     reveal = Revealer(

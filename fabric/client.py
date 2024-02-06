@@ -6,7 +6,7 @@ from dis import Positions
 from loguru import logger
 from fabric.service import *
 from fabric.utils.enum import ValueEnum
-from fabric.utils import get_ixml
+from fabric.utils.helpers import get_ixml
 from gi.repository import Gio, GLib
 
 

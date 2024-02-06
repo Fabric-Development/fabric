@@ -1,7 +1,7 @@
 import gi
 from typing import Literal
-from fabric.widgets import Window
-from fabric.utils import extract_css_values, extract_anchor_values
+from fabric.utils.helpers import extract_css_values, extract_anchor_values
+from fabric.widgets.window import Window
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("GtkLayerShell", "0.1")

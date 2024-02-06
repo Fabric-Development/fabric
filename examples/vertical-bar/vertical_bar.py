@@ -1,12 +1,12 @@
 import fabric
 import time
 import psutil
-from fabric.widgets.wayland import Window
 from fabric.widgets import Box, Image, Label, Button, CenterBox, DateTime
+from fabric.widgets.wayland import Window
+from fabric.utils.fabricator.fabricator import Fabricate
+from fabric.utils.string_formatter import FormattedString
 from fabric.hyprland.widgets import Language, WorkspaceButton, Workspaces
-from fabric.utils import (
-    Fabricate,
-    FormattedString,
+from fabric.utils.helpers import (
     set_stylesheet_from_file,
     bulk_replace,
     bulk_connect,

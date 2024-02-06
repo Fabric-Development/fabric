@@ -2,7 +2,7 @@ import gi
 import time
 from loguru import logger
 from typing import Literal
-from fabric.widgets import Button
+from fabric.widgets.button import Button
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GLib

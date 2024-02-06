@@ -4,8 +4,6 @@ import fabric
 import os
 import psutil
 from loguru import logger
-from fabric.widgets.wayland import Window
-from fabric.hyprland.widgets import WorkspaceButton, Workspaces, ActiveWindow, Language
 from fabric.widgets import (
     Box,
     Label,
@@ -14,10 +12,12 @@ from fabric.widgets import (
     DateTime,
     CenterBox,
     CircularProgressBar,
-    SystemTray,
 )
-from fabric.utils import (
-    FormattedString,
+from fabric.system_tray import SystemTray
+from fabric.widgets.wayland import Window
+from fabric.utils.string_formatter import FormattedString
+from fabric.hyprland.widgets import WorkspaceButton, Workspaces, ActiveWindow, Language
+from fabric.utils.helpers import (
     set_stylesheet_from_file,
     bulk_replace,
     monitor_file,

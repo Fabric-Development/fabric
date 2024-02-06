@@ -1,15 +1,13 @@
 """side panel example, contains info about the system"""
+
 import fabric
 import os
 import time
 import psutil
 from loguru import logger
 from gi.repository import GLib
-from fabric.widgets.box import Box
-from fabric.widgets.label import Label
+from fabric.widgets import Box, Label, Overlay, DateTime
 from fabric.widgets.wayland import Window
-from fabric.widgets.overlay import Overlay
-from fabric.widgets.date_time import DateTime
 from fabric.utils.helpers import (
     set_stylesheet_from_file,
     monitor_file,

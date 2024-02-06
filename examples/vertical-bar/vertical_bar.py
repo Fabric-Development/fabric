@@ -1,13 +1,8 @@
 import fabric
 import time
 import psutil
-from fabric.widgets.box import Box
-from fabric.widgets.image import Image
-from fabric.widgets.label import Label
-from fabric.widgets.button import Button
+from fabric.widgets import Box, Image, Label, Button, CenterBox, DateTime
 from fabric.widgets.wayland import Window
-from fabric.widgets.date_time import DateTime
-from fabric.widgets.centerbox import CenterBox
 from fabric.utils.fabricator.fabricator import Fabricate
 from fabric.utils.string_formatter import FormattedString
 from fabric.hyprland.widgets import Language, WorkspaceButton, Workspaces
@@ -97,15 +92,17 @@ class VerticalBar(Window):
         )
         self.time_sep_var = Fabricate(
             value="",
-            poll_from=lambda _: [
-                "",
-                self.time_sep.set_style_classes(["day"]),
-            ][0]
-            if time.strftime("%p").lower() == "am"
-            else [
-                "",
-                self.time_sep.set_style_classes(["night"]),
-            ][0],
+            poll_from=lambda _: (
+                [
+                    "",
+                    self.time_sep.set_style_classes(["day"]),
+                ][0]
+                if time.strftime("%p").lower() == "am"
+                else [
+                    "",
+                    self.time_sep.set_style_classes(["night"]),
+                ][0]
+            ),
             interval=1000,
         )
         self.time_sep.bind_property(

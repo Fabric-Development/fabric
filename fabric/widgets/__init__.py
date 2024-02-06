@@ -12,5 +12,3 @@ from .label import Label
 from .overlay import Overlay
 from .revealer import Revealer
 from .stack import Stack
-from .wayland import Window as WaylandWindow
-from .x11 import Window as X11Window

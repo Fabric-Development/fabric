@@ -52,7 +52,8 @@ class Window(Window):
         can_resize: bool = False,
         can_focus: bool = False,
         decorated: bool = False,
-        children: list[Gtk.Widget] | Gtk.Widget | None = None,
+        children: Gtk.Widget | None = None,
+        type: Literal["top-level", "popup"] | Gtk.WindowType = "top-level",
         visible: bool = True,
         all_visible: bool = False,
         style: str | None = None,
@@ -90,7 +91,9 @@ class Window(Window):
         :param can_resize: whether the window can be resized (somehow), defaults to False
         :type can_resize: bool, optional
         :param children: the child widget (single widget), defaults to None
-        :type children: list[Gtk.Widget] | Gtk.Widget | None, optional
+        :type children: Gtk.Widget | None, optional
+        :param type: the type of this window, "top-level" means a normal window, defaults to "top-level"
+        :type type: Literal["top-level", "popup"] | Gtk.WindowType, optional
         :param visible: whether the widget is initially visible, defaults to True
         :type visible: bool, optional
         :param all_visible: whether all child widgets are initially visible, defaults to False
@@ -125,6 +128,7 @@ class Window(Window):
         super().__init__(
             title,
             children,
+            type,
             visible,
             all_visible,
             style,

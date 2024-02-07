@@ -20,12 +20,13 @@ class Window(Window):
         layer: Literal["background", "bottom", "top", "overlay"] | GtkLayerShell.Layer,
         anchor: str = "",
         margin: str = "0px 0px 0px 0px",
-        title: str | None = "fabric",
         exclusive: bool = True,
         monitor: int | Gdk.Monitor | None = None,
+        children: Gtk.Widget | None = None,
+        title: str | None = "fabric",
+        type: Literal["top-level", "popup"] | Gtk.WindowType = "top-level",
         visible: bool = True,
         all_visible: bool = True,
-        children: Gtk.Widget | None = None,
         style: str | None = None,
         style_compiled: bool = True,
         style_append: bool = False,
@@ -60,6 +61,8 @@ class Window(Window):
         :type monitor: int | Gdk.Monitor | None, optional
         :param children: the child widget (single widget), defaults to None
         :type children: Gtk.Widget | None, optional
+        :param type: the type of this window, "top-level" means a normal window, defaults to "top-level"
+        :type type: Literal["top-level", "popup"] | Gtk.WindowType, optional
         :param visible: whether the widget is initially visible, defaults to True
         :type visible: bool, optional
         :param all_visible: whether all child widgets are initially visible, defaults to False

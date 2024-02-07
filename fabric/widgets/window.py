@@ -14,6 +14,7 @@ class Window(Gtk.Window, Widget):
         self,
         title: str | None = "fabric",
         children: Gtk.Widget | None = None,
+        type: Literal["top-level", "popup"] | Gtk.WindowType = "top-level",
         visible: bool = True,
         all_visible: bool = False,
         style: str | None = None,
@@ -39,6 +40,8 @@ class Window(Gtk.Window, Widget):
         :type title: str | None, optional
         :param children: the child widget (single widget), defaults to None
         :type children: Gtk.Widget | None, optional
+        :param type: the type of this window, "top-level" means a normal window, defaults to "top-level"
+        :type type: Literal["top-level", "popup"] | Gtk.WindowType, optional
         :param visible: whether the widget is initially visible, defaults to True
         :type visible: bool, optional
         :param all_visible: whether all child widgets are initially visible, defaults to False
@@ -70,6 +73,13 @@ class Window(Gtk.Window, Widget):
         :param default_size: the default size of the window, defaults to None
         :type default_size: tuple[int, int] | None, optional
         """
+        type = (
+            type
+            if isinstance(type, (Gtk.WindowType, int))
+            else Gtk.WindowType.POPUP
+            if type == "popup"
+            else Gtk.WindowType.TOPLEVEL
+        )
         Gtk.Window.__init__(
             self,
             **kwargs,

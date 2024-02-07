@@ -99,6 +99,7 @@ class Window(Window):
         super().__init__(
             title,
             children,
+            type,
             None,
             None,
             style,

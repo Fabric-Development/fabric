@@ -72,4 +72,5 @@ it's really simple to get fabric working, you just...
 ## Showcase Section
 these are some bars/widgets made using Fabric
 - example files
-	![config can be found under the examples directory](assets/example-files-showcase.png)
+	![config can be found under the examples/bar and examples/side-panel directory](assets/example-files-bar-showcase.png)
+    ![config can be found under the examples/vertical-bar directory](assets/example-files-vertical-bar-showcase.png)

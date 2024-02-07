@@ -141,12 +141,10 @@ class Fabricate(Service):
                 data = data.strip()
                 if self._poll is False or self._poll is None:
                     break
-                self.value = data
+                GLib.idle_add(self.set_value_for_stream_thread, data)
                 if data == self._stop_when:
                     break
-        self.emit("polling-done", data) if data is not None else self.emit(
-            "polling-done", None
-        )
+        GLib.idle_add(self.emit, "polling-done", data)
         return False
 
     def invoke_function_with_interval(self, callable: Callable, interval: int, *args):
@@ -165,15 +163,14 @@ class Fabricate(Service):
 
     def do_read_function_stream(self, callable: Callable, *args):
         # this should get called in a new thread, else the main thread will not execute
+        data = None
         for data in callable(*args):
             if self._poll is False or self._poll is None:
                 break
-            self.value = data  # FIXME: mind that this is another thread, yet ain't sure about using `idle_add`
+            GLib.idle_add(self.set_value_for_stream_thread, data)
             if data == self._stop_when:
                 break
-        self.emit("polling-done", data) if data is not None else self.emit(
-            "polling-done", None
-        )
+        GLib.idle_add(self.emit, "polling-done", data)
         return False
 
     def stop_polling(self):
@@ -190,6 +187,10 @@ class Fabricate(Service):
         return logger.warning(
             f"[Fabricator] This fabricator ({self}) is already not polling."
         )
+
+    def set_value_for_stream_thread(self, value) -> None:
+        self.value = value
+        return
 
     @Property(value_type=object, flags="read-write")
     def value(self):

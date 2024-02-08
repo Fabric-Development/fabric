@@ -4,9 +4,9 @@ from loguru import logger
 from fabric.widgets.box import Box
 from fabric.widgets.button import Button
 from fabric.widgets.eventbox import EventBox
-from fabric.utils.helpers import bulk_connect
-from fabric.utils.string_formatter import FormattedString
 from fabric.hyprland.service import Connection, SignalEvent
+from fabric.utils.string_formatter import FormattedString
+from fabric.utils import bulk_connect
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import (

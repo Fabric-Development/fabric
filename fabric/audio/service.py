@@ -1,7 +1,7 @@
 import gi
 from loguru import logger
 from fabric.service import *
-from fabric.utils.helpers import bulk_connect
+from fabric.utils import bulk_connect
 
 
 class CvcImportError(ImportError):

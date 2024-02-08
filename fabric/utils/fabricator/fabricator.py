@@ -3,8 +3,8 @@ import subprocess
 from loguru import logger
 from typing import Callable
 from fabric.service import *
-from fabric.utils.enum import ValueEnum
-from fabric.utils.helpers import invoke_repeater, exec_shell_command
+from fabric.utils import ValueEnum
+from fabric.utils import invoke_repeater, exec_shell_command
 from gi.repository import GLib
 
 

@@ -8,10 +8,10 @@ from fabric.widgets.button import Button
 from fabric.widgets.wayland import Window
 from fabric.widgets.date_time import DateTime
 from fabric.widgets.centerbox import CenterBox
-from fabric.utils.fabricator.fabricator import Fabricate
+from fabric.utils.fabricator import Fabricate
 from fabric.utils.string_formatter import FormattedString
 from fabric.hyprland.widgets import Language, WorkspaceButton, Workspaces
-from fabric.utils.helpers import (
+from fabric.utils import (
     set_stylesheet_from_file,
     bulk_replace,
     bulk_connect,

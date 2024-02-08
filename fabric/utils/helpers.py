@@ -3,10 +3,55 @@ import re
 import os
 import time
 import inspect
+from enum import Enum
 from typing import Callable, Literal, Iterable
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk, GObject, Gio, GLib
+
+
+class ValueEnum(Enum):
+    @classmethod
+    def get_member(cls, name):
+        return cls[name].value
+
+
+class Validator:
+    def __init__(
+        self,
+        func: Callable,
+        exception_to_raise: Exception = None,
+        assertion: bool = False,
+        **kwargs,
+    ):
+        if not callable(func):
+            raise ValueError("func must be a callable (a function, method or a lambda)")
+        if exception_to_raise is not None and not isinstance(
+            exception_to_raise, Exception
+        ):
+            raise ValueError("exception_to_raise must be an Exception")
+        if assertion and not isinstance(assertion, bool):
+            raise ValueError("assertion must be a bool")
+        self.func = func
+        self.func_data = kwargs
+        self.exception_to_raise = exception_to_raise
+        self.assertion = assertion
+
+    def __call__(self, value: object, exception_to_raise: Exception = None, *args):
+        if exception_to_raise is None or not isinstance(exception_to_raise, Exception):
+            exception_to_raise = self.exception_to_raise
+        if self.assertion is True:
+            try:
+                assert self.func(value, *args, **self.func_data)
+            except AssertionError as e:
+                if self.exception_to_raise is not None:
+                    raise Exception(self.exception_to_raise) or e
+                return False
+        elif self.func(value, *args, **self.func_data) is False:
+            if self.exception_to_raise is not None:
+                raise self.exception_to_raise
+            return False
+        return True
 
 
 def get_gdk_rgba(color: str | Iterable) -> Gdk.RGBA:

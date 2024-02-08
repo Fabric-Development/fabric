@@ -14,7 +14,7 @@ from fabric.widgets.centerbox import CenterBox
 from fabric.utils.string_formatter import FormattedString
 from fabric.widgets.circular_progress_bar import CircularProgressBar
 from fabric.hyprland.widgets import WorkspaceButton, Workspaces, ActiveWindow, Language
-from fabric.utils.helpers import (
+from fabric.utils import (
     set_stylesheet_from_file,
     bulk_replace,
     monitor_file,

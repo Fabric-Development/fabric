@@ -82,6 +82,7 @@ class Window(Gtk.Window, Widget):
         )
         Gtk.Window.__init__(
             self,
+            type=type,
             **kwargs,
         )
         self.set_title(title) if title is not None else None

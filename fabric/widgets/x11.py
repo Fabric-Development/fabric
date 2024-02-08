@@ -167,6 +167,8 @@ class Window(Window):
                 "combo": Gdk.WindowTypeHint.COMBO,
                 "dnd": Gdk.WindowTypeHint.DND,
             }.get(layer.lower(), Gdk.WindowTypeHint.DOCK)
+            if layer is not None
+            else None
         )
         geometry = (
             geometry
@@ -191,7 +193,7 @@ class Window(Window):
         self.rectangle: Gdk.Rectangle = None
         self.scale_factor: int = None
 
-        self.set_type_hint(layer)
+        self.set_type_hint(layer) if layer is not None else None
         self.set_default_size(*default_size) if default_size is not None else None
         self.set_accept_focus(can_focus) if can_focus is not None else None
 

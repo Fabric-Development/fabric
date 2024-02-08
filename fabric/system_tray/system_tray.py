@@ -70,7 +70,11 @@ class SystemTrayItem(Button):
         )
         self.icon_size = icon_size
         self.icon_theme = Gtk.IconTheme.get_default()
-        self.set_image(Gtk.Image(pixbuf=self.icon)) if self.icon is not None else None
+        self.set_image(
+            Gtk.Image(pixbuf=self.icon)
+        ) if self.icon is not None else self.set_image(
+            Gtk.Image(icon_name="dialog-question-symbolic")
+        )
         self.set_tooltip_markup(
             self.tooltip_markup
         ) if self.tooltip_markup is not None else None
@@ -162,8 +166,12 @@ class SystemTrayItem(Button):
             if icon_name is not None
             else None
         )
-        return icon_pixbuf.scale_simple(
-            self.icon_size, self.icon_size, GdkPixbuf.InterpType.BILINEAR
+        return (
+            icon_pixbuf.scale_simple(
+                self.icon_size, self.icon_size, GdkPixbuf.InterpType.BILINEAR
+            )
+            if icon_pixbuf is not None
+            else None
         )
 
     def create_menu(self, dbus_name: str, menu_object_path: str) -> DbusmenuGtk3.Menu:

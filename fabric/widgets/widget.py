@@ -7,6 +7,7 @@ from gi.repository import Gtk, Gdk
 
 # shhhh
 import logging
+
 logging.captureWarnings(True)
 logging.getLogger("gi.overrides").setLevel(logging.ERROR)
 

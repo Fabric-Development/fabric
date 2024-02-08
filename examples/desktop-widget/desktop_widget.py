@@ -1,10 +1,10 @@
 """dead simple desktop widget that shows the time and date."""
+
 import fabric
 import os
 from loguru import logger
-from fabric.widgets.box import Box
+from fabric.widgets import Box, DateTime
 from fabric.widgets.wayland import Window
-from fabric.widgets.date_time import DateTime
 from fabric.utils.helpers import (
     set_stylesheet_from_file,
     monitor_file,

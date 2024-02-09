@@ -313,7 +313,7 @@ def monitor_file(
     return monitor
 
 
-def cooldown(cooldown_time: int, error: Callable = None):
+def cooldown(cooldown_time: int, error: Callable = None, return_error: bool = False):
     """
     Decorator function that adds a cooldown period to a given function
 
@@ -336,7 +336,10 @@ def cooldown(cooldown_time: int, error: Callable = None):
                 last_call_time = current_time
                 return result
             else:
-                error((cooldown_time - elapsed_time)) if error is not None else None
+                if return_error is True and error is not None:
+                    return error((cooldown_time - elapsed_time), *args, **kwargs)
+                elif error is not None:
+                    error((cooldown_time - elapsed_time), *args, **kwargs)
 
         return wrapper
 

@@ -1,6 +1,7 @@
 import gi
 from typing import Literal
 from fabric.widgets.window import Window
+from fabric.utils import extract_css_values
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk, GLib
@@ -35,16 +36,17 @@ class Window(Window):
         geometry: Literal[
             "center",
             "center-auto",
-            "north-west",
-            "north",
-            "north-east",
-            "west",
-            "east",
-            "south-west",
-            "south",
-            "south-east",
+            "top-left",
+            "top",
+            "top-right",
+            "left",
+            "right",
+            "bottom-left",
+            "bottom",
+            "bottom-right",
         ]
         | Gdk.Gravity = "center",
+        margin: str | tuple | list | None = "0px 0px 0px 0px",
         above: bool = True,
         below: bool = False,
         taskbar_hint: bool = False,
@@ -82,6 +84,12 @@ class Window(Window):
         :type layer: Literal["normal", "dialog", "menu", "toolbar", "splashscreen", "utility", "dock", "desktop", "dropdown"], optional
         :param geometry: the geometry of the window AKA position, defaults to "center"
         :type geometry: Literal["north-west", "north", "north-east", "west", "center", "east", "south-west", "south", "south-east"], optional
+        :param margin: the margin of the window, defaults to "0px 0px 0px 0px"
+        :type margin: str | tuple | list | None, optional
+        :param above: whether the window should be above other windows, defaults to True
+        :type above: bool, optional
+        :param below: whether the window should be below other windows, defaults to False
+        :type below: bool, optional
         :param taskbar_hint: whether the window should be on the taskbar, defaults to False
         :type taskbar_hint: bool, optional
         :param pager_hint: whether the window should be on the pager, defaults to False
@@ -146,6 +154,7 @@ class Window(Window):
             **kwargs,
         )
         self.ignore_empty_check = ignore_empty_check
+        self.margin = margin
         self.above = above
         self.below = below
         layer = (
@@ -176,14 +185,14 @@ class Window(Window):
             else {
                 "center-auto": "center-auto",
                 "center": Gdk.Gravity.CENTER,
-                "north-west": Gdk.Gravity.NORTH_WEST,
-                "north": Gdk.Gravity.NORTH,
-                "north-east": Gdk.Gravity.NORTH_EAST,
-                "west": Gdk.Gravity.WEST,
-                "east": Gdk.Gravity.EAST,
-                "south-west": Gdk.Gravity.SOUTH_WEST,
-                "south": Gdk.Gravity.SOUTH,
-                "south-east": Gdk.Gravity.SOUTH_EAST,
+                "top-left": Gdk.Gravity.NORTH_WEST,
+                "top": Gdk.Gravity.NORTH,
+                "top-right": Gdk.Gravity.NORTH_EAST,
+                "left": Gdk.Gravity.WEST,
+                "right": Gdk.Gravity.EAST,
+                "bottom-left": Gdk.Gravity.SOUTH_WEST,
+                "bottom": Gdk.Gravity.SOUTH,
+                "bottom-right": Gdk.Gravity.SOUTH_EAST,
             }.get(geometry.lower(), Gdk.Gravity.CENTER)
             if isinstance(geometry, str)
             else None
@@ -209,10 +218,10 @@ class Window(Window):
             self.set_position(Gtk.WindowPosition.CENTER)
         elif geometry is not None:
             # auto remap window to it's proper position (when window size changes)
-            self.set_window_geometry(geometry)
+            self.set_geometry(geometry, margin)
             self.connect(
                 "size-allocate",
-                lambda _, __: self.set_window_geometry(geometry),
+                lambda _, __: self.set_geometry(geometry),
             )
 
     def init_window(
@@ -235,12 +244,30 @@ class Window(Window):
         scale_factor = display.get_primary_monitor().get_scale_factor()
         return display, rectangle, scale_factor
 
-    def set_window_geometry(self, geometry: Gdk.Gravity):
+    def set_geometry(
+        self, geometry: Gdk.Gravity, margin: str | tuple[int] | list[int] | None = None
+    ):
         if self.rectangle is None:
             self.display, self.rectangle, self.scale_factor = self.get_display_props()
         aloc_size, natural_size = self.get_allocated_size()
         aloc_width, aloc_height = aloc_size.width, aloc_size.height
-        x, y = 0, 0
+        margin = (
+            margin
+            if margin is not None
+            else self.margin
+            if self.margin is not None
+            else (0, 0, 0, 0)
+        )
+        margin = (
+            extract_css_values(margin)
+            if isinstance(margin, str)
+            else margin
+            if isinstance(margin, (tuple, list)) and len(margin) == 4
+            else [0, 0, 0, 0]
+            # top right bottom left
+        )
+        x = y = 0
+        x_margin = y_margin = 0
         match geometry:
             case "center-auto":
                 x = self.rectangle.width // 2 - aloc_width // 2
@@ -270,8 +297,13 @@ class Window(Window):
                 y = self.rectangle.height - aloc_height
             case _:  # Gravity.STATIC or default
                 return False
+
+        x_margin = margin[1] - margin[3]
+        y_margin = margin[0] - margin[2]
         x += self.rectangle.x
         y += self.rectangle.y
+        x = x + x_margin
+        y = y + y_margin
 
         return self.move(x, y)
 

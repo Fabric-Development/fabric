@@ -40,29 +40,33 @@ class Property(Property):
         maximum: int | None = None,
         **kwargs,
     ):
-        self._flags = {
-            "r": GObject.ParamFlags.READABLE,
-            "w": GObject.ParamFlags.WRITABLE,
-            "rw": GObject.ParamFlags.READWRITE,
-            "readable": GObject.ParamFlags.READABLE,
-            "writable": GObject.ParamFlags.WRITABLE,
-            "read-write": GObject.ParamFlags.READWRITE,
-            "construct": GObject.ParamFlags.CONSTRUCT,
-            "construct-only": GObject.ParamFlags.CONSTRUCT_ONLY,
-            "lax-validation": GObject.ParamFlags.LAX_VALIDATION,
-            "static-name": GObject.ParamFlags.STATIC_NAME,
-            "private": GObject.ParamFlags.PRIVATE,
-            "static-nick": GObject.ParamFlags.STATIC_NICK,
-            "static-blurb": GObject.ParamFlags.STATIC_BLURB,
-            "explicit-notify": GObject.ParamFlags.EXPLICIT_NOTIFY,
-            "deprecated": GObject.ParamFlags.DEPRECATED,
-        }.get(flags.lower(), GObject.ParamFlags.READWRITE)
+        flags = (
+            flags
+            if isinstance(flags, GObject.ParamFlags)
+            else {
+                "r": GObject.ParamFlags.READABLE,
+                "w": GObject.ParamFlags.WRITABLE,
+                "rw": GObject.ParamFlags.READWRITE,
+                "readable": GObject.ParamFlags.READABLE,
+                "writable": GObject.ParamFlags.WRITABLE,
+                "read-write": GObject.ParamFlags.READWRITE,
+                "construct": GObject.ParamFlags.CONSTRUCT,
+                "construct-only": GObject.ParamFlags.CONSTRUCT_ONLY,
+                "lax-validation": GObject.ParamFlags.LAX_VALIDATION,
+                "static-name": GObject.ParamFlags.STATIC_NAME,
+                "private": GObject.ParamFlags.PRIVATE,
+                "static-nick": GObject.ParamFlags.STATIC_NICK,
+                "static-blurb": GObject.ParamFlags.STATIC_BLURB,
+                "explicit-notify": GObject.ParamFlags.EXPLICIT_NOTIFY,
+                "deprecated": GObject.ParamFlags.DEPRECATED,
+            }.get(flags.lower(), GObject.ParamFlags.READWRITE)
+        )
         super().__init__(
             type=value_type,
             default=default_value,
             nick=name,
             blurb=description,
-            flags=self._flags,
+            flags=flags,
             getter=getter,
             setter=setter,
             minimum=minimum,

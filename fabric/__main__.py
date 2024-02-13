@@ -7,27 +7,29 @@ def main():
     pass
 
 
-@click.command(name="info", help="info about running fabric service")
+@click.command(
+    name="info", help="gets info about the currently running fabric instance"
+)
 @click.option("--json", "-j", is_flag=True, help="to return the output in json format")
 def info(json: bool = False):
     try:
         bus_object = get_fabric_session_bus()
-        file = str(bus_object.file())
+        file = str(bus_object.get_cached_property("file").unpack())
     except:
         return (
-            click.echo("fabric service is not running.")
+            click.echo("fabric instance is not running.")
             if json is False
-            else click.echo({"file": "", "error": "fabric service is not running."})
+            else click.echo({"file": "", "error": "fabric instance is not running."})
         )
     return (
-        click.echo(f"fabric service is running at file: {file}")
+        click.echo(f"fabric instance is running at file: {file}")
         if json is False
-        else click.echo({"file": str(get_fabric_session_bus().get_file())})
+        else click.echo({"file": file})
     )
 
 
 @click.command(
-    "execute", help="executes a python code within the running fabric service"
+    "execute", help="executes a python code within the running fabric instance"
 )
 @click.argument("source")
 @click.option(
@@ -43,13 +45,13 @@ def execute(source: str, raise_on_exception: bool = False, json: bool = False):
         data = bus_object.execute("(sb)", source, raise_on_exception)
     except:
         return (
-            click.echo("fabric service is not running.")
+            click.echo("fabric instance is not running.")
             if json is False
             else click.echo(
                 {
                     "source": source,
                     "exception": "",
-                    "error": "fabric service is not running.",
+                    "error": "fabric instance is not running.",
                 }
             )
         )

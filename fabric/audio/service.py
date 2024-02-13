@@ -242,9 +242,14 @@ class Audio(Service):
         logger.info(f"[Audio][{type}] Changing default {type} to {id}")
         if self.__getattribute__(f"_{type}") is not None:
             logger.info(f"[Audio][{type}] Removing old {type} stream")
-            self.__getattribute__(f"_{type}").disconnect(
-                self.__getattribute__(f"_{type}_connection")
-            )
+            try:
+                self.__getattribute__(f"_{type}").disconnect(
+                    self.__getattribute__(f"_{type}_connection")
+                )
+            except Exception as e:
+                logger.warning(
+                    f"[Audio] tried to remove a stream of type {type} but failed because of error ({e}), skipping..."
+                )
         strm = self._streams.get(id)
         if strm is None:
             return

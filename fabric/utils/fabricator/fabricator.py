@@ -31,7 +31,6 @@ class Fabricate(Service):
         poll_from: Callable | str | None = False,
         stream: bool = False,
         interval: int | None = None,
-        stop_when: object | None = None,
         initial_poll: bool = True,
         *data,
         **kwargs,
@@ -43,7 +42,6 @@ class Fabricate(Service):
         self._value_str = str(value)
         self._poll_from = poll_from
         self._interval = interval
-        self._stop_when = stop_when
         self._initial_poll = initial_poll
         self._data = data
         self._poll = True
@@ -120,11 +118,9 @@ class Fabricate(Service):
     def do_invoke_shell(self, cmd: str):
         self.emit("polling", self._polling_mode, cmd, self._interval, ())
         if self._poll is not True:
+            self.emit("polling-done", None)
             return False
         value = exec_shell_command(cmd)
-        if value == self._stop_when:
-            self.emit("polling-done", value)
-            return False
         self.value = value
         return True
 
@@ -142,8 +138,6 @@ class Fabricate(Service):
                 if self._poll is False or self._poll is None:
                     break
                 GLib.idle_add(self.set_value_for_stream_thread, data)
-                if data == self._stop_when:
-                    break
         GLib.idle_add(self.emit, "polling-done", data)
         return False
 
@@ -153,12 +147,10 @@ class Fabricate(Service):
     def do_invoke_function(self, callable: Callable, *args):
         self.emit("polling", self._polling_mode, callable, self._interval, args)
         if self._poll is not True:
+            self.emit("polling-done", None)
             return False
         value = callable(*args)
         self.value = value
-        if value == self._stop_when:
-            self.emit("polling-done", value)
-            return False
         return True
 
     def do_read_function_stream(self, callable: Callable, *args):
@@ -168,8 +160,6 @@ class Fabricate(Service):
             if self._poll is False or self._poll is None:
                 break
             GLib.idle_add(self.set_value_for_stream_thread, data)
-            if data == self._stop_when:
-                break
         GLib.idle_add(self.emit, "polling-done", data)
         return False
 

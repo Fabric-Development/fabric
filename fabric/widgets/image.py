@@ -13,7 +13,7 @@ class Image(Gtk.Image, Widget):
         icon_name: str | None = None,
         icon_size: int | None = 24,
         pixbuf: GdkPixbuf.Pixbuf | None = None,
-        pixel_size: int | None = None,
+        pixel_size: int | tuple[int] | None = None,
         visible: bool = True,
         all_visible: bool = False,
         style: str | None = None,
@@ -75,12 +75,18 @@ class Image(Gtk.Image, Widget):
         :type size: tuple[int] | None, optional
         """
         Gtk.Image.__init__(self, **kwargs)
-        self.set_from_file(image_file) if image_file is not None else None
-        self.set_from_icon_name(
-            icon_name, icon_size
-        ) if icon_name is not None and icon_size is not None else None
-        self.set_from_pixbuf(pixbuf) if pixbuf is not None else None
-        self.set_pixel_size(pixel_size) if pixel_size is not None else None
+        if pixel_size is not None and image_file is not None:
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
+                image_file, *((pixel_size, pixel_size) if isinstance(pixel_size, int) else pixel_size)
+            )
+            self.set_from_pixbuf(pixbuf)
+        else:
+            self.set_from_file(image_file) if image_file is not None else None
+            self.set_from_icon_name(
+                icon_name, icon_size
+            ) if icon_name is not None and icon_size is not None else None
+            self.set_from_pixbuf(pixbuf) if pixbuf is not None else None
+            self.set_pixel_size(pixel_size) if pixel_size is not None else None
         Widget.__init__(
             self,
             visible,

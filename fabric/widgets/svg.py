@@ -1,6 +1,7 @@
 import gi
 import cairo
 from typing import Literal
+from loguru import logger
 from fabric.utils import compile_css
 from fabric.widgets.widget import Widget
 
@@ -83,14 +84,13 @@ class Svg(Gtk.DrawingArea, Widget):
         self.set_style(
             style, style_compiled, style_append, style_add_brackets
         ) if style is not None else None
-        print(self._style_result)
         self.connect("draw", self.draw)
 
     def set_style(
         self,
         style: str,
         compiled: bool = True,
-        append: bool = False,
+        append: bool = False,  # TODO: implement
         add_brackets: bool = True,
     ) -> None:
         self._style_result = (
@@ -107,9 +107,13 @@ class Svg(Gtk.DrawingArea, Widget):
 
     def draw(self, widget: Gtk.DrawingArea, ctx: cairo.Context):
         ctx.save()
-        self.handle.set_stylesheet(
-            self._style_result.encode()
-        ) if self._style_result is not None else None
+        if self._style_result is not None:
+            x = self.handle.set_stylesheet(self._style_result.encode())
+            if x is not True:
+                logger.error(
+                    "[Svg] failed to apply style, probably invalid style property"
+                )
+            del x
         self.do_render_svg_for_ctx(ctx, self.handle)
         ctx.restore()
 

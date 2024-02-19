@@ -217,8 +217,11 @@ class Service(GObject.Object):
                 f"reference {reference} haven't been registered here before."
             )
         for signal in signal_objects:
+            signal: SignalConnection
             self._registered_signals.remove(signal)
-        return [self.disconnect_by_func(x.callback) for x in signal_objects]
+            self.disconnect_by_func(signal.callback)
+            del signal
+        return
 
     def connect(self, signal_spec: str, callback: Callable) -> SignalConnection:
         """
@@ -241,3 +244,15 @@ class Service(GObject.Object):
         )
         self._registered_signals.append(conn)
         return conn
+
+    def __del__(self):
+        for signal in self._registered_signals:
+            try:
+                signal.disconnect()
+            except:
+                pass
+        try:
+            self.unref()
+        except:
+            pass
+        return

@@ -4,7 +4,7 @@ import os
 import time
 import inspect
 from enum import Enum
-from typing import Callable, Literal, Iterable
+from typing import Callable, Literal, Iterable, Generator
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk, GObject, Gio, GLib
@@ -116,9 +116,9 @@ def set_stylesheet_from_file(file_path: str, compiled: bool = True) -> None:
     :return: None
     """
     provider = Gtk.CssProvider()
+    with open(file_path, "r") as f:
+        file = f.read()
     if compiled:
-        with open(file_path, "r") as f:
-            file = f.read()
         provider.load_from_data(bytearray(compile_css(file), "utf-8"))
     else:
         provider.load_from_path(file)
@@ -413,3 +413,17 @@ def get_ixml(path_to_xml: str, interface_name: str):
     with open(path_to_xml, "r") as f:
         file = f.read()
     return interface_name, Gio.DBusNodeInfo.new_for_xml(file)
+
+
+def kebab_case_to_snake_case(string: str) -> str:
+    return string.replace("-", "_").lower()
+
+
+def snake_case_to_kebab_case(string: str) -> str:
+    return string.replace("_", "-").lower()
+
+
+def get_signal_names_from_kwargs(kwargs) -> Generator:
+    for key, value in zip(kwargs.keys(), kwargs.values()):
+        if key.startswith("on_"):
+            yield [snake_case_to_kebab_case(key[3:]), value]

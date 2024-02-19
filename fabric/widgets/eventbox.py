@@ -126,10 +126,8 @@ class EventBox(Gtk.EventBox, Container):
         """
         Gtk.EventBox.__init__(
             self,
-            **kwargs,
+            **(self.do_get_filtered_kwargs(kwargs)),
         )
-        self.add_events(events) if events is not None else None
-        super().add(children) if children is not None else None
         Container.__init__(
             self,
             None,
@@ -148,6 +146,9 @@ class EventBox(Gtk.EventBox, Container):
             name,
             size,
         )
+        super().add(children) if children is not None else None
+        self.add_events(events) if events is not None else None
+        self.do_connect_signals_for_kwargs(kwargs)
 
     def add_events(
         self,

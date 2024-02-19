@@ -75,7 +75,7 @@ class CenterBox(Box):
             v_expand,
             name,
             size,
-            **kwargs,
+            **(self.do_get_filtered_kwargs(kwargs)),
         )
         self.widgets_container = Box(
             orientation="v" if _orientation == Gtk.Orientation.VERTICAL else "h",
@@ -89,6 +89,7 @@ class CenterBox(Box):
         self.widgets_container.pack_start(self.left_widgets, False, False, 0)
         self.widgets_container.set_center_widget(self.center_widgets)
         self.widgets_container.pack_end(self.right_widgets, False, False, 0)
+        self.do_connect_signals_for_kwargs(kwargs)
         self.initialize_children(left_widgets, center_widgets, right_widgets)
 
     def initialize_children(self, left, center, right):

@@ -66,9 +66,10 @@ class Button(Gtk.Button, Widget):
         :param size: the size of the widget, defaults to None
         :type size: tuple[int] | None, optional
         """
-        Gtk.Button.__init__(self, **kwargs)
-        super().set_label(label) if label is not None else None
-        super().set_image(icon_image) if icon_image is not None else None
+        Gtk.Button.__init__(
+            self,
+            **(self.do_get_filtered_kwargs(kwargs)),
+        )
         Widget.__init__(
             self,
             visible,
@@ -86,3 +87,6 @@ class Button(Gtk.Button, Widget):
             name,
             size,
         )
+        super().set_label(label) if label is not None else None
+        super().set_image(icon_image) if icon_image is not None else None
+        self.do_connect_signals_for_kwargs(kwargs)

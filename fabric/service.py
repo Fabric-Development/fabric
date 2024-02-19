@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from fabric.utils import get_signal_names_from_kwargs
 from typing import Literal, Type, Callable
 from gi.repository import GObject
 from gi._propertyhelper import Property
@@ -167,7 +168,9 @@ class Service(GObject.Object):
     __gsignals__ = {}
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        super().__init__()
+        for signal in get_signal_names_from_kwargs(kwargs):
+            self.connect(signal[0], signal[1])
         self._registered_signals: list[SignalConnection] = []
 
     def disconnect(

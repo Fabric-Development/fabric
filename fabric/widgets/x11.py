@@ -151,7 +151,7 @@ class Window(Window):
             v_expand,
             name,
             default_size,
-            **kwargs,
+            **(self.do_get_filtered_kwargs(kwargs)),
         )
         self.ignore_empty_check = ignore_empty_check
         self.margin = margin
@@ -223,6 +223,7 @@ class Window(Window):
                 "size-allocate",
                 lambda _, __: self.set_geometry(geometry),
             )
+        self.do_connect_signals_for_kwargs(kwargs)
 
     def init_window(
         self,

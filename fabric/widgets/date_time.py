@@ -53,7 +53,7 @@ class DateTime(Button):
             v_expand=v_expand,
             name=name,
             size=size,
-            **kwargs,
+            **(self.do_get_filtered_kwargs(kwargs)),
         )
         self.format_list = format_list
         self.interval = interval
@@ -63,11 +63,12 @@ class DateTime(Button):
             )
             self.format_list = ["%I:%M %p", "%A", "%m-%d-%Y"]
         self.index: int = 0
-        self.bake_label()
-        GLib.timeout_add(self.interval, self.bake_label)
-        self.connect("button-press-event", self.button_callback)
+        self.do_bake_label()
+        GLib.timeout_add(self.interval, self.do_bake_label)
+        self.connect("button-press-event", self.on_button_press)
+        self.do_connect_signals_for_kwargs(kwargs)
 
-    def button_callback(self, scale, event):
+    def on_button_press(self, scale, event):
         """
         Handles the button press event and cycles through the format list to update the displayed date and time.
         """
@@ -78,7 +79,7 @@ class DateTime(Button):
                     self.index += 1
                 except IndexError:
                     self.index = 0
-                self.bake_label()
+                self.do_bake_label()
                 break
             else:
                 continue
@@ -89,30 +90,30 @@ class DateTime(Button):
         """
         if not type(format_list) == list or len(format_list) == 0:
             logger.warning(
-                "[TimeDate] Please use non-empty list object for format_list."
+                "[DateTime] Please use non-empty list object for format_list."
             )
             self.format_list = (
                 ["%I:%M %p", "%A", "%m-%d-%Y"]
                 if not self.format_list
                 else self.format_list
             )
-            self.bake_label()
+            self.do_bake_label()
             return
         self.format_list = format_list
-        self.bake_label()
+        self.do_bake_label()
 
     def set_interval(self, interval: int):
         """
         Sets a new interval for updating the displayed date and time.
         """
         if not type(interval) == int or interval < 1:
-            print("[TimeDate][Error] Please pass a valid interval value.")
+            logger.warning("[DateTime] Please pass a valid interval value.")
             self.interval = 1000
             return
         self.interval = interval
         return
 
-    def bake_label(self):
+    def do_bake_label(self):
         """
         Updates the label of the widget with the current date and time format.
         """

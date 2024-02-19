@@ -85,7 +85,27 @@ class Label(Gtk.Label, Widget):
         :param size: the size of the widget, defaults to None
         :type size: tuple[int] | None, optional
         """
-        Gtk.Label.__init__(self, **kwargs)
+        Gtk.Label.__init__(
+            self,
+            **(self.do_get_filtered_kwargs(kwargs)),
+        )
+        Widget.__init__(
+            self,
+            visible,
+            all_visible,
+            style,
+            style_compiled,
+            style_append,
+            style_add_brackets,
+            tooltip_text,
+            tooltip_markup,
+            h_align,
+            v_align,
+            h_expand,
+            v_expand,
+            name,
+            size,
+        )
         self.set_label(label) if label is not None else None
         self.set_justify(
             {
@@ -106,20 +126,4 @@ class Label(Gtk.Label, Widget):
         self.set_max_width_chars(
             character_max_width
         ) if character_max_width is not None else None
-        Widget.__init__(
-            self,
-            visible,
-            all_visible,
-            style,
-            style_compiled,
-            style_append,
-            style_add_brackets,
-            tooltip_text,
-            tooltip_markup,
-            h_align,
-            v_align,
-            h_expand,
-            v_expand,
-            name,
-            size,
-        )
+        self.do_connect_signals_for_kwargs(kwargs)

@@ -74,14 +74,10 @@ class Entry(Gtk.Entry, Widget):
         :param size: the size of the widget, defaults to None
         :type size: tuple[int] | None, optional
         """
-        Gtk.Entry.__init__(self, **kwargs)
-        self.set_text(text) if text is not None else None
-        self.set_placeholder_text(
-            placeholder_text
-        ) if placeholder_text is not None else None
-        self.set_max_length(max_length) if max_length is not None else None
-        self.set_editable(editable)
-        self.set_visibility(characters_visible)
+        Gtk.Entry.__init__(
+            self,
+            **(self.do_get_filtered_kwargs(kwargs)),
+        )
         Widget.__init__(
             self,
             visible,
@@ -99,3 +95,11 @@ class Entry(Gtk.Entry, Widget):
             name,
             size,
         )
+        self.set_text(text) if text is not None else None
+        self.set_placeholder_text(
+            placeholder_text
+        ) if placeholder_text is not None else None
+        self.set_max_length(max_length) if max_length is not None else None
+        self.set_editable(editable)
+        self.set_visibility(characters_visible)
+        self.do_connect_signals_for_kwargs(kwargs)

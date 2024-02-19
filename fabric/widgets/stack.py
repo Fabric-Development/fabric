@@ -87,7 +87,10 @@ class Stack(Gtk.Stack, Container):
         :param size: the size of the widget, defaults to None
         :type size: tuple[int] | None, optional
         """
-        Gtk.Stack.__init__(self, **kwargs)
+        Gtk.Stack.__init__(
+            self,
+            **(self.do_get_filtered_kwargs(kwargs)),
+        )
         self.set_transition_type(
             transition_type
         ) if transition_type is not None else None
@@ -112,6 +115,7 @@ class Stack(Gtk.Stack, Container):
             name,
             size,
         )
+        self.do_connect_signals_for_kwargs(kwargs)
 
     def set_transition_type(
         self,

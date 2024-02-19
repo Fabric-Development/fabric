@@ -89,17 +89,8 @@ class Revealer(Gtk.Revealer, Container):
         """
         Gtk.Revealer.__init__(
             self,
-            **kwargs,
+            **(self.do_get_filtered_kwargs(kwargs)),
         )
-        self.add(children) if children is not None else None
-        self.set_reveal_child(reveal_child) if reveal_child is not None else None
-        self.set_child_visible(child_visible) if child_visible is not None else None
-        self.set_transition_type(
-            transition_type
-        ) if transition_type is not None else None
-        self.set_transition_duration(
-            transition_duration
-        ) if transition_duration is not None else None
         Container.__init__(
             self,
             None,
@@ -118,6 +109,16 @@ class Revealer(Gtk.Revealer, Container):
             name,
             size,
         )
+        self.add(children) if children is not None else None
+        self.set_reveal_child(reveal_child) if reveal_child is not None else None
+        self.set_child_visible(child_visible) if child_visible is not None else None
+        self.set_transition_type(
+            transition_type
+        ) if transition_type is not None else None
+        self.set_transition_duration(
+            transition_duration
+        ) if transition_duration is not None else None
+        self.do_connect_signals_for_kwargs(kwargs)
 
     def set_transition_type(
         self,

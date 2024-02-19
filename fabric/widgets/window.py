@@ -83,7 +83,7 @@ class Window(Gtk.Window, Widget):
         Gtk.Window.__init__(
             self,
             type=type,
-            **kwargs,
+            **(self.do_get_filtered_kwargs(kwargs)),
         )
         self.set_title(title) if title is not None else None
         (
@@ -116,6 +116,7 @@ class Window(Gtk.Window, Widget):
             name,
             default_size,
         )
+        self.do_connect_signals_for_kwargs(kwargs)
         self.connect("destroy", Gtk.main_quit)
 
 

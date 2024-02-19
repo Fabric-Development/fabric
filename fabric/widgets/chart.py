@@ -11,7 +11,7 @@ from gi.repository import GLib, Gtk, Gdk
 class Chart(Gtk.DrawingArea, Widget):
     """
     A Chart widget drawn with cairo
-    to use it you will have to pass..
+    NOTE: uncomplete
     """
 
     def __init__(
@@ -43,19 +43,12 @@ class Chart(Gtk.DrawingArea, Widget):
         v_expand: bool = False,
         name: str | None = None,
         size: tuple[int, int] | None = (24, 24),
+        **kwargs,
     ):
-        Gtk.DrawingArea.__init__(self)
-        self.margin = margin
-        self.data_count = data_count
-        self.frame = frame
-        self.line_width = line_width
-        self.line_color = line_color
-        self.fill_color = fill_color
-        self.background_color = background_color
-        self.update_interval = update_interval
-        self.data_function = data_function
-        self.data = []
-        self.timer = GLib.timeout_add(update_interval, self.update_chart)
+        Gtk.DrawingArea.__init__(
+            self,
+            **(self.do_get_filtered_kwargs(kwargs)),
+        )
         Widget.__init__(
             self,
             visible,
@@ -73,6 +66,18 @@ class Chart(Gtk.DrawingArea, Widget):
             name,
             size,
         )
+        self.margin = margin
+        self.data_count = data_count
+        self.frame = frame
+        self.line_width = line_width
+        self.line_color = line_color
+        self.fill_color = fill_color
+        self.background_color = background_color
+        self.update_interval = update_interval
+        self.data_function = data_function
+        self.data = []
+        self.timer = GLib.timeout_add(update_interval, self.update_chart)
+        self.do_connect_signals_for_kwargs(kwargs)
 
     def get_update_interval(self) -> int:
         return self.update_interval

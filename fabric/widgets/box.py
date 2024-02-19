@@ -91,7 +91,7 @@ class Box(Gtk.Box, Container):
             self,
             spacing=spacing,
             orientation=orientation,
-            **kwargs,
+            **(self.do_get_filtered_kwargs(kwargs)),
         )
         Container.__init__(
             self,
@@ -111,3 +111,4 @@ class Box(Gtk.Box, Container):
             name,
             size,
         )
+        self.do_connect_signals_for_kwargs(kwargs)

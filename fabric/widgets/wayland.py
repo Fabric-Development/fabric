@@ -44,7 +44,7 @@ class Window(Window):
         name: str | None = None,
         default_size: tuple[int, int] | None = None,
         ignore_empty_check: bool = False,
-        **kwarg,
+        **kwargs,
     ):
         """
         :param layer: the window layer, defaults to "background"
@@ -114,7 +114,7 @@ class Window(Window):
             v_expand,
             name,
             default_size,
-            **kwarg,
+            **(self.do_get_filtered_kwargs(kwargs)),
         )
         self.ignore_empty_check = ignore_empty_check
         GtkLayerShell.init_for_window(self)
@@ -136,6 +136,7 @@ class Window(Window):
         self.set_anchor(anchor)
         self.set_margin(margin)
         self.show_all() if all_visible else self.show() if visible else None
+        self.do_connect_signals_for_kwargs(kwargs)
 
     def show(self):
         # this is a top level window

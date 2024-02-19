@@ -1,6 +1,7 @@
 import gi
-from typing import Literal
-from fabric.utils import compile_css
+from typing import Literal, Any
+from fabric.service import *
+from fabric.utils import compile_css, get_signal_names_from_kwargs
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk
@@ -12,7 +13,7 @@ logging.captureWarnings(True)
 logging.getLogger("gi.overrides").setLevel(logging.ERROR)
 
 
-class Widget(Gtk.Widget):
+class Widget(Gtk.Widget, Service):
     """the base widget, all other widgets should inherit from this class"""
 
     def __init__(
@@ -67,7 +68,9 @@ class Widget(Gtk.Widget):
         :param size: the size of the widget, defaults to None
         :type size: tuple[int] | None, optional
         """
-        super().__init__(**kwargs)
+        super().__init__(
+            **(self.do_get_filtered_kwargs(kwargs)),
+        )
         super().show_all() if all_visible is True else super().show() if visible is True else None
         self.style_provider: Gtk.CssProvider = None
         size = (size, size) if isinstance(size, int) is True else size
@@ -104,6 +107,7 @@ class Widget(Gtk.Widget):
         self.set_style(
             style, style_compiled, style_append, style_add_brackets
         ) if style is not None else None
+        self.do_connect_signals_for_kwargs(kwargs)
 
     def set_style(
         self,
@@ -209,3 +213,13 @@ class Widget(Gtk.Widget):
         if event:
             x, y = event.get_coords()
         return 0 < x < allocation.width and 0 < y < allocation.height
+
+    def do_get_filtered_kwargs(self, kwargs: dict[str, Any]) -> dict[str, Any]:
+        return dict(
+            filter(lambda x: x[0].lower().startswith("on_") is not True, kwargs.items())
+        )
+
+    def do_connect_signals_for_kwargs(self, kwargs: dict[str, Any]) -> None:
+        for signal in get_signal_names_from_kwargs(kwargs):
+            self.connect(signal[0], signal[1])
+        return

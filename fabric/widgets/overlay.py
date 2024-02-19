@@ -67,12 +67,8 @@ class Overlay(Gtk.Overlay, Container):
         """
         Gtk.Overlay.__init__(
             self,
-            **kwargs,
+            **(self.do_get_filtered_kwargs(kwargs)),
         )
-        self._overlays = []
-        self._child = children if children is not None else None
-        self.add(self._child) if self._child is not None else None
-        self.add_overlays(overlays) if overlays is not None else None
         Container.__init__(
             self,
             None,
@@ -91,6 +87,11 @@ class Overlay(Gtk.Overlay, Container):
             name,
             size,
         )
+        self._overlays = []
+        self._child = children if children is not None else None
+        self.add(self._child) if self._child is not None else None
+        self.add_overlays(overlays) if overlays is not None else None
+        self.do_connect_signals_for_kwargs(kwargs)
 
     @property
     def children(self) -> Gtk.Widget:

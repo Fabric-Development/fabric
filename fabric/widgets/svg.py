@@ -35,7 +35,10 @@ class Svg(Gtk.DrawingArea, Widget):
         size: tuple[int] | int | None = None,
         **kwargs,
     ):
-        Gtk.DrawingArea.__init__(self, **kwargs)
+        Gtk.DrawingArea.__init__(
+            self,
+            **(self.do_get_filtered_kwargs(kwargs)),
+        )
         Widget.__init__(
             self,
             visible,
@@ -84,6 +87,7 @@ class Svg(Gtk.DrawingArea, Widget):
         self.set_style(
             style, style_compiled, style_append, style_add_brackets
         ) if style is not None else None
+        self.do_connect_signals_for_kwargs(kwargs)
         self.connect("draw", self.draw)
 
     def set_style(

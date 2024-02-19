@@ -97,7 +97,27 @@ class CircularProgressBar(Gtk.DrawingArea, Widget):
         :param size: the size of the widget, defaults to None
         :type size: tuple[int] | None, optional
         """
-        Gtk.DrawingArea.__init__(self, **kwargs)
+        Gtk.DrawingArea.__init__(
+            self,
+            **(self.do_get_filtered_kwargs(kwargs)),
+        )
+        Widget.__init__(
+            self,
+            visible,
+            all_visible,
+            style,
+            style_compiled,
+            style_append,
+            style_add_brackets,
+            tooltip_text,
+            tooltip_markup,
+            h_align,
+            v_align,
+            h_expand,
+            v_expand,
+            name,
+            size,
+        )
         if (
             percentage < 0
             or percentage > 100
@@ -132,23 +152,7 @@ class CircularProgressBar(Gtk.DrawingArea, Widget):
             if size is not None
             else (self.get_allocation().width, self.get_allocation().height)
         )
-        Widget.__init__(
-            self,
-            visible,
-            all_visible,
-            style,
-            style_compiled,
-            style_append,
-            style_add_brackets,
-            tooltip_text,
-            tooltip_markup,
-            h_align,
-            v_align,
-            h_expand,
-            v_expand,
-            name,
-            size,
-        )
+        self.do_connect_signals_for_kwargs(kwargs)
 
     @property
     def percentage(self) -> int:

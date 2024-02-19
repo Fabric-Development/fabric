@@ -62,8 +62,10 @@ class Container(Gtk.Container, Widget):
         :param size: the size of the widget, defaults to None
         :type size: tuple[int] | None, optional
         """
-        Gtk.Container.__init__(self, **kwargs)
-        self.set_children(children) if children is not None else None
+        Gtk.Container.__init__(
+            self,
+            **(self.do_get_filtered_kwargs(kwargs)),
+        )
         Widget.__init__(
             self,
             visible,
@@ -81,6 +83,8 @@ class Container(Gtk.Container, Widget):
             name,
             size,
         )
+        self.set_children(children) if children is not None else None
+        self.do_connect_signals_for_kwargs(kwargs)
 
     def add_children(self, children: Gtk.Widget | list[Gtk.Widget]):
         if isinstance(children, Gtk.Widget):

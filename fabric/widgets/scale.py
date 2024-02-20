@@ -80,20 +80,22 @@ class Scale(Gtk.Scale, Widget):
         **kwargs,
     ):
         """
+        :param value: the current value of the scale, defaults to 0
+        :type value: float | int, optional
         :param min_value: the minimum value of the scale, defaults to 0
-        :type min_value: int, optional
-        :param max_value: the maximum value of the scale, defaults to 1
-        :type max_value: int, optional
-        :param step: the step increment (tick size) used with keyboard shortcuts, defaults to 0.01
-        :type step: float, optional
-        :param marks: value at which marks will be placed, must be between min_value and max_value, defaults to None
-        :type marks: int | None, optional
-        :param marks_text: the text to be shown at the mark defaults to empty string
-        :type marks_text: str, optional
-        :param digits: the number of decimal places to display, defaults to None
-        :type digits: int | None, optional
+        :type min_value: float | int, optional
+        :param max_value: the maximum value of the scale, defaults to 100
+        :type max_value: float | int, optional
+        :param increments: the increments of the scale, you can use a tuple or list (step, page) or ScaleIncrements, or a float or int to set both the step and page with the same value, defaults to None
+        :type increments: ScaleIncrements | tuple[float | int, float | int] | list[float | int, float | int] | float | int | None, optional
+        :param marks: the mark(s) added to the scale, this can be a `list` of `tuple`s / `list`s (value, text) or a `list` of `ScaleMark` if it was a `list` of `tuple`s / `list`s the `marks_text` will be ignored, also this can be a `list` of `float` / `int`, if it was a `list` of `float` / `int` `marks_text` to add will be used to get the text if it was a `list` with the same length as `marks` or if it was a single `str`, if `marks_text` was `None` then no text will be added, defaults to None
+        :type marks: float | int | list[float | int | ScaleMark | list[float, str | None] | tuple[float, str | None]] | None, optional
+        :param marks_text: the text added to the marks, defaults to None
+        :type marks_text: str | list[str | None] | None, optional
         :param draw_value: whether to draw the current value, defaults to False
         :type draw_value: bool, optional
+        :param digits: the number of decimal places to display on the drawn value (if `draw_value` is True), defaults to None
+        :type digits: int | None, optional
         :param value_position: sets the position for where the value should be displayed, defaults to None
         :type value_position: Literal["bottom", "left", "right", "top"] | Gtk.PositionType | None, optional
         :param mark_position: sets the position of where to draw the marks, defaults to None

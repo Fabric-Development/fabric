@@ -8,21 +8,21 @@ from gi.repository import Gtk
 class Scale(Gtk.Scale, Widget):
     def __init__(
         self,
-        min: int  = 0,
-        max: int  = 1,
+        min_value: int  = 0,
+        max_value: int  = 1,
         step: float = 0.01,
         marks: int | None = None,
-        mark_text: str = "",
+        marks_text: str = "",
         digits: int | None = None,
         draw_value: bool = False,
-        value_pos: Literal[
+        value_position: Literal[
             "bottom",
             "left",
             "right",
             "top",
         ]
         | Gtk.PositionType = None,
-        mark_pos: Literal [
+        mark_position: Literal [
             "bottom",
             "left",
             "right",
@@ -58,24 +58,24 @@ class Scale(Gtk.Scale, Widget):
         **kwargs,
     ):
         """
-        :param min: the minimum value of the scale, defaults to 0
-        :type min: int, optional
-        :param max: the maximum value of the scale, defaults to 1
-        :type max: int, optional
+        :param min_value: the minimum value of the scale, defaults to 0
+        :type min_value: int, optional
+        :param max_value: the maximum value of the scale, defaults to 1
+        :type max_value: int, optional
         :param step: the step increment (tick size) used with keyboard shortcuts, defaults to 0.01
         :type step: float, optional
-        :param marks: value at which marks will be placed, must be between min and max, defaults to None
+        :param marks: value at which marks will be placed, must be between min_value and max_value, defaults to None
         :type marks: int | None, optional
-        :param mark_text: the text to be shown at the mark defaults to empty string
-        :type mark_text: str, optional
+        :param marks_text: the text to be shown at the mark defaults to empty string
+        :type marks_text: str, optional
         :param digits: the number of decimal places to display, defaults to None
         :type digits: int | None, optional
         :param draw_value: whether to draw the current value, defaults to False
         :type draw_value: bool, optional
-        :param value_pos: sets the position for where the value should be displayed, defaults to None
-        :type value_pos: Literal["bottom", "left", "right", "top"] | Gtk.PositionType | None, optional
-        :param mark_pos: sets the position of where to draw the marks, defaults to None
-        :type mark_pos: Literal["bottom", "left", "right", "top"] | Gtk.PositionType | None, optional
+        :param value_position: sets the position for where the value should be displayed, defaults to None
+        :type value_position: Literal["bottom", "left", "right", "top"] | Gtk.PositionType | None, optional
+        :param mark_position: sets the position of where to draw the marks, defaults to None
+        :type mark_position: Literal["bottom", "left", "right", "top"] | Gtk.PositionType | None, optional
         :param has_origin: whether the scale should have an origin, defaults to True
         :type has_origin: bool, optional
         :param orientation: the orientation of the scale, defaults to None
@@ -119,38 +119,38 @@ class Scale(Gtk.Scale, Widget):
                 "v": Gtk.Orientation.VERTICAL,
             }.get(orientation, Gtk.Orientation.HORIZONTAL)
         )
-        _value_pos = (
-            value_pos
+        _value_position = (
+            value_position
             if isinstance(orientation, Gtk.PositionType)
             else {
                 "bottom": Gtk.PositionType.BOTTOM,
                 "left": Gtk.PositionType.LEFT,
                 "right": Gtk.PositionType.RIGHT,
                 "top": Gtk.PositionType.TOP,
-            }.get(value_pos, Gtk.PositionType.BOTTOM)
+            }.get(value_position, Gtk.PositionType.BOTTOM)
         )
-        _mark_pos = (
-            mark_pos
+        _mark_position = (
+            mark_position
             if isinstance(orientation, Gtk.PositionType)
             else {
                 "bottom": Gtk.PositionType.BOTTOM,
                 "left": Gtk.PositionType.LEFT,
                 "right": Gtk.PositionType.RIGHT,
                 "top": Gtk.PositionType.TOP,
-            }.get(mark_pos, Gtk.PositionType.BOTTOM)
+            }.get(mark_position, Gtk.PositionType.BOTTOM)
         )
         Gtk.Scale.__init__(
             self,
-            value_pos=_value_pos,
+            value_position=_value_position,
             orientation=_orientation,
             **kwargs,
         )
         super().set_digits(digits) if digits is not None else None
         super().set_draw_value(draw_value) if draw_value is not None else None
         super().set_has_origin(has_origin) if has_origin is not None else None
-        super().set_range(min, max) if min is not None and max is not None else None
-        super().set_increments(step,step) if step is not None else None
-        super().add_mark(marks,_mark_pos,mark_text) if marks is not None else None
+        super().set_range(min_value, max_value) if min_value is not None and max_value is not None else None
+        super().set_increments(step, step) if step is not None else None
+        super().add_mark(marks, _mark_position, marks_text) if marks is not None else None
         
 
         Widget.__init__(

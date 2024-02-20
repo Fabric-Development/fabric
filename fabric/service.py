@@ -246,13 +246,16 @@ class Service(GObject.Object):
         return conn
 
     def __del__(self):
-        for signal in self._registered_signals:
+        try:
+            for signal in self._registered_signals:
+                try:
+                    signal.disconnect()
+                except:
+                    pass
             try:
-                signal.disconnect()
+                self.unref()
             except:
                 pass
-        try:
-            self.unref()
         except:
             pass
         return

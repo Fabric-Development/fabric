@@ -1,20 +1,42 @@
 import gi
-from typing import Literal
+from typing import Literal, NamedTuple
 from fabric.widgets.widget import Widget
 
-gi.require_version("Gtk","3.0")
+gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
+
+
+class ScaleMark(NamedTuple):
+    value: float | int
+    text: str | None = None
+
+
+class ScaleIncrements(NamedTuple):
+    step: float | int = 0.01
+    page: float | int = 0.01
+
 
 class Scale(Gtk.Scale, Widget):
     def __init__(
         self,
-        min_value: int  = 0,
-        max_value: int  = 1,
-        step: float = 0.01,
-        marks: int | None = None,
-        marks_text: str = "",
-        digits: int | None = None,
+        value: float | int = 0,
+        min_value: float | int = 0,
+        max_value: float | int = 100,
+        increments: ScaleIncrements
+        | tuple[float | int, float | int]
+        | list[float | int, float | int]
+        | float
+        | int
+        | None = None,
+        marks: float
+        | int
+        | list[
+            float | int | ScaleMark | list[float, str | None] | tuple[float, str | None]
+        ]
+        | None = None,
+        marks_text: str | list[str | None] | None = None,
         draw_value: bool = False,
+        digits: int | None = None,
         value_position: Literal[
             "bottom",
             "left",
@@ -22,12 +44,12 @@ class Scale(Gtk.Scale, Widget):
             "top",
         ]
         | Gtk.PositionType = None,
-        mark_position: Literal [
+        mark_position: Literal[
             "bottom",
             "left",
             "right",
-            "top",            
-        ] 
+            "top",
+        ]
         | Gtk.PositionType = None,
         has_origin: bool = True,
         orientation: Literal[
@@ -141,18 +163,10 @@ class Scale(Gtk.Scale, Widget):
         )
         Gtk.Scale.__init__(
             self,
-            value_position=_value_position,
+            value_pos=_value_position,
             orientation=_orientation,
-            **kwargs,
+            **(self.do_get_filtered_kwargs(kwargs)),
         )
-        super().set_digits(digits) if digits is not None else None
-        super().set_draw_value(draw_value) if draw_value is not None else None
-        super().set_has_origin(has_origin) if has_origin is not None else None
-        super().set_range(min_value, max_value) if min_value is not None and max_value is not None else None
-        super().set_increments(step, step) if step is not None else None
-        super().add_mark(marks, _mark_position, marks_text) if marks is not None else None
-        
-
         Widget.__init__(
             self,
             visible,
@@ -170,3 +184,45 @@ class Scale(Gtk.Scale, Widget):
             name,
             size,
         )
+        super().set_digits(digits) if digits is not None else None
+        super().set_draw_value(draw_value) if draw_value is not None else None
+        super().set_has_origin(has_origin) if has_origin is not None else None
+        super().set_range(
+            min_value if min_value is not None else 0,
+            max_value if max_value is not None else 100,
+        )
+        super().set_increments(
+            *(
+                increments
+                if isinstance(increments, (tuple, list)) and len(increments) == 2
+                else (increments, increments)
+                if isinstance(increments, float)
+                else (0.01, 0.01)
+            )
+        ) if increments is not None else None
+        if marks is not None:
+            if isinstance(marks, (tuple, list)) and all(
+                isinstance(mark, (tuple, list)) and len(mark) == 2 for mark in marks
+            ):
+                for mark in marks:
+                    super().add_mark(
+                        mark[0], _mark_position, mark[1]
+                    )  # all good (i guess)
+            elif (
+                isinstance(marks, (tuple, list))
+                and all(isinstance(mark, (int, float)) for mark in marks)
+                and isinstance(marks_text, (tuple, list)) is True
+                and len(marks) == len(marks_text)
+            ):
+                for mark, mark_text in zip(marks, marks_text):
+                    super().add_mark(mark, _mark_position, mark_text)
+            elif isinstance(marks, (tuple, list)) and all(
+                isinstance(mark, (int, float)) for mark in marks
+            ):
+                for mark in marks:
+                    super().add_mark(mark, _mark_position, marks_text)
+            elif isinstance(marks, (int, float)):
+                super().add_mark(marks, _mark_position, marks)
+
+        super().set_value(value) if value is not None else None
+        super().do_connect_signals_for_kwargs(kwargs)

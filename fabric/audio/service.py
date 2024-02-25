@@ -7,7 +7,7 @@ from fabric.utils import bulk_connect
 class CvcImportError(ImportError):
     def __init__(self, *args):
         super().__init__(
-            "Cvc is not installed, please install it first, you can use automated installer in the git repository",
+            "Cvc is not installed, please install it first, you can use automated installer in './scripts/install_libcvc/install_libcvc.sh'",
             *args,
         )
 

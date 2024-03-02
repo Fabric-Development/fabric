@@ -1,7 +1,7 @@
 import gi
 from typing import Literal, Any
 from fabric.service import *
-from fabric.utils import compile_css, get_signal_names_from_kwargs
+from fabric.utils import compile_css, get_connectable_names_from_kwargs
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk
@@ -216,10 +216,13 @@ class Widget(Gtk.Widget, Service):
 
     def do_get_filtered_kwargs(self, kwargs: dict[str, Any]) -> dict[str, Any]:
         return dict(
-            filter(lambda x: x[0].lower().startswith("on_") is not True, kwargs.items())
+            filter(
+                lambda x: x[0].lower().startswith(("on_", "notify_")) is not True,
+                kwargs.items(),
+            )
         )
 
     def do_connect_signals_for_kwargs(self, kwargs: dict[str, Any]) -> None:
-        for signal in get_signal_names_from_kwargs(kwargs):
+        for signal in get_connectable_names_from_kwargs(kwargs):
             self.connect(signal[0], signal[1])
         return

@@ -423,7 +423,10 @@ def snake_case_to_kebab_case(string: str) -> str:
     return string.replace("_", "-").lower()
 
 
-def get_signal_names_from_kwargs(kwargs) -> Generator:
+def get_connectable_names_from_kwargs(kwargs: dict[str, Callable]) -> Generator:
     for key, value in zip(kwargs.keys(), kwargs.values()):
         if key.startswith("on_"):
             yield [snake_case_to_kebab_case(key[3:]), value]
+        elif key.startswith("notify_"):
+            # yield a connectable property
+            yield [f"notify::{snake_case_to_kebab_case(key[7:])}", value]

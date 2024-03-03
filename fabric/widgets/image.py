@@ -31,7 +31,7 @@ class Image(Gtk.Image, Widget):
         h_expand: bool = False,
         v_expand: bool = False,
         name: str | None = None,
-        size: tuple[int] | None = None,
+        size: tuple[int] | int | None = None,
         **kwargs,
     ):
         """
@@ -72,7 +72,7 @@ class Image(Gtk.Image, Widget):
         :param name: the name of the widget it can be used to style the widget, defaults to None
         :type name: str | None, optional
         :param size: the size of the widget, defaults to None
-        :type size: tuple[int] | None, optional
+        :type size: tuple[int] | int | None, optional
         """
         Gtk.Image.__init__(
             self,

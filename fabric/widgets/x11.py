@@ -74,7 +74,7 @@ class Window(Window):
         h_expand: bool = False,
         v_expand: bool = False,
         name: str | None = None,
-        default_size: tuple[int] | None = None,
+        default_size: tuple[int] | int | None = None,
         ignore_empty_check: bool = False,
         **kwargs,
     ):
@@ -129,7 +129,7 @@ class Window(Window):
         :param name: the name of the widget it can be used to style the widget, defaults to None
         :type name: str | None, optional
         :param default_size: the default size of the window, defaults to None
-        :type default_size: tuple[int] | None, optional
+        :type default_size: tuple[int] | int | None, optional
         """
         # TODO: reflect the changes on the docstring
         # FIXME: improve me

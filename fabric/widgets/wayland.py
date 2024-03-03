@@ -90,7 +90,7 @@ class Window(Window):
         :param name: the name of the widget it can be used to style the widget, defaults to None
         :type name: str | None, optional
         :param size: the size of the widget, defaults to None
-        :type size: tuple[int] | None, optional
+        :type size: tuple[int] | int | None, optional
         :param default_size: the default size of the window, defaults to None
         :type default_size: tuple[int, int] | None, optional
         :param ignore_empty_check: whether to disable the checks on this window if it was empty or not before showing it (because this freaks up some compositors) or not, defaults to False

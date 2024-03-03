@@ -1,7 +1,7 @@
 import gi
-from typing import Literal, Any
+from typing import Literal
 from fabric.service import *
-from fabric.utils import compile_css, get_connectable_names_from_kwargs
+from fabric.utils import compile_css
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk
@@ -35,7 +35,7 @@ class Widget(Gtk.Widget, Service):
         h_expand: bool = False,
         v_expand: bool = False,
         name: str | None = None,
-        size: tuple[int] | None = None,
+        size: tuple[int] | int | None = None,
         **kwargs,
     ):
         """
@@ -66,14 +66,14 @@ class Widget(Gtk.Widget, Service):
         :param name: the name of the widget it can be used to style the widget, defaults to None
         :type name: str | None, optional
         :param size: the size of the widget, defaults to None
-        :type size: tuple[int] | None, optional
+        :type size: tuple[int] | int | None, optional
         """
         super().__init__(
             **(self.do_get_filtered_kwargs(kwargs)),
         )
+        self.style_provider: Gtk.CssProvider | None = None
+        self._cursor: Gdk.Cursor | Gdk.CursorType | str | None = None
         super().show_all() if all_visible is True else super().show() if visible is True else None
-        self.style_provider: Gtk.CssProvider = None
-        size = (size, size) if isinstance(size, int) is True else size
         super().set_name(name) if name is not None else None
         super().set_tooltip_text(tooltip_text) if tooltip_text is not None else None
         super().set_tooltip_markup(
@@ -87,6 +87,10 @@ class Widget(Gtk.Widget, Service):
                 "center": Gtk.Align.CENTER,
                 "baseline": Gtk.Align.BASELINE,
             }.get(h_align.lower(), Gtk.Align.START)
+            if isinstance(h_align, str)
+            else h_align
+            if isinstance(h_align, Gtk.Align)
+            else Gtk.Align.START
         ) if h_align is not None else None
         super().set_valign(
             {
@@ -96,6 +100,10 @@ class Widget(Gtk.Widget, Service):
                 "center": Gtk.Align.CENTER,
                 "baseline": Gtk.Align.BASELINE,
             }.get(v_align.lower(), Gtk.Align.START)
+            if isinstance(v_align, str)
+            else v_align
+            if isinstance(v_align, Gtk.Align)
+            else Gtk.Align.START
         ) if v_align is not None else None
         super().set_hexpand(
             True if h_expand is True else False
@@ -103,7 +111,9 @@ class Widget(Gtk.Widget, Service):
         super().set_vexpand(
             True if v_expand is True else False
         ) if v_expand is not None else None
-        super().set_size_request(*size) if size is not None else None
+        super().set_size_request(
+            *((size, size) if isinstance(size, int) is True else size)
+        ) if size is not None else None
         self.set_style(
             style, style_compiled, style_append, style_add_brackets
         ) if style is not None else None
@@ -139,7 +149,7 @@ class Widget(Gtk.Widget, Service):
         ) if self.style_provider is not None and append is False else None
 
         self.style_provider = Gtk.CssProvider()
-        self.style_provider.load_from_data(style.encode())
+        self.style_provider.load_from_data(style.encode())  # type: ignore
         self.get_style_context().add_provider(
             self.style_provider, Gtk.STYLE_PROVIDER_PRIORITY_USER
         )
@@ -153,6 +163,98 @@ class Widget(Gtk.Widget, Service):
             self.get_style_context().remove_class(cls)
         for cls in classes:
             self.get_style_context().add_class(cls)
+        return
+
+    @Property(value_type=object, flags="read-write")
+    def cursor(
+        self
+    ) -> (
+        Literal[
+            "default",
+            "help",
+            "pointer",
+            "context-menu",
+            "progress",
+            "wait",
+            "cell",
+            "crosshair",
+            "text",
+            "vertical-text",
+            "alias",
+            "copy",
+            "no-drop",
+            "move",
+            "not-allowed",
+            "grab",
+            "grabbing",
+            "all-scroll",
+            "col-resize",
+            "row-resize",
+            "n-resize",
+            "e-resize",
+            "s-resize",
+            "w-resize",
+            "ne-resize",
+            "nw-resize",
+            "sw-resize",
+            "se-resize",
+            "ew-resize",
+            "ns-resize",
+            "nesw-resize",
+            "nwse-resize",
+            "zoom-in",
+            "zoom-out",
+        ]
+        | Gdk.Cursor
+        | Gdk.CursorType
+        | None
+    ):
+        return self._cursor
+
+    @cursor.setter
+    def cursor(
+        self,
+        cursor: Literal[
+            "default",
+            "help",
+            "pointer",
+            "context-menu",
+            "progress",
+            "wait",
+            "cell",
+            "crosshair",
+            "text",
+            "vertical-text",
+            "alias",
+            "copy",
+            "no-drop",
+            "move",
+            "not-allowed",
+            "grab",
+            "grabbing",
+            "all-scroll",
+            "col-resize",
+            "row-resize",
+            "n-resize",
+            "e-resize",
+            "s-resize",
+            "w-resize",
+            "ne-resize",
+            "nw-resize",
+            "sw-resize",
+            "se-resize",
+            "ew-resize",
+            "ns-resize",
+            "nesw-resize",
+            "nwse-resize",
+            "zoom-in",
+            "zoom-out",
+        ]
+        | Gdk.Cursor
+        | Gdk.CursorType
+        | None,
+    ) -> None:
+        self.change_cursor(cursor)
         return
 
     def change_cursor(
@@ -197,12 +299,24 @@ class Widget(Gtk.Widget, Service):
         | Gdk.CursorType
         | None = None,
     ) -> bool | None:
+        self._cursor = cursor
         display = Gdk.Display.get_default()
         window = self.get_window()
         if display is None or window is None:
-            return False
+            raise RuntimeError(
+                f"can't set new cursor, one of display or window is None ({display}, {window})"
+            )
+        cursor: Gdk.Cursor = (
+            Gdk.Cursor.new_from_name(display, cursor)
+            if isinstance(cursor, str)
+            else cursor
+            if isinstance(cursor, Gdk.Cursor)
+            else Gdk.Cursor.new_for_display(display, cursor)
+            if isinstance(cursor, Gdk.CursorType)
+            else Gdk.Cursor.new_from_name(display, "default")
+        )
         return (
-            window.set_cursor(Gdk.Cursor.new_from_name(display, cursor))
+            window.set_cursor(cursor)
             if self.is_hovered()
             else window.set_cursor(Gdk.Cursor.new_from_name(display, "default"))
         )
@@ -213,16 +327,3 @@ class Widget(Gtk.Widget, Service):
         if event:
             x, y = event.get_coords()
         return 0 < x < allocation.width and 0 < y < allocation.height
-
-    def do_get_filtered_kwargs(self, kwargs: dict[str, Any]) -> dict[str, Any]:
-        return dict(
-            filter(
-                lambda x: x[0].lower().startswith(("on_", "notify_")) is not True,
-                kwargs.items(),
-            )
-        )
-
-    def do_connect_signals_for_kwargs(self, kwargs: dict[str, Any]) -> None:
-        for signal in get_connectable_names_from_kwargs(kwargs):
-            self.connect(signal[0], signal[1])
-        return

@@ -32,7 +32,7 @@ class Window(Gtk.Window, Widget):
         h_expand: bool = False,
         v_expand: bool = False,
         name: str | None = None,
-        default_size: tuple[int, int] | None = None,
+        default_size: tuple[int] | int | None = None,
         **kwargs,
     ):
         """
@@ -68,37 +68,34 @@ class Window(Gtk.Window, Widget):
         :type v_expand: bool, optional
         :param name: the name of the widget it can be used to style the widget, defaults to None
         :type name: str | None, optional
-        :param size: the size of the widget, defaults to None
-        :type size: tuple[int] | None, optional
         :param default_size: the default size of the window, defaults to None
-        :type default_size: tuple[int, int] | None, optional
+        :type default_size: tuple[int] | int | None, optional
         """
-        type = (
-            type
-            if isinstance(type, (Gtk.WindowType, int))
-            else Gtk.WindowType.POPUP
-            if type == "popup"
-            else Gtk.WindowType.TOPLEVEL
-        )
         Gtk.Window.__init__(
             self,
-            type=type,
+            type=(
+                type
+                if isinstance(type, (Gtk.WindowType, int))
+                else Gtk.WindowType.POPUP
+                if type == "popup"
+                else Gtk.WindowType.TOPLEVEL
+            ),
             **(self.do_get_filtered_kwargs(kwargs)),
         )
         self.set_title(title) if title is not None else None
-        (
-            self.add(children)
-            if children is not None and not isinstance(children, list)
-            else (
-                logger.warning(
-                    "Window widget accepts a single child widget only. using the first widget in the passed list."
-                ),
-                self.add(children[0]),
+
+        if isinstance(children, list) is True:
+            raise ValueError("window children must be a single widget")
+        if isinstance(children, Gtk.Widget) is True:
+            self.add(children)  # type: ignore
+
+        self.set_default_size(
+            *(
+                (default_size, default_size)
+                if isinstance(default_size, int) is True
+                else default_size
             )
-            if children is not None and isinstance(children, list)
-            else None,
-        )
-        self.set_default_size(*default_size) if default_size is not None else None
+        ) if default_size is not None else None
         Widget.__init__(
             self,
             visible,

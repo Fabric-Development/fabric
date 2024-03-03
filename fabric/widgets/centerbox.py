@@ -44,7 +44,7 @@ class CenterBox(Box):
         h_expand: bool = False,
         v_expand: bool = False,
         name: str | None = None,
-        size: tuple[int] | None = None,
+        size: tuple[int] | int | None = None,
         **kwargs,
     ):
         _orientation = (

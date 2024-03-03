@@ -52,31 +52,31 @@ class AudioStream(Service):
         self._old_vol = 0
         super().__init__(**kwargs)
 
-    @Property(value_type=str, flags="read")
+    @Property(value_type=str, flags="readable")
     def icon_name(self) -> str:
         return self._stream.props.icon_name
 
-    @Property(value_type=str, flags="read")
+    @Property(value_type=str, flags="readable")
     def name(self) -> str:
         return self._stream.props.name
 
-    @Property(value_type=int, flags="read")
+    @Property(value_type=int, flags="readable")
     def id(self) -> int:
         return self._stream.props.id
 
-    @Property(value_type=str, flags="read")
+    @Property(value_type=str, flags="readable")
     def icon(self) -> str:
         return self._stream.props.icon_name
 
-    @Property(value_type=str, flags="read")
+    @Property(value_type=str, flags="readable")
     def description(self) -> str:
         return self._stream.props.description
 
-    @Property(value_type=str, flags="read")
+    @Property(value_type=str, flags="readable")
     def application_id(self) -> str:
         return self._stream.props.application_id
 
-    @Property(value_type=str, flags="read")
+    @Property(value_type=str, flags="readable")
     def state(self) -> str:
         return {
             Cvc.MixerStreamState.INVALID: "invalid",
@@ -85,7 +85,7 @@ class AudioStream(Service):
             Cvc.MixerStreamState.SUSPENDED: "suspended",
         }.get(self._stream.props.state, "unknown")
 
-    @Property(value_type=str, flags="read")
+    @Property(value_type=str, flags="readable")
     def control_state(self) -> str:
         return {
             Cvc.MixerControlState.CLOSED: "closed",
@@ -94,7 +94,7 @@ class AudioStream(Service):
             Cvc.MixerControlState.FAILED: "failed",
         }.get(self._control.props.state, "unknown")
 
-    @Property(value_type=object, flags="read")
+    @Property(value_type=object, flags="readable")
     def stream(self) -> Cvc.MixerStream:
         return self._stream
 
@@ -182,27 +182,27 @@ class Audio(Service):
         self._control.open()
         super().__init__(**kwargs)
 
-    @Property(value_type=object, flags="read")
+    @Property(value_type=object, flags="readable")
     def speaker(self) -> AudioStream:
         return self._speaker
 
-    @Property(value_type=object, flags="read")
+    @Property(value_type=object, flags="readable")
     def speakers(self) -> list[AudioStream]:
         return self.get_streams(Cvc.MixerSink)
 
-    @Property(value_type=object, flags="read")
+    @Property(value_type=object, flags="readable")
     def microphone(self) -> AudioStream:
         return self._microphone
 
-    @Property(value_type=object, flags="read")
+    @Property(value_type=object, flags="readable")
     def microphones(self) -> list[AudioStream]:
         return self.get_streams(Cvc.MixerSource)
 
-    @Property(value_type=object, flags="read")
+    @Property(value_type=object, flags="readable")
     def applications(self) -> list[AudioStream]:
         return self.get_streams(Cvc.MixerSinkInput)
 
-    @Property(value_type=object, flags="read")
+    @Property(value_type=object, flags="readable")
     def recorders(self) -> list[AudioStream]:
         return self.get_streams(Cvc.MixerSourceOutput)
 

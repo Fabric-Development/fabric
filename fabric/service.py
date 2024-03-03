@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from fabric.utils import get_connectable_names_from_kwargs
-from typing import Literal, Type, Callable
+from typing import Literal, Type, Callable, Any
 from gi.repository import GObject
 from gi._propertyhelper import Property
 
@@ -107,7 +107,7 @@ class Signal:
         "accumulator-first-run",
     ] | GObject.SignalFlags = "run-first"
     rtype: Type | object = None
-    args: tuple[Type | object] = ()
+    args: tuple[Type | object] | tuple = ()
 
 
 class SignalContainer(dict):
@@ -118,7 +118,7 @@ class SignalContainer(dict):
     it can probably be used with __gsignals__
     """
 
-    def __init__(self, *args: list[Signal]):
+    def __init__(self, *args: Signal):
         _signals = {}
         for sig in args:
             sig: Signal
@@ -138,7 +138,8 @@ class SignalContainer(dict):
                         "deprecated": GObject.SignalFlags.DEPRECATED,
                         "accumulator-first-run": GObject.SignalFlags.ACCUMULATOR_FIRST_RUN,
                     }.get(
-                        sig.flags, GObject.SignalFlags.RUN_FIRST
+                        sig.flags,  # type: ignore
+                        GObject.SignalFlags.RUN_FIRST,
                     ),  # no inline switch? (FIXME: use getattr)
                     sig.rtype,
                     sig.args,
@@ -157,7 +158,7 @@ class SignalConnection:
     id: int
     name: str
     callback: Callable
-    owner: GObject.Object
+    owner: "Service"
 
     def disconnect(self):
         """disconnects the signal"""
@@ -168,14 +169,24 @@ class Service(GObject.Object):
     __gsignals__ = {}
 
     def __init__(self, **kwargs):
-        super().__init__()
+        super().__init__(**(self.do_get_filtered_kwargs(kwargs)))
+        self._registered_signals: list[SignalConnection] = []
+        self.do_connect_signals_for_kwargs(kwargs)
+
+    def do_get_filtered_kwargs(self, kwargs: dict[str, Any]) -> dict[str, Any]:
+        return dict(
+            filter(
+                lambda x: x[0].lower().startswith(("on_", "notify_")) is not True,
+                kwargs.items(),
+            )
+        )
+
+    def do_connect_signals_for_kwargs(self, kwargs: dict[str, Any]) -> None:
         for signal in get_connectable_names_from_kwargs(kwargs):
             self.connect(signal[0], signal[1])
-        self._registered_signals: list[SignalConnection] = []
+        return
 
-    def disconnect(
-        self, reference: SignalConnection | Callable | str | int
-    ) -> list[int]:
+    def disconnect(self, reference: SignalConnection | Callable | str | int) -> None:
         """
         disconnects a signal
         by passing the `SignalConnection` to `reference` the callback function will gets disconnected.
@@ -189,7 +200,6 @@ class Service(GObject.Object):
         :type reference: SignalConnection | Callable | str | int
         :raises ReferenceError: if no matches for the passed reference
         :return: a list of results of the disconnect function for everything have something to do with passed reference
-        :rtype: list[int]
         """
         signal_objects = []
         if isinstance(reference, SignalConnection):

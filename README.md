@@ -24,7 +24,7 @@ Fabric Wiki: https://fabric-development.github.io/fabric-wiki/
 3. Code  auto-completions ready!, see the stubs guide for more info: TBD
 5. Less resource usage
 
-	since everything can be written within the widget code this will no longer require you using external scripts, this will decreasethis widget resource usage
+	since everything can be written within the widget code this will no longer require you using external scripts, this will decrease the widget resource usage
 
 ---
 ## Showcase Section

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from fabric.utils import get_connectable_names_from_kwargs
-from typing import Literal, Type, Callable, Any
+from typing import Literal, Type, Callable, Union, Any
 from gi.repository import GObject
 from gi._propertyhelper import Property
 
@@ -182,8 +182,95 @@ class Service(GObject.Object):
         )
 
     def do_connect_signals_for_kwargs(self, kwargs: dict[str, Any]) -> None:
-        for signal in get_connectable_names_from_kwargs(kwargs):
-            self.connect(signal[0], signal[1])
+        for connectable in get_connectable_names_from_kwargs(kwargs):
+            self.connect(connectable[0], connectable[1])
+        return
+
+    def bind(
+        self,
+        first_property: str,
+        second_property: str,
+        second_property_owner: Union["Service", GObject.Object],
+        middleware: Callable | None = None,
+        direction: Literal["to", "from", "both"] | GObject.BindingFlags = "from",
+    ) -> None:
+        """
+        bind a property to another property of another Service/GObject
+        you can use middleware to modify the value before it is set using a function
+        direction can go from/to or both ways (from is default)
+
+        NOTE: the two properties must be of the same type, otherwise it will not work
+        NOTE: if the target property is read-only (not writable) it will not work
+
+        :param first_property: the name of the property (from this Service)
+        :type first_property: str
+        :param second_property: the name of the property (from the target Service/GObject)
+        :type second_property: str
+        :param second_property_owner: the target Service/GObject
+        :type second_property_owner: Service | GObject.Object
+        :param middleware: a function that will receive the raw data and return the modified value to be set to the target property, defaults to None
+        :type middleware: Callable | None, optional
+        :param direction: the direction of the binding, defaults to "from"
+        :type direction: Literal["to", "from", "both"] | GObject.BindingFlags, optional
+        """
+        direction = (
+            direction
+            if isinstance(direction, GObject.BindingFlags)
+            else {
+                "to": GObject.BindingFlags.DEFAULT,
+                "from": GObject.BindingFlags.SYNC_CREATE,
+                "both": GObject.BindingFlags.BIDIRECTIONAL,
+            }.get(direction.lower(), GObject.BindingFlags.DEFAULT)
+            if isinstance(direction, str)
+            else GObject.BindingFlags.DEFAULT
+        )
+        middleware = middleware if callable(middleware) is True else None
+
+        def _callback(*args, **kwargs):
+            nonlocal \
+                direction, \
+                middleware, \
+                first_property, \
+                second_property, \
+                second_property_owner
+            match direction:
+                case GObject.BindingFlags.DEFAULT:
+                    second_property_owner.set_property(
+                        second_property,
+                        middleware(*args, **kwargs)
+                        if middleware is not None
+                        else self.get_property(first_property),
+                    )
+                case GObject.BindingFlags.SYNC_CREATE:
+                    self.set_property(
+                        first_property,
+                        middleware(*args, **kwargs)
+                        if middleware is not None
+                        else second_property_owner.get_property(second_property),
+                    )
+                case GObject.BindingFlags.BIDIRECTIONAL:
+                    self.set_property(
+                        first_property,
+                        middleware(*args, **kwargs)
+                        if middleware is not None
+                        else second_property_owner.get_property(second_property),
+                    )
+                    second_property_owner.set_property(
+                        second_property,
+                        middleware(*args, **kwargs)
+                        if middleware is not None
+                        else self.get_property(first_property),
+                    )
+            return
+
+        match direction:
+            case GObject.BindingFlags.DEFAULT:
+                second_property_owner.connect(f"notify::{second_property}", _callback)
+            case GObject.BindingFlags.SYNC_CREATE:
+                self.connect(f"notify::{first_property}", _callback)
+            case GObject.BindingFlags.BIDIRECTIONAL:
+                self.connect(f"notify::{first_property}", _callback)
+                second_property_owner.connect(f"notify::{second_property}", _callback)
         return
 
     def disconnect(self, reference: SignalConnection | Callable | str | int) -> None:
@@ -224,7 +311,7 @@ class Service(GObject.Object):
                     break
         if len(signal_objects) < 1:
             raise ReferenceError(
-                f"reference {reference} haven't been registered here before."
+                f"reference {reference} hasn't been registered here before."
             )
         for signal in signal_objects:
             signal: SignalConnection

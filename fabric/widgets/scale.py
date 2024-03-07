@@ -52,6 +52,7 @@ class Scale(Gtk.Scale, Widget):
         ]
         | Gtk.PositionType = None,
         has_origin: bool = True,
+        inverted: bool = False,
         orientation: Literal[
             "horizontal",
             "vertical",
@@ -102,6 +103,8 @@ class Scale(Gtk.Scale, Widget):
         :type mark_position: Literal["bottom", "left", "right", "top"] | Gtk.PositionType | None, optional
         :param has_origin: whether the scale should have an origin, defaults to True
         :type has_origin: bool, optional
+        :param inverted: whether the scale should be inverted/flipped, defaults to False
+        :type inverted: bool, optional
         :param orientation: the orientation of the scale, defaults to None
         :type orientation: Literal["horizontal", "vertical", "h", "v"] | Gtk.Orientation, optional
         :param visible: whether the widget is initially visible, defaults to True
@@ -167,6 +170,7 @@ class Scale(Gtk.Scale, Widget):
             self,
             value_pos=_value_position,
             orientation=_orientation,
+            inverted=inverted,
             **(self.do_get_filtered_kwargs(kwargs)),
         )
         Widget.__init__(

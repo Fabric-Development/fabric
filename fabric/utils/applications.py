@@ -11,6 +11,7 @@ class Application:
         self.generic_name: str | None = app.get_generic_name()
         self.display_name: str | None = app.get_display_name()
         self.description: str | None = app.get_description()
+        self.window_class: str | None = app.get_startup_wm_class()
         self.executable: str | None = app.get_executable()
         self.command_line: str | None = app.get_commandline()
         self.icon: Gio.Icon | Gio.ThemedIcon | Gio.FileIcon | Gio.LoadableIcon | Gio.EmblemedIcon | None = app.get_icon()

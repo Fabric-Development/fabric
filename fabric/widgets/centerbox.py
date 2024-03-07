@@ -81,9 +81,15 @@ class CenterBox(Box):
             orientation="v" if _orientation == Gtk.Orientation.VERTICAL else "h",
         )
 
-        self.left_widgets = Box()
-        self.center_widgets = Box()
-        self.right_widgets = Box()
+        self.left_widgets = Box(
+            orientation="v" if _orientation == Gtk.Orientation.VERTICAL else "h"
+        )
+        self.center_widgets = Box(
+            orientation="v" if _orientation == Gtk.Orientation.VERTICAL else "h"
+        )
+        self.right_widgets = Box(
+            orientation="v" if _orientation == Gtk.Orientation.VERTICAL else "h"
+        )
 
         self.add(self.widgets_container)
         self.widgets_container.pack_start(self.left_widgets, False, False, 0)

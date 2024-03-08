@@ -1,0 +1,46 @@
+
+* {
+    all: unset;
+    font-family: "roboto";
+    font-weight: 500;
+    font-size: 14px;
+    color: white;
+}
+
+#main-window {
+    border: solid 2px;
+    border-color: #51A4E7;
+    background-color: rgba(36, 36, 36, 0.8);
+    border-radius: 10px;
+}
+
+#bt-box {
+    margin: 10px;
+    min-width: 350px;
+}
+
+#bt-device-box {
+    margin-top: 2px;
+    margin-bottom: 2px;
+    padding: 10px;
+    background-color: rgba(80, 80, 80, 0.5);
+    border-radius: 10px;
+}
+
+button {
+    border-radius: 5px;
+    background-color: black;
+    padding: 5px;
+    border: solid 2px;
+    border-color: white;
+}
+
+button:hover {
+    background-color: rgb(125, 125, 125);
+
+}
+
+button:active {
+    background-color: #088EAE;
+    border-color: #088EAE;
+}

@@ -23,6 +23,7 @@ except ValueError:
 
 class BluetoothDevice(Service):
     __gsignals__ = SignalContainer(
+        Signal("connecting", "run-first", None, (bool,)),
         Signal("changed", "run-first", None, ()),  # type: ignore
         Signal("closed", "run-first", None, ()),  # type: ignore
     )
@@ -87,16 +88,6 @@ class BluetoothDevice(Service):
     def connected(self) -> bool:
         return self._device.props.connected
 
-    @Property(value_type=bool, default_value=False, flags="read-write")
-    def connecting(self) -> bool:  # type: ignore
-        return self._connecting
-
-    @connecting.setter
-    def connecting(self, value: bool):
-        self._connecting = value
-        self.notify("connecting")
-        return
-
     @Property(value_type=int, flags="readable")
     def battery_level(self) -> int:
         return self._device.props.battery_level
@@ -106,10 +97,8 @@ class BluetoothDevice(Service):
         return self._device.props.battery_percentage
 
     def set_connection(self, connect: bool):
-        self.connecting = True
-        self.connect_device(
-            connect, lambda *args: self.set_property("connecting", False)
-        )
+        self.emit("connecting", True)
+        self.connect_device(connect, lambda *args: self.emit("connecting", False))
 
     def connect_device(self, connection: bool, callback: Callable):
         def inner_callback(client: GnomeBluetooth.Client, res: Gio.AsyncResult):
@@ -118,7 +107,9 @@ class BluetoothDevice(Service):
                 logger.info(f"[Bluetooth] Connected to device {self.address}")
                 callback(finish)
             except Exception:
-                logger.warning(f"[Bluetooth] Failed to connect to device {self.address}")
+                logger.warning(
+                    f"[Bluetooth] Failed to connect to device {self.address}"
+                )
                 callback(False)
 
         self._client.connect_service(

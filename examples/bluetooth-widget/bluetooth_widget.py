@@ -21,19 +21,17 @@ class BtDeviceBox(CenterBox):
         self.connect_button.connect(
             "clicked", lambda _: self.device.set_connection(not self.device.connected)
         )
-        self.device.connect("notify::connecting", self.on_device_connecting)
+        self.device.connect("connecting", self.on_device_connecting)
         self.device.connect("notify::connected", self.on_device_connect)
 
         self.add_left(Image(icon_name=device.icon, icon_size=6))  # type: ignore
         self.add_left(Label(label=device.name))  # type: ignore
         self.add_right(self.connect_button)
 
-    def on_device_connecting(self, *args):
+    def on_device_connecting(self, device, connecting):
         self.connect_button.set_label(
             "connecting..."
-        ) if self.device.connecting else self.connect_button.set_label(
-            "failed to connect"
-        )
+        ) if connecting else self.connect_button.set_label("failed to connect")
 
     def on_device_connect(self, *args):
         self.connect_button.set_label(

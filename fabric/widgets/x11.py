@@ -56,6 +56,8 @@ class Window(Window):
         decorated: bool = False,
         children: Gtk.Widget | None = None,
         type: Literal["top-level", "popup"] | Gtk.WindowType = "top-level",
+        main_window: bool = True,
+        open_inspector: bool = False,
         visible: bool = True,
         all_visible: bool = False,
         style: str | None = None,
@@ -102,6 +104,10 @@ class Window(Window):
         :type children: Gtk.Widget | None, optional
         :param type: the type of this window, "top-level" means a normal window, defaults to "top-level"
         :type type: Literal["top-level", "popup"] | Gtk.WindowType, optional
+        :param main_window: whether this window is the main window (exit on close), defaults to True
+        :type main_window: bool, optional
+        :param open_inspector: whether to open the inspector for this window, useful for debugging, defaults to False
+        :type open_inspector: bool, optional
         :param visible: whether the widget is initially visible, defaults to True
         :type visible: bool, optional
         :param all_visible: whether all child widgets are initially visible, defaults to False
@@ -137,6 +143,8 @@ class Window(Window):
             title,
             children,
             type,
+            main_window,
+            open_inspector,
             visible,
             all_visible,
             style,

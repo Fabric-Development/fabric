@@ -88,6 +88,8 @@ class VerticalBar(Window):
             layer="top",
             anchor="left top bottom",
             margin="10px -2px 10px 10px",
+            visible=False,
+            all_visible=False,
             exclusive=True,
         )
         self.power_menu = PowerMenu()

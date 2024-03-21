@@ -82,7 +82,8 @@ class StatusBar(Window):
             anchor="left top right",
             margin="10px 10px -2px 10px",
             exclusive=True,
-            visible=True,
+            visible=False,
+            all_visible=False,
         )
         self.center_box = CenterBox(name="main-window")
         self.workspaces = Workspaces(
@@ -189,4 +190,4 @@ if __name__ == "__main__":
     # initialize style
     apply_style()
 
-    fabric.start()
+    fabric.start(open_client=False)

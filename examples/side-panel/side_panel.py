@@ -28,8 +28,8 @@ class SidePanel(Window):
             exclusive=True,
             anchor="top right",
             margin="10px 10px 10px 0px",
-            all_visible=True,
-            visible=True,
+            visible=False,
+            all_visible=False,
         )
         self.uptime_label = Label(
             label=f"{self.get_current_uptime()}",

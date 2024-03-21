@@ -73,13 +73,11 @@ class Widget(Gtk.Widget, Service):
         )
         self.style_provider: Gtk.CssProvider | None = None
         self._cursor: Gdk.Cursor | Gdk.CursorType | str | None = None
-        super().show_all() if all_visible is True else super().show() if visible is True else None
-        super().set_name(name) if name is not None else None
-        super().set_tooltip_text(tooltip_text) if tooltip_text is not None else None
-        super().set_tooltip_markup(
-            tooltip_markup
-        ) if tooltip_markup is not None else None
-        super().set_halign(
+        self.show_all() if all_visible is True else self.show() if visible is True else None
+        self.set_name(name) if name is not None else None
+        self.set_tooltip_text(tooltip_text) if tooltip_text is not None else None
+        self.set_tooltip_markup(tooltip_markup) if tooltip_markup is not None else None
+        self.set_halign(
             {
                 "fill": Gtk.Align.FILL,
                 "start": Gtk.Align.START,
@@ -92,7 +90,7 @@ class Widget(Gtk.Widget, Service):
             if isinstance(h_align, Gtk.Align)
             else Gtk.Align.START
         ) if h_align is not None else None
-        super().set_valign(
+        self.set_valign(
             {
                 "fill": Gtk.Align.FILL,
                 "start": Gtk.Align.START,
@@ -105,19 +103,18 @@ class Widget(Gtk.Widget, Service):
             if isinstance(v_align, Gtk.Align)
             else Gtk.Align.START
         ) if v_align is not None else None
-        super().set_hexpand(
+        self.set_hexpand(
             True if h_expand is True else False
         ) if h_expand is not None else None
-        super().set_vexpand(
+        self.set_vexpand(
             True if v_expand is True else False
         ) if v_expand is not None else None
-        super().set_size_request(
+        self.set_size_request(
             *((size, size) if isinstance(size, int) is True else size)
         ) if size is not None else None
         self.set_style(
             style, style_compiled, style_append, style_add_brackets
         ) if style is not None else None
-        self.do_connect_signals_for_kwargs(kwargs)
 
     def set_style(
         self,

@@ -96,9 +96,10 @@ class BluetoothWidget(Window):
         super().__init__(
             layer="top",
             anchor="top right",
-            all_visible=True,
-            exclusive=True,
             name="main-window",
+            visible=False,
+            all_visible=False,
+            exclusive=True,
         )
         self.btbox = BtConnectionsList()
         self.add(self.btbox)

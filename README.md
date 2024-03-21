@@ -32,3 +32,7 @@ these are some bars/widgets made using Fabric
 - example files
 	![config can be found under the examples/bar and examples/side-panel directory](assets/example-files-bar-showcase.png)
     ![config can be found under the examples/vertical-bar directory](assets/example-files-vertical-bar-showcase.png)
+
+---
+# Hacking and Contributing
+seek over [our wiki pages](https://fabric-development.github.io/fabric-wiki/hacking-guide.html)

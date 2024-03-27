@@ -1,11 +1,8 @@
-"""
-Hyprland IPC implementation as a GObject service.
-"""
 import os
 import asyncio
 from loguru import logger
 from dataclasses import dataclass
-from fabric.service import Service, Signal, SignalContainer
+from fabric.service import *
 from gi.repository import (
     Gio,
     GLib,
@@ -50,35 +47,35 @@ class CommandReply:
     is_ok: bool = None
 
 
-if not os.path.isdir(f"/tmp/hypr/{os.getenv('HYPRLAND_INSTANCE_SIGNATURE')}"):
-    # hyprland is not running.
-    raise HyprlandSocketNotFoundError(
-        "Hyprland socket doenst seem to be found,\nHyprland is running?"
-    )
-
 HYPRLAND_SIGNALS = [
     # custom helper signals.
     Signal(name="ready", flags="run-first", rtype=None, args=()),
-    Signal(name="error", flags="run-first", rtype=None, args=(str,)),
+    Signal(name="error", flags="deprecated", rtype=None, args=(str,)),  # TODO: remove
+    Signal(name="any", flags="run-first", rtype=None, args=(object,)),
     # actual hyprland events.
     # https://wiki.hyprland.org/IPC for more info.
-    Signal(name="any", flags="run-first", rtype=None, args=(object,)),
     Signal(name="workspace", flags="run-first", rtype=None, args=(object,)),
+    Signal(name="workspacev2", flags="run-first", rtype=None, args=(object,)),
     Signal(name="focusedmon", flags="run-first", rtype=None, args=(object,)),
     Signal(name="activewindow", flags="run-first", rtype=None, args=(object,)),
     Signal(name="activewindowv2", flags="run-first", rtype=None, args=(object,)),
     Signal(name="fullscreen", flags="run-first", rtype=None, args=(object,)),
     Signal(name="monitorremoved", flags="run-first", rtype=None, args=(object,)),
     Signal(name="monitoradded", flags="run-first", rtype=None, args=(object,)),
+    Signal(name="monitoraddedv2", flags="run-first", rtype=None, args=(object,)),
     Signal(name="createworkspace", flags="run-first", rtype=None, args=(object,)),
+    Signal(name="createworkspacev2", flags="run-first", rtype=None, args=(object,)),
     Signal(name="destroyworkspace", flags="run-first", rtype=None, args=(object,)),
+    Signal(name="destroyworkspacev2", flags="run-first", rtype=None, args=(object,)),
     Signal(name="moveworkspace", flags="run-first", rtype=None, args=(object,)),
+    Signal(name="moveworkspacev2", flags="run-first", rtype=None, args=(object,)),
     Signal(name="renameworkspace", flags="run-first", rtype=None, args=(object,)),
     Signal(name="activespecial", flags="run-first", rtype=None, args=(object,)),
     Signal(name="activelayout", flags="run-first", rtype=None, args=(object,)),
     Signal(name="openwindow", flags="run-first", rtype=None, args=(object,)),
     Signal(name="closewindow", flags="run-first", rtype=None, args=(object,)),
     Signal(name="movewindow", flags="run-first", rtype=None, args=(object,)),
+    Signal(name="movewindowv2", flags="run-first", rtype=None, args=(object,)),
     Signal(name="openlayer", flags="run-first", rtype=None, args=(object,)),
     Signal(name="closelayer", flags="run-first", rtype=None, args=(object,)),
     Signal(name="submap", flags="run-first", rtype=None, args=(object,)),
@@ -89,13 +86,15 @@ HYPRLAND_SIGNALS = [
     Signal(name="windowtitle", flags="run-first", rtype=None, args=(object,)),
     Signal(name="ignoregrouplock", flags="run-first", rtype=None, args=(object,)),
     Signal(name="lockgroups", flags="run-first", rtype=None, args=(object,)),
+    Signal(name="configreloaded", flags="run-first", rtype=None, args=(object,)),
+    Signal(name="pin", flags="run-first", rtype=None, args=(object,)),
 ]
 
 
 class Connection(Service):
     """
-    The main hyprland connection to the socket
-    this is a subclass of GObject.
+    a connection to the hyprland's socket
+    this can be used for ONLY sending commands or both sending and receiving events
     """
 
     __gsignals__ = SignalContainer(*HYPRLAND_SIGNALS)
@@ -106,45 +105,28 @@ class Connection(Service):
         :type commands_only: bool, optional
         """
         super().__init__(**kwargs)
-        self.ready = False
         self.HYPRLAND_SIGNATURE = os.getenv("HYPRLAND_INSTANCE_SIGNATURE")
+        if self.HYPRLAND_SIGNATURE is None or not os.path.isdir(
+            f"/tmp/hypr/{self.HYPRLAND_SIGNATURE}"
+        ):
+            # hyprland is not running.
+            raise HyprlandSocketNotFoundError(
+                "Hyprland socket doenst seem to be found,\nHyprland is running?"
+            )
+        # all aboard
         self.HYPRLAND_EVENTS_SOCKET = (
             f"/tmp/hypr/{self.HYPRLAND_SIGNATURE}/.socket2.sock"
         )
         self.HYPRLAND_COMMANDS_SOCKET = (
             f"/tmp/hypr/{self.HYPRLAND_SIGNATURE}/.socket.sock"
         )
-        if commands_only:
-            self.emit_ready()
-        else:
+        if not commands_only:
             self.event_socket_thread = GLib.Thread(
                 "hyprland-socket-service",
                 self.event_socket_task,
                 self.HYPRLAND_EVENTS_SOCKET,
             )
-
-    def emit_ready(self):
-        GLib.idle_add(lambda: (self.emit("ready"), False)[1])
-        self.ready = True
-        return
-
-    async def make_commands_socket_call(self, command: str) -> CommandReply:
-        try:
-            reader, writer = await asyncio.open_unix_connection(
-                self.HYPRLAND_COMMANDS_SOCKET
-            )
-            writer.write(command.encode())
-            await writer.drain()
-            resp = await reader.read(-1)
-            writer.close()
-        except Exception as e:
-            return logger.error(f"[HyprlandService][Command] Socket Error, {e}")
-        return CommandReply(
-            command=command,
-            reply=resp,
-            service=self,
-            is_ok=True if resp == b"ok" else None,
-        )
+        GLib.idle_add(lambda: (self.emit("ready"), True))
 
     def send_command(self, command: str) -> CommandReply:
         """
@@ -162,7 +144,26 @@ class Connection(Service):
         :rtype: CommandReply
         """
 
-        return asyncio.run(self.make_commands_socket_call(command))
+        return asyncio.run(self.send_command_async(command))
+
+    async def send_command_async(self, command: str) -> CommandReply:
+        """same as send_command but async"""
+        try:
+            reader, writer = await asyncio.open_unix_connection(
+                self.HYPRLAND_COMMANDS_SOCKET
+            )
+            writer.write(command.encode())
+            await writer.drain()
+            resp = await reader.read(-1)
+            writer.close()
+        except Exception as e:
+            return logger.error(f"[HyprlandService] socket Error, {e}")
+        return CommandReply(
+            command=command,
+            reply=resp,
+            service=self,
+            is_ok=True if resp == b"ok" else None,
+        )
 
     def event_socket_task(self, socket_path: str) -> bool:
         addr: Gio.UnixSocketAddress = Gio.UnixSocketAddress.new(
@@ -173,36 +174,34 @@ class Connection(Service):
         stream: Gio.InputStream = conn.get_input_stream()
         input_stream = Gio.DataInputStream.new(stream)
         while True:
-            try:
-                raw_data: list[bytes, object] = input_stream.read_line(
-                    None,
-                )
-                self.emit_ready() if not self.ready else None
-            except Exception as e:
-                self.emit("error", f"Hyprland socket error {e}")
-                logger.error(
-                    f"Hyprland got and error\n{e}\n 'error' signal got emitted."
-                )
-                break
+            raw_data: list[bytes, object] | bytearray = input_stream.read_line(
+                None,
+            )
             if not b">>" in raw_data[0]:
                 # hyprland is broken, it does happen.
-                logger.error(f"Hyprland returned wrong data ({raw_data})")
+                logger.error(
+                    f"[HyprlandService] hyprland returned wrong data ({raw_data})"
+                )
                 continue
             raw_listed = str((raw_data[0]).decode()).split(">>")
+            if not raw_listed[0] in [x.name for x in HYPRLAND_SIGNALS]:
+                logger.warning(
+                    f"got an unknown event from hyprland ({raw_listed}), probably a new event added to hyprland, report this."
+                )
+                continue
             event_object = SignalEvent(
                 name=raw_listed[0],
                 data=raw_listed[1].split(",") if len(raw_listed) > 1 else None,
                 raw_data=raw_data,
                 service=self,
             )
-            if event_object.name in [x.name for x in HYPRLAND_SIGNALS]:
-                self.emit(
-                    event_object.name,
-                    event_object,
-                )
-                self.emit(
-                    "any",
-                    event_object,
-                )
-        logger.warning("Stopped listening to events!")
+            self.emit(
+                event_object.name,
+                event_object,
+            )
+            self.emit(
+                "any",
+                event_object,
+            )
+        logger.warning("[HyprlandService] events socket thread ended")
         return False

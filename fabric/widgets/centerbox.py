@@ -8,17 +8,16 @@ from gi.repository import Gtk
 
 class CenterBox(Box):
     """
-    A box that can hold widgets in the center, left, and right, useful for creating bars
+    a box that can hold widgets in the center, start, and end, useful for creating bars
 
-    # Note
-    This should be the ONLY widget placed in the parent contianer/window.
+    NOTE: this should be the ONLY widget placed in it's parent contianer.
     """
 
     def __init__(
         self,
-        left_widgets: list[Gtk.Widget] | Gtk.Widget | None = None,
-        center_widgets: list[Gtk.Widget] | Gtk.Widget | None = None,
-        right_widgets: list[Gtk.Widget] | Gtk.Widget | None = None,
+        start_children: list[Gtk.Widget] | Gtk.Widget | None = None,
+        center_children: list[Gtk.Widget] | Gtk.Widget | None = None,
+        end_children: list[Gtk.Widget] | Gtk.Widget | None = None,
         spacing: int | None = None,
         orientation: Literal[
             "horizontal",
@@ -47,7 +46,7 @@ class CenterBox(Box):
         size: tuple[int] | int | None = None,
         **kwargs,
     ):
-        _orientation = (
+        orientation = (
             orientation
             if isinstance(orientation, Gtk.Orientation)
             else {
@@ -59,7 +58,7 @@ class CenterBox(Box):
         )
         super().__init__(
             spacing,
-            "h" if _orientation == Gtk.Orientation.VERTICAL else "v",
+            "h" if orientation == Gtk.Orientation.VERTICAL else "v",
             None,
             visible,
             all_visible,
@@ -77,59 +76,59 @@ class CenterBox(Box):
             size,
             **(self.do_get_filtered_kwargs(kwargs)),
         )
-        self.widgets_container = Box(
-            orientation="v" if _orientation == Gtk.Orientation.VERTICAL else "h",
+        self._container = Box(
+            orientation="v" if orientation == Gtk.Orientation.VERTICAL else "h",
         )
 
-        self.left_widgets = Box(
-            orientation="v" if _orientation == Gtk.Orientation.VERTICAL else "h"
+        self.start_container = Box(
+            orientation="v" if orientation == Gtk.Orientation.VERTICAL else "h"
         )
-        self.center_widgets = Box(
-            orientation="v" if _orientation == Gtk.Orientation.VERTICAL else "h"
+        self.center_container = Box(
+            orientation="v" if orientation == Gtk.Orientation.VERTICAL else "h"
         )
-        self.right_widgets = Box(
-            orientation="v" if _orientation == Gtk.Orientation.VERTICAL else "h"
+        self.end_container = Box(
+            orientation="v" if orientation == Gtk.Orientation.VERTICAL else "h"
         )
 
-        self.add(self.widgets_container)
-        self.widgets_container.pack_start(self.left_widgets, False, False, 0)
-        self.widgets_container.set_center_widget(self.center_widgets)
-        self.widgets_container.pack_end(self.right_widgets, False, False, 0)
+        self.add(self._container)
+        self._container.pack_start(self.start_container, False, False, 0)
+        self._container.set_center_widget(self.center_container)
+        self._container.pack_end(self.end_container, False, False, 0)
+        self.initialize_children(start_children, center_children, end_children)
         self.do_connect_signals_for_kwargs(kwargs)
-        self.initialize_children(left_widgets, center_widgets, right_widgets)
 
-    def initialize_children(self, left, center, right):
-        if left:
-            if isinstance(left, (list, tuple)):
-                [self.left_widgets.add(widget) for widget in left]
+    def initialize_children(self, start, center, end):
+        if start:
+            if isinstance(start, (list, tuple)):
+                [self.add_start(widget) for widget in start]
             else:
-                self.left_widgets.add(left)
+                self.add_start(start)
         if center:
             if isinstance(center, (list, tuple)):
-                [self.center_widgets.add(widget) for widget in center]
+                [self.add_center(widget) for widget in center]
             else:
-                self.center_widgets.add(center)
-        if right:
-            if isinstance(right, (list, tuple)):
-                [self.right_widgets.add(widget) for widget in right]
+                self.add_center(center)
+        if end:
+            if isinstance(end, (list, tuple)):
+                [self.add_end(widget) for widget in end]
             else:
-                self.right_widgets.add(right)
+                self.add_end(end)
         return
 
-    def add_left(self, widget: Gtk.Widget):
-        self.left_widgets.add(widget)
+    def add_start(self, widget: Gtk.Widget):
+        self.start_container.add(widget)
 
     def add_center(self, widget: Gtk.Widget):
-        self.center_widgets.pack_start(widget, False, False, 0)
+        self.center_container.add(widget)
 
-    def add_right(self, widget: Gtk.Widget):
-        self.right_widgets.add(widget)
+    def add_end(self, widget: Gtk.Widget):
+        self.end_container.add(widget)
 
-    def remove_left(self, widget: Gtk.Widget):
-        self.left_widgets.remove(widget)
+    def remove_start(self, widget: Gtk.Widget):
+        self.start_container.remove(widget)
 
     def remove_center(self, widget: Gtk.Widget):
-        self.center_widgets.remove(widget)
+        self.center_container.remove(widget)
 
-    def remove_right(self, widget: Gtk.Widget):
-        self.right_widgets.remove(widget)
+    def remove_end(self, widget: Gtk.Widget):
+        self.end_container.remove(widget)

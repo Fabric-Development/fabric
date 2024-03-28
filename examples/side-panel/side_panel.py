@@ -4,7 +4,6 @@ import os
 import time
 import psutil
 from loguru import logger
-from gi.repository import GLib
 from fabric.widgets.box import Box
 from fabric.widgets.label import Label
 from fabric.widgets.wayland import Window
@@ -13,6 +12,7 @@ from fabric.widgets.date_time import DateTime
 from fabric.utils import (
     set_stylesheet_from_file,
     monitor_file,
+    invoke_repeater,
     get_relative_path,
 )
 from fabric.widgets.circular_progress_bar import CircularProgressBar
@@ -51,9 +51,9 @@ class SidePanel(Window):
             name="circular-progress-bar",
         )
         self.update_status()
-        GLib.timeout_add_seconds(1, self.update_status)
-        GLib.timeout_add_seconds(
-            60 * 15,
+        invoke_repeater(1000, self.update_status)
+        invoke_repeater(
+            60 * 15 * 1000,
             lambda: [self.uptime_label.set_label(self.get_current_uptime()), True][1],
         )
         self.add(
@@ -167,7 +167,7 @@ class SidePanel(Window):
         uptime = time.time() - psutil.boot_time()
         uptime_days, remainder = divmod(uptime, 86400)
         uptime_hours, remainder = divmod(remainder, 3600)
-        uptime_minutes, _ = divmod(remainder, 60)
+        # uptime_minutes, _ = divmod(remainder, 60)
         return f"{int(uptime_days)} {'days' if uptime_days > 1 else 'day'}, {int(uptime_hours)} {'hours' if uptime_hours > 1 else 'hour'}"
 
 

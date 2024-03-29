@@ -121,7 +121,7 @@ class Connection(Service):
             f"/tmp/hypr/{self.HYPRLAND_SIGNATURE}/.socket.sock"
         )
         if not commands_only:
-            self.event_socket_thread = GLib.Thread(
+            self.event_socket_thread = GLib.Thread.new(
                 "hyprland-socket-service",
                 self.event_socket_task,
                 self.HYPRLAND_EVENTS_SOCKET,

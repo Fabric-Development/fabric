@@ -4,7 +4,7 @@ import os
 import time
 import inspect
 from enum import Enum
-from typing import Callable, Literal, Iterable, Generator
+from typing import Callable, Literal, Iterable, Generator, Any
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("GtkLayerShell", "0.1")
@@ -451,3 +451,67 @@ def get_connectable_names_from_kwargs(kwargs: dict[str, Callable]) -> Generator:
         elif key.startswith("notify_"):
             # yield a connectable property
             yield [f"notify::{snake_case_to_kebab_case(key[7:])}", value]
+
+
+def get_enum_member(
+    cls, name: str | Any, custom_mapping: dict[str, str] = {}
+) -> Any | None:
+    """
+    get an enum member from a enum class (usually for GEnums)
+
+    :param name: the name of the enum member (if the value was passed instead it will be returned)
+    :type name: str
+    :param custom_mapping: a mapping of name to name replacement, defaults to {}
+    :type custom_mapping: dict[str, str], optional
+    :return: the enum member or None
+    :rtype: Any | None
+    """
+    if isinstance(name, cls):
+        return name
+
+    if not isinstance(name, str):
+        return None
+
+    for n, r in custom_mapping.items():
+        if name == n:
+            name = r
+            break
+
+    return getattr(cls, kebab_case_to_snake_case(name).upper())
+
+
+def bridge_signals(
+    source: GObject.Object,
+    target: GObject.Object,
+    exclude: list[str] = [],
+    custom_mapping: dict[str, str] = {},
+) -> None:
+    """
+    bridges signals from one object to another
+
+    :param source: the source object to bridge from
+    :type source: GObject.Object
+    :param target: the target object to bridge to
+    :type target: GObject.Object
+    :param exclude: a list of signal names to exclude connecting from, defaults to []
+    :type exclude: list[str], optional
+    :param custom_mapping: a mapping of name to name replacement, defaults to {}
+    :type custom_mapping: dict[str, str], optional
+    :return: None
+    """
+
+    def do_emit_bridge_signal(signal_name, *args):
+        rv = []
+        for arg in args:
+            rv.append(arg) if not arg is source else None
+        return target.emit(signal_name, *rv)
+
+    for signal_name in GObject.signal_list_names(source):
+        if signal_name in exclude:
+            continue
+        source.connect(
+            signal_name,
+            lambda *args, signal_name=signal_name: do_emit_bridge_signal(
+                custom_mapping.get(signal_name, signal_name), *args
+            ),
+        )

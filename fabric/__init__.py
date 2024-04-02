@@ -1,4 +1,5 @@
 import gi
+import atexit
 from loguru import logger
 from fabric.client import get_fabric_session_bus, get_client
 
@@ -31,4 +32,10 @@ def start(open_client: bool = True):
     try:
         Gtk.main()
     except KeyboardInterrupt:
-        logger.info("[Fabric] exiting")
+        pass
+
+
+@atexit.register
+def on_exit():
+    # assuming clean exit
+    return logger.info("[Fabric] exiting...")

@@ -214,9 +214,7 @@ class Workspaces(WorkspacesEventBox):
                 "urgent": self.on_urgent,
             },
         )
-        # self.connect("scroll-event", lambda *args: print(args))
         self.connect("scroll-event", self.scroll_handler)
-        self.show()
 
     def on_ready(self, obj):
         logger.info("[Workspaces] Connected to the hyprland socket")

@@ -15,6 +15,8 @@ class Window(Gtk.Window, Widget):
         title: str | None = "fabric",
         children: Gtk.Widget | None = None,
         type: Literal["top-level", "popup"] | Gtk.WindowType = "top-level",
+        main_window: bool = True,
+        open_inspector: bool = False,
         visible: bool = True,
         all_visible: bool = False,
         style: str | None = None,
@@ -43,6 +45,10 @@ class Window(Gtk.Window, Widget):
         :param type: the type of this window, "top-level" means a normal window, defaults to "top-level"
         :type type: Literal["top-level", "popup"] | Gtk.WindowType, optional
         :param visible: whether the widget is initially visible, defaults to True
+        :param main_window: whether this window is the main window (exit on close), defaults to True
+        :type main_window: bool, optional
+        :param open_inspector: whether to open the inspector for this window, useful for debugging, defaults to False
+        :type open_inspector: bool, optional
         :type visible: bool, optional
         :param all_visible: whether all child widgets are initially visible, defaults to False
         :type all_visible: bool, optional
@@ -113,8 +119,9 @@ class Window(Gtk.Window, Widget):
             name,
             default_size,
         )
+        self.set_interactive_debugging(open_inspector)
         self.do_connect_signals_for_kwargs(kwargs)
-        self.connect("destroy", Gtk.main_quit)
+        self.connect("destroy", Gtk.main_quit) if main_window is True else None
 
 
 if __name__ == "__main__":

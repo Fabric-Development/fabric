@@ -88,6 +88,8 @@ class VerticalBar(Window):
             layer="top",
             anchor="left top bottom",
             margin="10px -2px 10px 10px",
+            visible=False,
+            all_visible=False,
             exclusive=True,
         )
         self.power_menu = PowerMenu()
@@ -136,7 +138,7 @@ class VerticalBar(Window):
                     "leave-notify-event": self.on_button_unhover,  # resets the cursor
                 },
             )
-        self.center_box.add_left(
+        self.center_box.add_start(
             Box(
                 orientation="v",
                 style="min-width: calc(44px - 8px); margin: 8px;",
@@ -214,7 +216,7 @@ class VerticalBar(Window):
                 self.battery_label.set_label(value["battery"]),
             ),
         )
-        self.center_box.add_right(
+        self.center_box.add_end(
             Box(
                 orientation="v",
                 style="min-width: calc(44px - 8px); margin: 8px;",

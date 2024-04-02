@@ -24,9 +24,9 @@ class BtDeviceBox(CenterBox):
         self.device.connect("connecting", self.on_device_connecting)
         self.device.connect("notify::connected", self.on_device_connect)
 
-        self.add_left(Image(icon_name=device.icon, icon_size=6))  # type: ignore
-        self.add_left(Label(label=device.name))  # type: ignore
-        self.add_right(self.connect_button)
+        self.add_start(Image(icon_name=device.icon, icon_size=6))  # type: ignore
+        self.add_start(Label(label=device.name))  # type: ignore
+        self.add_end(self.connect_button)
 
     def on_device_connecting(self, device, connecting):
         self.connect_button.set_label(
@@ -71,7 +71,7 @@ class BtConnectionsList(Box):
         self.available_box = Box(orientation="vertical")
 
         self.add(
-            CenterBox(left_widgets=self.scan_button, right_widgets=self.toggle_button)
+            CenterBox(start_children=self.scan_button, end_children=self.toggle_button)
         )
         self.add(Label("Paired Devices"))
         self.add(self.paired_box)
@@ -96,9 +96,10 @@ class BluetoothWidget(Window):
         super().__init__(
             layer="top",
             anchor="top right",
-            all_visible=True,
-            exclusive=True,
             name="main-window",
+            visible=False,
+            all_visible=False,
+            exclusive=True,
         )
         self.btbox = BtConnectionsList()
         self.add(self.btbox)

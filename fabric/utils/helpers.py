@@ -4,10 +4,11 @@ import os
 import time
 import inspect
 from enum import Enum
-from typing import Callable, Literal, Iterable, Generator
+from typing import Callable, Literal, Iterable, Generator, Any
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, Gdk, GObject, Gio, GLib
+gi.require_version("GtkLayerShell", "0.1")
+from gi.repository import Gtk, Gdk, GObject, Gio, GLib, GtkLayerShell
 
 
 class ValueEnum(Enum):
@@ -234,7 +235,7 @@ def clamp(value, min_value, max_value):
     return max(min(value, max_value), min_value)
 
 
-def extract_css_values(css_string: str):
+def extract_css_values(css_string: str) -> tuple[int]:
     """
     extracts and returns a tuple of four CSS values from a given CSS string.
 
@@ -257,21 +258,41 @@ def extract_css_values(css_string: str):
         return default_values
 
 
-def extract_anchor_values(geometry_string: str):
+def extract_anchor_values(string: str) -> list[str]:
     """
     extracts the geometry values from a given geometry string.
 
-    :param geometry_string: the string containing the geometry values.
-    :type geometry_string: str
+    :param string: the string containing the geometry values.
+    :type string: str
     :return: a list of unique directions extracted from the geometry string.
     :rtype: list
     """
     direction_map = {"l": "left", "t": "top", "r": "right", "b": "bottom"}
     pattern = re.compile(r"\b(left|right|top|bottom)\b", re.IGNORECASE)
-    matches = pattern.findall(geometry_string)
+    matches = pattern.findall(string)
     directions = [direction_map[match.lower()[0]] for match in matches]
     unique_directions = list(set(directions))
     return unique_directions
+
+
+def extract_edges_from_string(string: str) -> dict[GtkLayerShell.Edge, bool]:
+    anchor_values = extract_anchor_values(string.lower())
+    return {
+        GtkLayerShell.Edge.TOP: "top" in anchor_values,
+        GtkLayerShell.Edge.RIGHT: "right" in anchor_values,
+        GtkLayerShell.Edge.BOTTOM: "bottom" in anchor_values,
+        GtkLayerShell.Edge.LEFT: "left" in anchor_values,
+    }
+
+
+def extract_margin_from_string(string: str) -> dict[GtkLayerShell.Edge, int]:
+    margins = extract_css_values(string)
+    return {
+        GtkLayerShell.Edge.TOP: margins[0],
+        GtkLayerShell.Edge.RIGHT: margins[1],
+        GtkLayerShell.Edge.BOTTOM: margins[2],
+        GtkLayerShell.Edge.LEFT: margins[3],
+    }
 
 
 def monitor_file(
@@ -430,3 +451,67 @@ def get_connectable_names_from_kwargs(kwargs: dict[str, Callable]) -> Generator:
         elif key.startswith("notify_"):
             # yield a connectable property
             yield [f"notify::{snake_case_to_kebab_case(key[7:])}", value]
+
+
+def get_enum_member(
+    cls, name: str | Any, custom_mapping: dict[str, str] = {}
+) -> Any | None:
+    """
+    get an enum member from a enum class (usually for GEnums)
+
+    :param name: the name of the enum member (if the value was passed instead it will be returned)
+    :type name: str
+    :param custom_mapping: a mapping of name to name replacement, defaults to {}
+    :type custom_mapping: dict[str, str], optional
+    :return: the enum member or None
+    :rtype: Any | None
+    """
+    if isinstance(name, cls):
+        return name
+
+    if not isinstance(name, str):
+        return None
+
+    for n, r in custom_mapping.items():
+        if name == n:
+            name = r
+            break
+
+    return getattr(cls, kebab_case_to_snake_case(name).upper())
+
+
+def bridge_signals(
+    source: GObject.Object,
+    target: GObject.Object,
+    exclude: list[str] = [],
+    custom_mapping: dict[str, str] = {},
+) -> None:
+    """
+    bridges signals from one object to another
+
+    :param source: the source object to bridge from
+    :type source: GObject.Object
+    :param target: the target object to bridge to
+    :type target: GObject.Object
+    :param exclude: a list of signal names to exclude connecting from, defaults to []
+    :type exclude: list[str], optional
+    :param custom_mapping: a mapping of name to name replacement, defaults to {}
+    :type custom_mapping: dict[str, str], optional
+    :return: None
+    """
+
+    def do_emit_bridge_signal(signal_name, *args):
+        rv = []
+        for arg in args:
+            rv.append(arg) if not arg is source else None
+        return target.emit(signal_name, *rv)
+
+    for signal_name in GObject.signal_list_names(source):
+        if signal_name in exclude:
+            continue
+        source.connect(
+            signal_name,
+            lambda *args, signal_name=signal_name: do_emit_bridge_signal(
+                custom_mapping.get(signal_name, signal_name), *args
+            ),
+        )

@@ -82,7 +82,8 @@ class StatusBar(Window):
             anchor="left top right",
             margin="10px 10px -2px 10px",
             exclusive=True,
-            visible=True,
+            visible=False,
+            all_visible=False,
         )
         self.center_box = CenterBox(name="main-window")
         self.workspaces = Workspaces(
@@ -153,12 +154,12 @@ class StatusBar(Window):
         )
         self.widgets_container.add(self.volume) if self.volume is not None else None
 
-        self.center_box.add_left(self.workspaces)
-        self.center_box.add_right(self.widgets_container)
+        self.center_box.add_start(self.workspaces)
         self.center_box.add_center(self.active_window)
-        self.center_box.add_right(self.system_tray)
-        self.center_box.add_right(self.date_time)
-        self.center_box.add_right(self.language)
+        self.center_box.add_end(self.widgets_container)
+        self.center_box.add_end(self.system_tray)
+        self.center_box.add_end(self.date_time)
+        self.center_box.add_end(self.language)
         self.add(self.center_box)
 
         invoke_repeater(1000, self.update_progress_bars)
@@ -189,4 +190,4 @@ if __name__ == "__main__":
     # initialize style
     apply_style()
 
-    fabric.start()
+    fabric.start(open_client=False)

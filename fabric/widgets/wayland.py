@@ -23,6 +23,8 @@ class Window(Window):
     def __init__(
         self,
         layer: Literal["background", "bottom", "top", "overlay"] | GtkLayerShell.Layer,
+        keyboard_mode: Literal["none", "exclusive", "on-demand"]
+        | GtkLayerShell.KeyboardMode = "none",
         anchor: str = "",
         margin: str | list[GtkLayerShell.Edge] = "0px 0px 0px 0px",
         exclusive: bool = True,
@@ -134,6 +136,7 @@ class Window(Window):
         )
         self.__initialized = False  # secrets
         self._layer = layer
+        self._keyboard_mode = keyboard_mode
         self._anchor = anchor
         self._margin = margin
         self._exclusive = exclusive
@@ -145,6 +148,7 @@ class Window(Window):
         self.set_monitor(monitor) if monitor is not None else None
         self.set_exclusive(exclusive, exclusivity)
         self.set_layer(layer)
+        self.set_keyboard_mode(keyboard_mode)
         self.set_anchor(anchor)
         self.set_margin(margin)
         self.set_pass_through(pass_through)
@@ -162,6 +166,15 @@ class Window(Window):
         self._layer = value
         self.set_layer(value)
         return
+
+    @Property(value_type=object, flags="read-write")
+    def keyboard_mode(self) -> str | GtkLayerShell.KeyboardMode:
+        return self._keyboard_mode
+
+    @keyboard_mode.setter
+    def keyboard_mode(self, value:str | GtkLayerShell.KeyboardMode):
+        self._keyboard_mode = value
+        self.set_keyboard_mode(value)
 
     @Property(value_type=object, flags="read-write")
     def anchor(self) -> str | list[GtkLayerShell.Edge]:
@@ -233,6 +246,21 @@ class Window(Window):
             }.get(layer, GtkLayerShell.Layer.TOP)
         GtkLayerShell.set_layer(self, layer)
         return
+
+    def set_keyboard_mode(
+        self, keyboard_mode: str | GtkLayerShell.KeyboardMode
+    ) -> None:
+        if not isinstance(keyboard_mode, (str, GtkLayerShell.Layer)):
+            raise TypeError(
+                f"keyboard_mode must be str or GtkLayerShell.KeyboardMode, but got {type(layer)}"
+            )
+        keyboard_mode = {
+            "none": GtkLayerShell.KeyboardMode.NONE,
+            "exclusive": GtkLayerShell.KeyboardMode.EXCLUSIVE,
+            "on-demand": GtkLayerShell.KeyboardMode.ON_DEMAND,
+            "entry-number": GtkLayerShell.KeyboardMode.ENTRY_NUMBER,
+        }.get(keyboard_mode, GtkLayerShell.Layer.TOP)
+        GtkLayerShell.set_keyboard_mode(self, keyboard_mode)
 
     def set_margin(self, margins: str | tuple[int]) -> None:
         if isinstance(margins, str):

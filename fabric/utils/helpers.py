@@ -444,6 +444,19 @@ def snake_case_to_kebab_case(string: str) -> str:
     return string.replace("_", "-").lower()
 
 
+def snake_case_to_pascal_case(string: str) -> str:
+    return string.replace("_", " ").title().replace(" ", "")
+
+
+def pascal_case_to_snake_case(string: str) -> str:
+    return "_".join(
+        map(
+            str.lower,
+            re.findall(r"[A-Z]?[a-z]+|[A-Z]{2,}(?=[A-Z][a-z]|\d|\W|$)|\d+", string),
+        )
+    )
+
+
 def get_connectable_names_from_kwargs(kwargs: dict[str, Callable]) -> Generator:
     for key, value in zip(kwargs.keys(), kwargs.values()):
         if key.startswith("on_"):

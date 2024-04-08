@@ -289,6 +289,9 @@ class SystemTray(Box):
             size,
             **kwargs,
         )
+        logger.warning(
+            f"[SystemTray] this class is deprecated and flagged for removal, please use the new service instead"
+        )
         self.icon_size = icon_size
         self.connection: Gio.DBusConnection = None
         self.bus_owner_id: int = self.acquire_bus_name()

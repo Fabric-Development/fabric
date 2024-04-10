@@ -302,7 +302,7 @@ class SystemTrayItem(Service):
         return self._menu
 
     # remote methods
-    def context_menu(self, x: int, y: int):
+    def context_menu(self, x: int, y: int) -> None:
         """to open a server-side context menu"""
         return self._proxy.ContextMenu("(ii)", x, y)
 
@@ -312,7 +312,7 @@ class SystemTrayItem(Service):
     def secondary_activate(self, x: int, y: int) -> None:
         return self._proxy.SecondaryActivate("(ii)", x, y)
 
-    def invoke_menu_for_event(self, event: Gdk.Event):
+    def invoke_menu_for_event(self, event: Gdk.Event) -> None:
         menu = self.get_menu()
         return (
             menu.popup_at_pointer(event)
@@ -320,15 +320,27 @@ class SystemTrayItem(Service):
             else self.context_menu_for_event(event)
         )
 
+    def scroll(
+        self, delta: int, orientation: Literal["vertical", "horizontal"]
+    ) -> None:
+        return self._proxy.Scroll("(is)", delta, orientation)
+
     # event methods
-    def context_menu_for_event(self, event: Gdk.Event):
+    def context_menu_for_event(self, event: Gdk.EventAny) -> None:
         return self.context_menu(*event.get_root_coords())
 
-    def activate_for_event(self, event: Gdk.Event) -> None:
+    def activate_for_event(self, event: Gdk.EventAny) -> None:
         return self.activate(*event.get_root_coords())
 
-    def secondary_activate_for_event(self, event: Gdk.Event) -> None:
+    def secondary_activate_for_event(self, event: Gdk.EventAny) -> None:
         return self.secondary_activate(*event.get_root_coords())
+
+    def scroll_for_event(self, event: Gdk.EventScroll) -> None:
+        direction = (
+            "vertical" if event.direction == 0 or event.direction == 1 else "horizontal"
+        )
+        delta: int = event.delta_y if direction == "vertical" else event.delta_x
+        return self.scroll(delta, direction)
 
     # privates
     def do_get_proxy_property(self, property_name: str) -> Any | None:

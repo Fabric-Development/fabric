@@ -26,7 +26,7 @@ class HyprlandSocketNotFoundError(Exception):
 # dataclasses with frozen flag
 # to avoid unexpected changess
 @dataclass(frozen=True)
-class SignalEvent:
+class HyprlandEvent:
     name: str
     data: dict | str | None
     raw_data: bytes | str | None
@@ -34,7 +34,7 @@ class SignalEvent:
 
 
 @dataclass(frozen=True)
-class CommandReply:
+class HyprlandReply:
     """
     NOTE: if is_ok is `None` that means the socket did not returned ok as the response
     so commands that returns a json object for example will cause is_ok to be `None`
@@ -91,7 +91,7 @@ HYPRLAND_SIGNALS = [
 ]
 
 
-class Connection(Service):
+class Hyprland(Service):
     """
     a connection to the hyprland's socket
     this can be used for ONLY sending commands or both sending and receiving events
@@ -128,7 +128,7 @@ class Connection(Service):
             )
         GLib.idle_add(lambda: (self.emit("ready"), True))
 
-    def send_command(self, command: str) -> CommandReply:
+    def send_command(self, command: str) -> HyprlandReply:
         """
         to send hyprctl-like commands over hyprland socket
 
@@ -141,12 +141,12 @@ class Connection(Service):
         :param command: the command to send
         :type command: str
         :return: a command reply object contains the reply data from hyprland
-        :rtype: CommandReply
+        :rtype: HyprlandReply
         """
 
         return asyncio.run(self.send_command_async(command))
 
-    async def send_command_async(self, command: str) -> CommandReply:
+    async def send_command_async(self, command: str) -> HyprlandReply:
         """same as send_command but async"""
         try:
             reader, writer = await asyncio.open_unix_connection(
@@ -158,7 +158,7 @@ class Connection(Service):
             writer.close()
         except Exception as e:
             return logger.error(f"[HyprlandService] socket Error, {e}")
-        return CommandReply(
+        return HyprlandReply(
             command=command,
             reply=resp,
             service=self,
@@ -189,7 +189,7 @@ class Connection(Service):
                     f"got an unknown event from hyprland ({raw_listed}), probably a new event added to hyprland, report this."
                 )
                 continue
-            event_object = SignalEvent(
+            event_object = HyprlandEvent(
                 name=raw_listed[0],
                 data=raw_listed[1].split(",") if len(raw_listed) > 1 else None,
                 raw_data=raw_data,

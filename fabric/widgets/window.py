@@ -1,5 +1,4 @@
 import gi
-from loguru import logger
 from typing import Literal
 from fabric.widgets.widget import Widget
 
@@ -79,6 +78,7 @@ class Window(Gtk.Window, Widget):
         """
         Gtk.Window.__init__(
             self,
+            title=title,
             type=(
                 type
                 if isinstance(type, (Gtk.WindowType, int))
@@ -88,6 +88,7 @@ class Window(Gtk.Window, Widget):
             ),
             **(self.do_get_filtered_kwargs(kwargs)),
         )
+
         self.set_title(title) if title is not None else None
 
         if isinstance(children, list) is True:
@@ -102,6 +103,8 @@ class Window(Gtk.Window, Widget):
                 else default_size
             )
         ) if default_size is not None else None
+
+        self._open_inspector = open_inspector
         Widget.__init__(
             self,
             visible,
@@ -119,9 +122,23 @@ class Window(Gtk.Window, Widget):
             name,
             default_size,
         )
-        self.set_interactive_debugging(open_inspector)
         self.do_connect_signals_for_kwargs(kwargs)
         self.connect("destroy", Gtk.main_quit) if main_window is True else None
+
+    # overrides
+    def show(self):
+        super().show()
+        if self._open_inspector:
+            self.set_interactive_debugging(True)
+            self._open_inspector = False
+        return
+
+    def show_all(self):
+        super().show_all()
+        if self._open_inspector:
+            self.set_interactive_debugging(True)
+            self._open_inspector = False
+        return
 
 
 if __name__ == "__main__":

@@ -190,4 +190,4 @@ if __name__ == "__main__":
     # initialize style
     apply_style()
 
-    fabric.start(open_client=False)
+    fabric.start()

@@ -77,6 +77,18 @@ class FlowBox(Gtk.FlowBox, Container):
         :param size: the size of the widget, defaults to None
         :type size: tuple[int] | int | None, optional
         """
+        orientation = (
+            orientation
+            if isinstance(orientation, Gtk.Orientation)
+            else {
+                "horizontal": Gtk.Orientation.HORIZONTAL,
+                "vertical": Gtk.Orientation.VERTICAL,
+                "h": Gtk.Orientation.HORIZONTAL,
+                "v": Gtk.Orientation.VERTICAL,
+            }.get(orientation, Gtk.Orientation.HORIZONTAL)
+        )
+        column_spacing = column_spacing if isinstance(column_spacing, int) else 0
+        row_spacing = row_spacing if isinstance(row_spacing, int) else 0
         Gtk.FlowBox.__init__(
             self,
             column_spacing=column_spacing,
@@ -102,16 +114,4 @@ class FlowBox(Gtk.FlowBox, Container):
             name,
             size,
         )
-        orientation = (
-            orientation
-            if isinstance(orientation, Gtk.Orientation)
-            else {
-                "horizontal": Gtk.Orientation.HORIZONTAL,
-                "vertical": Gtk.Orientation.VERTICAL,
-                "h": Gtk.Orientation.HORIZONTAL,
-                "v": Gtk.Orientation.VERTICAL,
-            }.get(orientation, Gtk.Orientation.HORIZONTAL)
-        )
-        column_spacing = column_spacing if isinstance(column_spacing, int) else 0
-        row_spacing = row_spacing if isinstance(row_spacing, int) else 0
         self.do_connect_signals_for_kwargs(kwargs)

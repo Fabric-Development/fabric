@@ -9,22 +9,32 @@ from fabric.widgets.label import Label
 from fabric.widgets.wayland import Window
 from fabric.widgets.overlay import Overlay
 from fabric.widgets.date_time import DateTime
+from fabric.widgets.circular_progress_bar import CircularProgressBar
 from fabric.utils import (
     set_stylesheet_from_file,
     monitor_file,
     invoke_repeater,
     get_relative_path,
 )
-from fabric.widgets.circular_progress_bar import CircularProgressBar
 
 PYWAL = False
-PROFILE_PICTURE = os.path.expanduser("~/Pictures/Other/profile.jpg")
+
+
+def get_profile_picture_path() -> str | None:
+    path = os.path.expanduser("~/Pictures/Other/profile.jpg")
+    if not os.path.exists(path):
+        path = os.path.expanduser("~/Pictures/Other/profile.jpg")
+    if not os.path.exists(path):
+        logger.warning("can't fetch a user profile picture")
+        path = None
+    return path
 
 
 class SidePanel(Window):
     def __init__(self):
         super().__init__(
             layer="overlay",
+            title="fabric-overlay",
             exclusive=True,
             anchor="top right",
             margin="10px 10px 10px 0px",
@@ -37,49 +47,38 @@ class SidePanel(Window):
         )
         self.cpu_circular_progress_bar = CircularProgressBar(
             size=(64, 64),
-            percentage=0,
             name="circular-progress-bar",
         )
         self.memory_circular_progress_bar = CircularProgressBar(
             size=(64, 64),
-            percentage=0,
             name="circular-progress-bar",
         )
         self.battery_circular_progress_bar = CircularProgressBar(
             size=(64, 64),
-            percentage=68,
+            percentage=42,
             name="circular-progress-bar",
         )
         self.update_status()
-        invoke_repeater(1000, self.update_status)
         invoke_repeater(
             60 * 15 * 1000,
             lambda: [self.uptime_label.set_label(self.get_current_uptime()), True][1],
+            1000,
+            self.update_status,
         )
         self.add(
             Box(
                 spacing=24,
                 name="main-window",
-                style="border-radius: 12px; padding: 10px;",
                 orientation="v",
                 children=[
                     Box(
-                        spacing=15,
+                        spacing=14,
                         name="header",
                         orientation="h",
                         children=[
                             Box(
-                                style=f"""
-                                * {{
-                                    background-image: url("file://{PROFILE_PICTURE}");
-                                    background-position: center;
-                                    background-repeat: no-repeat;
-                                    background-size: cover;
-                                    padding: 30px;
-                                    margin: 4px;
-                                    border-radius: 6px;
-                                }}
-                                """,
+                                name="profile-pic",
+                                style=f"background-image: url('file://{get_profile_picture_path() if get_profile_picture_path() is not None else ''}')",
                             ),
                             Box(
                                 orientation="v",
@@ -111,12 +110,10 @@ class SidePanel(Window):
                                                 style="font-size: 18px; margin-right: 8px; text-shadow: 0 0 10px #fff, 0 0 10px #fff, 0 0 10px #fff;",
                                             ),
                                         ],
-                                    )
+                                    ),
                                 ],
                             ),
-                            Box(
-                                name="circular-progress-bars-sep",
-                            ),
+                            Box(name="circular-progress-bars-sep"),
                             Box(
                                 children=[
                                     Overlay(
@@ -130,9 +127,7 @@ class SidePanel(Window):
                                     )
                                 ]
                             ),
-                            Box(
-                                name="circular-progress-bars-sep",
-                            ),
+                            Box(name="circular-progress-bars-sep"),
                             Box(
                                 children=[
                                     Overlay(
@@ -144,7 +139,7 @@ class SidePanel(Window):
                                             ),
                                         ],
                                     ),
-                                ]
+                                ],
                             ),
                         ],
                     ),
@@ -159,7 +154,7 @@ class SidePanel(Window):
         self.battery_circular_progress_bar.percentage = (
             psutil.sensors_battery().percent
             if psutil.sensors_battery() is not None
-            else 82
+            else 42
         )
         return True
 

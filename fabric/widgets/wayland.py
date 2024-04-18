@@ -172,7 +172,7 @@ class Window(Window):
         return self._keyboard_mode
 
     @keyboard_mode.setter
-    def keyboard_mode(self, value:str | GtkLayerShell.KeyboardMode):
+    def keyboard_mode(self, value: str | GtkLayerShell.KeyboardMode):
         self._keyboard_mode = value
         self.set_keyboard_mode(value)
 
@@ -252,7 +252,7 @@ class Window(Window):
     ) -> None:
         if not isinstance(keyboard_mode, (str, GtkLayerShell.Layer)):
             raise TypeError(
-                f"keyboard_mode must be str or GtkLayerShell.KeyboardMode, but got {type(layer)}"
+                f"keyboard_mode must be str or GtkLayerShell.KeyboardMode, but got {type(keyboard_mode)}"
             )
         if isinstance(keyboard_mode, str):
             keyboard_mode = {
@@ -261,8 +261,7 @@ class Window(Window):
                 "on-demand": GtkLayerShell.KeyboardMode.ON_DEMAND,
                 "entry-number": GtkLayerShell.KeyboardMode.ENTRY_NUMBER,
             }.get(keyboard_mode, GtkLayerShell.KeyboardMode.NONE)
-        GtkLayerShell.set_keyboard_mode(self, keyboard_mode)
-        return
+        return GtkLayerShell.set_keyboard_mode(self, keyboard_mode)
 
     def set_margin(self, margins: str | tuple[int]) -> None:
         if isinstance(margins, str):

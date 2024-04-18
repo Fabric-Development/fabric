@@ -8,7 +8,7 @@ from fabric.utils import invoke_repeater, exec_shell_command
 from gi.repository import GLib
 
 
-class PollingMode(ValueEnum):
+class FabricatorPollingMode(ValueEnum):
     NONE = 0
     FUNCTION = 1
     SHELL_COMMAND = 2
@@ -16,7 +16,7 @@ class PollingMode(ValueEnum):
     SHELL_COMMAND_STERAM = 4
 
 
-class Fabricate(Service):
+class Fabricator(Service):
     __gsignals__ = SignalContainer(
         Signal("changed", "run-first", None, (object,)),
         Signal("polling", "run-first", None, (object, object, int, object)),
@@ -48,24 +48,28 @@ class Fabricate(Service):
         self._stream = stream
         self._stream_thread: GLib.Thread = None
         self._polling_mode = (
-            PollingMode.FUNCTION
+            FabricatorPollingMode.FUNCTION
             if callable(poll_from) and stream is False
-            else PollingMode.FUNCTION_STREAM
+            else FabricatorPollingMode.FUNCTION_STREAM
             if callable(poll_from) and stream is True
-            else PollingMode.SHELL_COMMAND
+            else FabricatorPollingMode.SHELL_COMMAND
             if isinstance(poll_from, str) and stream is False
-            else PollingMode.SHELL_COMMAND_STERAM
+            else FabricatorPollingMode.SHELL_COMMAND_STERAM
             if isinstance(poll_from, str) and stream is True
-            else PollingMode.NONE
+            else FabricatorPollingMode.NONE
         )
         self.poll(
             self._polling_mode, self._poll_from, self._interval, self, *self._data
         )
 
     def poll(
-        self, mode: PollingMode, callable: Callable, interval: int | None = None, *args
+        self,
+        mode: FabricatorPollingMode,
+        callable: Callable,
+        interval: int | None = None,
+        *args,
     ):
-        if mode == PollingMode.NONE:
+        if mode == FabricatorPollingMode.NONE:
             self.emit("polling-done", callable)
             return logger.warning(
                 "[Fabricator] Polling mode is unknown, probably because of the passed arguments begin wrong, skipping..."
@@ -73,7 +77,7 @@ class Fabricate(Service):
         if (
             self._stream is not True
         ):  # TODO: i don't like nested "if" statments, one day i'll get rid of this...
-            if mode == PollingMode.FUNCTION:
+            if mode == FabricatorPollingMode.FUNCTION:
                 self.emit("polling-function", callable)
                 return (
                     self.invoke_function_with_interval(callable, interval, *args),
@@ -81,7 +85,7 @@ class Fabricate(Service):
                     if self._initial_poll is True
                     else None,
                 )
-            elif mode == PollingMode.SHELL_COMMAND:
+            elif mode == FabricatorPollingMode.SHELL_COMMAND:
                 self.emit("polling-shell-command", callable)
                 return (
                     self.invoke_shell_with_interval(callable, interval),
@@ -90,7 +94,7 @@ class Fabricate(Service):
                     else None,
                 )
         elif self._stream is True:
-            if mode == PollingMode.FUNCTION_STREAM:
+            if mode == FabricatorPollingMode.FUNCTION_STREAM:
                 self._stream_thread = GLib.Thread.new(
                     f"fabricator-thread-{self.__str__()}",
                     self.do_read_function_stream,
@@ -98,7 +102,7 @@ class Fabricate(Service):
                     *args,
                 )
                 self.emit("polling-function", callable)
-            elif mode == PollingMode.SHELL_COMMAND_STERAM:
+            elif mode == FabricatorPollingMode.SHELL_COMMAND_STERAM:
                 self._stream_thread = GLib.Thread.new(
                     f"fabricator-thread-{self.__str__()}",
                     self.do_read_shell_stream,
@@ -111,8 +115,7 @@ class Fabricate(Service):
     def invoke_shell_with_interval(self, cmd: str, interval: int):
         return invoke_repeater(
             interval,
-            self.do_invoke_shell,
-            cmd,
+            lambda *_: self.do_invoke_shell(cmd),
         )
 
     def do_invoke_shell(self, cmd: str):
@@ -142,7 +145,9 @@ class Fabricate(Service):
         return False
 
     def invoke_function_with_interval(self, callable: Callable, interval: int, *args):
-        return invoke_repeater(interval, self.do_invoke_function, callable, *args)
+        return invoke_repeater(
+            interval, lambda *_: self.do_invoke_function(callable, *args)
+        )
 
     def do_invoke_function(self, callable: Callable, *args):
         self.emit("polling", self._polling_mode, callable, self._interval, args)
@@ -167,8 +172,8 @@ class Fabricate(Service):
         if self._poll is True:
             self._poll = False
             if self._polling_mode in (
-                PollingMode.FUNCTION_STREAM,
-                PollingMode.SHELL_COMMAND_STERAM,
+                FabricatorPollingMode.FUNCTION_STREAM,
+                FabricatorPollingMode.SHELL_COMMAND_STERAM,
             ):
                 self._stream_thread.exit() if self._stream_thread is not None else logger.warning(
                     "[Fabricator] Tried to remove/stop a stream reader thread but the `_stream_thread` was unset, this probably means that something went wrong, skipping..."

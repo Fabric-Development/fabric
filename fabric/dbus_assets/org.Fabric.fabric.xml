@@ -11,16 +11,19 @@
     </method>
   </interface>
   <interface name="org.Fabric.fabric">
-    <property name="file" type="s" access="read"/>
-    <method name="execute">
+    <property name="File" type="s" access="read"/>
+    <method name="Execute">
       <arg direction="in"  type="s" name="source" />
-      <arg direction="in"  type="b" name="raise_on_exception" />
+      <arg direction="out" type="s" />
+    </method>    
+    <method name="Evaluate">
+      <arg direction="in"  type="s" name="code" />
       <arg direction="out" type="s" />
       <arg direction="out" type="s" />
     </method>
-    <method name="log">
-      <arg direction="in"  type="s" name="data" />
-      <arg direction="in"  type="i" name="level" />
+    <method name="Log">
+      <arg direction="in"  type="y" name="level" />
+      <arg direction="in"  type="s" name="message" />
     </method>
   </interface>
 </node>

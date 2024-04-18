@@ -1,5 +1,5 @@
 import click
-from fabric.client import get_fabric_session_bus
+from fabric.client import get_fabric_dbus_proxy
 
 
 @click.group()
@@ -13,8 +13,8 @@ def main():
 @click.option("--json", "-j", is_flag=True, help="to return the output in json format")
 def info(json: bool = False):
     try:
-        bus_object = get_fabric_session_bus()
-        file = str(bus_object.get_cached_property("file").unpack())
+        bus_object = get_fabric_dbus_proxy()
+        file = str(bus_object.get_cached_property("File").unpack())
     except:
         return (
             click.echo("fabric instance is not running.")
@@ -32,17 +32,11 @@ def info(json: bool = False):
     "execute", help="executes a python code within the running fabric instance"
 )
 @click.argument("source")
-@click.option(
-    "--raise-on-exception",
-    "-r",
-    is_flag=True,
-    help="to raise the exception (if any), else it will return it (and suppress the exception)",
-)
 @click.option("--json", "-j", is_flag=True, help="to return the output in json format")
-def execute(source: str, raise_on_exception: bool = False, json: bool = False):
+def execute(source: str, json: bool = False):
     try:
-        bus_object = get_fabric_session_bus()
-        data = bus_object.execute("(sb)", source, raise_on_exception)
+        bus_object = get_fabric_dbus_proxy()
+        exc = bus_object.Execute("(s)", source)
     except:
         return (
             click.echo("fabric instance is not running.")
@@ -56,12 +50,51 @@ def execute(source: str, raise_on_exception: bool = False, json: bool = False):
             )
         )
     return (
-        click.echo(data)
+        click.echo("exception: " + exc)
+        if exc != ""
+        else None
         if json is False
         else click.echo(
             {
                 "source": source,
-                "exception": data[1] if isinstance(data, (tuple, list)) else data,
+                "exception": exc,
+            }
+        )
+    )
+
+
+@click.command(
+    "evaluate", help="evaluates a python code within the running fabric instance"
+)
+@click.argument("code")
+@click.option("--json", "-j", is_flag=True, help="to return the output in json format")
+def evaluate(code: str, json: bool = False):
+    try:
+        bus_object = get_fabric_dbus_proxy()
+        result, exc = bus_object.Evaluate("(s)", code)
+    except:
+        return (
+            click.echo("fabric instance is not running.")
+            if json is False
+            else click.echo(
+                {
+                    "code": code,
+                    "result": "",
+                    "exception": "",
+                    "error": "fabric instance is not running.",
+                }
+            )
+        )
+    return (
+        click.echo(
+            "result: " + (result + "\nexception: " + exc if exc != "" else result)
+        )
+        if json is False
+        else click.echo(
+            {
+                "code": code,
+                "result": result,
+                "exception": exc,
             }
         )
     )
@@ -70,5 +103,6 @@ def execute(source: str, raise_on_exception: bool = False, json: bool = False):
 if __name__ == "__main__":
     main.add_command(info)
     main.add_command(execute)
+    main.add_command(evaluate)
 
     main()

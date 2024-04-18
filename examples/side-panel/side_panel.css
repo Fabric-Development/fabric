@@ -38,6 +38,8 @@
     border-color: var(--color11);
     background-color: var(--window-bg);
     border-radius: 100px;
+    border-radius: 12px;
+    padding: 10px;
 }
 
 #date-time > label {
@@ -54,6 +56,17 @@
     );
     border: solid 1px var(--border-color);
     border-radius: 8px;
+    box-shadow: 0px 18px 23px -6px rgba(0,0,0,0.75);
+}
+
+#profile-pic {
+    background-color: alpha(var(--color11), 0.2);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    padding: 30px;
+    margin: 4px;
+    border-radius: 6px;
 }
 
 #circular-progress-bar {

@@ -1,1 +1,6 @@
-from .service import SystemTray, SystemTrayItem, SystemTrayItemPixmap, SystemTrayItemToolTip
+from .service import (
+    SystemTray,
+    SystemTrayItem,
+    SystemTrayItemPixmap,
+    SystemTrayItemToolTip,
+)

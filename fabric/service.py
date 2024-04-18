@@ -341,18 +341,3 @@ class Service(GObject.Object):
         )
         self._registered_signals.append(conn)
         return conn
-
-    def __del__(self):
-        try:
-            for signal in self._registered_signals:
-                try:
-                    signal.disconnect()
-                except:
-                    pass
-            try:
-                self.unref()
-            except:
-                pass
-        except:
-            pass
-        return

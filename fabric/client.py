@@ -39,8 +39,10 @@ class Hook(Service):
     code_position = Property(value_type=object, flags="read")
     file = Property(value_type=str, flags="read")
     __gsignals__ = SignalContainer(
-        Signal("exec", "run-first", None, (object, object))
-        # args: source-code: str (i guess), exception: if any else none
+        Signal("execute", "run-first", None, (object, object)),
+        Signal("execute-error", "run-first", None, (object, object)),
+        Signal("evaluate", "run-first", None, (object, object)),
+        Signal("evaluate-error", "run-first", None, (object, object)),
     )
 
     def __init__(
@@ -80,20 +82,7 @@ class Hook(Service):
 
     def execute(
         self, source: str, raise_on_exception: bool = False
-    ) -> tuple[str, Exception | None]:
-        """executes python code within this hook scopes (globals and locals)
-        this method emits the `exec` siganl
-        the siganl function will receive the code and the exception (if any, if not then None)
-
-        :param source: the python code to execute
-        :type source: str
-        :param raise_on_exception: whether you want this method to raise the exception from the `exec` function or just return the exception, defaults to False (return the exception)
-        :type raise_on_exception: bool, optional
-        :raises exc: if an exception has happened and the `raise_on_exception` arg is set to True
-        :return: a tuple that contains the given string of code and the exception (if any)
-        :rtype: tuple[str, Exception | None]
-        """
-        # TODO: redirect stdout and stderr to returned data / return the output of the code execution
+    ) -> Exception | None:
         exc = None
         try:
             exec(
@@ -101,13 +90,32 @@ class Hook(Service):
                 self.global_scope if self.global_scope is not None else {},
                 self.local_scope if self.local_scope is not None else {},
             )
-            self.emit("exec", source, None)
+            self.emit("execute", source, None)
         except Exception as e:
             exc = e
-            self.emit("exec", source, e)
-        if raise_on_exception is True and exc is not None:
+            self.emit("execute-error", source, e)
+        if raise_on_exception is True and not exc in (None, ""):
             raise exc
-        return source, exc
+        return exc
+
+    def evaluate(
+        self, code: str, raise_on_exception: bool = False
+    ) -> tuple[str | None, Exception | None]:
+        result = None
+        exc = None
+        try:
+            result = eval(
+                code,
+                self.global_scope if self.global_scope is not None else {},
+                self.local_scope if self.local_scope is not None else {},
+            )
+            self.emit("evaluate", code, None)
+        except Exception as e:
+            exc = e
+            self.emit("evaluate-error", code, e)
+        if raise_on_exception is True and not exc in (None, ""):
+            raise exc
+        return result, exc
 
     def get_global_scope_object_is_class(
         self, obj_reference: str | object
@@ -120,31 +128,26 @@ class Hook(Service):
 
     def get_dict_from_position(self, positions: Positions | None) -> HookPositionDict:
         if positions is None:
-            return {
-                "line": 0,
-                "line_end": 0,
-                "col": 0,
-                "col_offset": 0,
-            }
+            return HookPositionDict(line=0, line_end=0, col=0, col_offset=0)
 
-        return {
-            "line": positions.lineno if positions.lineno is not None else 0,
-            "line_end": positions.end_lineno if positions.end_lineno is not None else 0,
-            "col": positions.col_offset if positions.col_offset is not None else 0,
-            "col_offset": positions.end_col_offset
+        return HookPositionDict(
+            line=positions.lineno if positions.lineno is not None else 0,
+            line_end=positions.end_lineno if positions.end_lineno is not None else 0,
+            col=positions.col_offset if positions.col_offset is not None else 0,
+            col_offset=positions.end_col_offset
             if positions.end_col_offset is not None
             else 0,
-        }
+        )
 
 
-class DbusClient(Service):
-    def __init__(self, client: Service, **kwargs):
-        self.client: Service = client
-        self.bus_connection: Gio.DBusConnection = None
-        self.bus_owner_id: int = self.acquire_bus_name()
+class DBusClient(Service):
+    def __init__(self, hook: Hook, **kwargs):
         super().__init__(**kwargs)
+        self._hook = hook
+        self._connection: Gio.DBusConnection | None = None
+        self.do_register()
 
-    def acquire_bus_name(self):
+    def do_register(self):
         return Gio.bus_own_name(
             Gio.BusType.SESSION,
             FABRIC_BUS_NAME,
@@ -152,7 +155,7 @@ class DbusClient(Service):
             self.on_bus_acquired,
             None,
             lambda *args: logger.warning(
-                "[DbusClient] The bus is already registered (or an error occured), another fabric instance is probably running"
+                "[DBusClient] The bus is already registered (or an error occured), another fabric instance is probably running"
             ),
         )
 
@@ -162,99 +165,71 @@ class DbusClient(Service):
         self.bus_connection = conn
         for interface in FABRIC_BUS_IFACE_NODE.interfaces:
             if interface.name == name:
-                conn.register_object(FABRIC_BUS_PATH, interface, self.on_signal)
+                conn.register_object(
+                    FABRIC_BUS_PATH, interface, self.do_handle_bus_call
+                )
 
-    def subscribe_to_signal(
-        self, conn: Gio.DBusConnection, interface: str, signal: str = None
-    ):
-        return conn.signal_subscribe(
-            None,  # sender
-            interface,
-            signal,
-            None,  # path
-            None,
-            Gio.DBusSignalFlags.NONE,
-            self.on_signal,
-            None,  # user_data
-        )
-
-    def on_signal(
+    def do_handle_bus_call(
         self,
         conn: Gio.DBusConnection,
         sender: str,
         path: str,
         interface: str,
-        signal: str,
+        target: str,
         params: GLib.Variant | tuple,
         invocation: Gio.DBusMethodInvocation,
         user_data: object = None,
-    ):
+    ) -> None:
         props = {
-            "file": GLib.Variant("s", self.client.hook.file),
+            "File": GLib.Variant("s", self._hook.file),
         }
-        if signal == "Get" and params[1] in props:
-            invocation.return_value(GLib.Variant("(v)", [props[params[1]]]))
-        elif signal == "GetAll":
-            invocation.return_value(GLib.Variant("(a{sv})", [props]))
-        elif signal == "execute":
-            source, raise_on_exception = params
-            try:
-                data = self.client.execute(
+
+        match target:
+            case "Get":
+                prop_name = params[1] if len(params) >= 1 else None
+                if not prop_name in props or not prop_name:
+                    invocation.return_value(None)
+                    conn.flush()
+                    return
+                invocation.return_value(GLib.Variant("(v)", [props.get(prop_name)]))
+            case "GetAll":
+                invocation.return_value(GLib.Variant("(a{sv})", [props]))
+            case "Log":
+                level: int
+                message: str
+                level, message = params
+                logger.level
+                match level:
+                    case 0:
+                        logger.debug(message)
+                    case 1:
+                        logger.info(message)
+                    case 2:
+                        logger.warning(message)
+                    case 3:
+                        logger.error(message)
+                invocation.return_value(None)
+            case "Execute":
+                source: str
+                source = params[0]
+                exc = self._hook.execute(
                     source,
-                    raise_on_exception
-                    if isinstance(raise_on_exception, bool)
-                    else True
-                    if raise_on_exception == 1
-                    else False
-                    if raise_on_exception == 0
-                    else False,
                 )
-                data = (str(data[0]), data[1].__repr__() if data[1] is not None else "")
-            except Exception as e:
-                data = (str(source), f"{e.__class__.__name__}: {str(e)}")
-            invocation.return_value(GLib.Variant("(ss)", data))
-        elif signal == "log":
-            data, level = params
-            if isinstance(level, str):
-                level = LogLevel.get_member(level.upper())
-
-            logger.debug(data) if level == 0 else logger.info(
-                data
-            ) if level == 1 else logger.warning(data) if level == 2 else logger.error(
-                data
-            ) if level == 3 else logger.info(data)
-
-            invocation.return_value(None)
+                exc = exc.__repr__() if not exc in ("", None) else None
+                invocation.return_value(GLib.Variant("(s)", (exc or "",)))
+            case "Evaluate":
+                code: str
+                code = params[0]
+                result, exc = self._hook.evaluate(
+                    code,
+                )
+                exc = exc.__repr__() if not exc in ("", None) else None
+                invocation.return_value(GLib.Variant("(ss)", (str(result), exc or "")))
         return conn.flush()
 
 
-class Client(Service):
-    hook = Property(value_type=Service, flags="read")
-    dbus_client = Property(value_type=object, flags="read")
-    __gsignals__ = SignalContainer(
-        Signal(
-            "exec",
-            "run-first",
-            None,
-            (object, object, object),
-            # ^^^^^^ pass the hook to callback
-        )
-    )
-
-    def __init__(self, hook: Hook, **kwargs):
-        super().__init__(**kwargs)
-        self.hook: Hook = hook
-        self.dbus_client = DbusClient(self)
-        self.hook.connect("exec", lambda *args: self.emit("exec", *args))
-
-    def execute(
-        self, source: str, raise_on_exception: bool = False
-    ) -> tuple[str, Exception | None]:
-        return self.hook.execute(source, raise_on_exception)
-
-
-def get_fabric_session_bus() -> Gio.DBusProxy | None:
-    bus = Gio.DBusProxy.new_for_bus_sync(
+def get_fabric_dbus_proxy() -> Gio.DBusProxy | None:
+    proxy = Gio.DBusProxy.new_for_bus_sync(
         Gio.BusType.SESSION,
         Gio.DBusProxyFlags.NONE,
         None,
@@ -263,7 +238,7 @@ def get_fabric_session_bus() -> Gio.DBusProxy | None:
         FABRIC_BUS_NAME,
         None,
     )
-    return bus
+    return proxy
 
 
 def get_hook() -> Hook:
@@ -272,5 +247,5 @@ def get_hook() -> Hook:
     return hook
 
 
-def get_client() -> Client:
-    return Client(get_hook())
+def get_dbus_client() -> DBusClient:
+    return DBusClient(get_hook())

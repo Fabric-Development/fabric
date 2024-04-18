@@ -4,7 +4,7 @@ from loguru import logger
 from fabric.widgets.box import Box
 from fabric.widgets.button import Button
 from fabric.widgets.eventbox import EventBox
-from fabric.hyprland.service import Connection, SignalEvent
+from fabric.hyprland.service import Hyprland, HyprlandEvent
 from fabric.utils.string_formatter import FormattedString
 from fabric.utils import bulk_connect
 
@@ -15,7 +15,7 @@ from gi.repository import (
     GLib,
 )
 
-connection = Connection()
+connection = Hyprland()
 # FIXME: better way to handle the connection variable.
 
 
@@ -51,34 +51,11 @@ class WorkspacesEventBox(EventBox):
     def get_name(self):
         return self.children_box.get_name()
 
-    def clear_widgets(self):
-        for child in self.get_children():
-            child: Gtk.Widget
-            self.remove(child)
-            child.destroy()
-        return self
-
-    def add_children(self, children: Gtk.Widget | list[Gtk.Widget]):
-        if isinstance(children, Gtk.Widget):
-            self.add(children)
-        elif isinstance(children, list) and all(
-            isinstance(widget, Gtk.Widget) for widget in children
-        ):
-            for widget in children:
-                self.add(widget)
-        else:
-            return False
-
-    def set_children(self, children: Gtk.Widget | list[Gtk.Widget]):
-        self.clear_widgets()
-        return self.add_children(children)
-
 
 class WorkspaceButton(Button):
     def __init__(
         self,
-        label: FormattedString | None = None,
-        active_label: FormattedString | None = None,
+        label: FormattedString | str | None = None,
         visible: bool = True,
         can_appear: bool = True,
         id: int | None = None,
@@ -98,15 +75,11 @@ class WorkspaceButton(Button):
         :type can_appear: bool, optional
         :param id: this will make you able to select a specific workspace, optional since it can get assigend automatically via the index of this button in the buttons list, NOTE: the value the id should starts with 0 as a first index value., defaults to None
         :type id: int, optional
-        :param name: the name of this button, makes it easier to style this specifc button, defaults to None
-        :type name: str, optional
         """
         super().__init__(
-            name=name,
             **kwargs,
         )
-        self.label = label
-        self.active_label = active_label
+        self.label = FormattedString(label) if isinstance(label, str) else label
         self.visible = visible
         self.can_appear = can_appear
         self.id = id
@@ -115,14 +88,10 @@ class WorkspaceButton(Button):
         self._urgent: bool = False
         self._empty: bool = False
 
-    def initialize_button(self):
-        self._active = False
-
     def set_active(self):
         self._active = True
         if self.can_appear:
             self.show()
-        self.bake_active_label()
         self.add_class("active")
         self.remove_class("urgent")
         return
@@ -145,9 +114,6 @@ class WorkspaceButton(Button):
 
     def bake_label(self):
         return self.set_label(self.label.get_formatted(button=self))
-
-    def bake_active_label(self):
-        return self.set_label(self.active_label.get_formatted(button=self))
 
     def set_urgent(self):
         self._urgent = True
@@ -220,11 +186,11 @@ class Workspaces(WorkspacesEventBox):
         logger.info("[Workspaces] Connected to the hyprland socket")
         return self.initialize_workspaces()
 
-    def on_workspace(self, obj, event: SignalEvent):
+    def on_workspace(self, obj, event: HyprlandEvent):
         GLib.idle_add(self.set_active_workspace, (int(event.data[0]) - 1))
         return logger.info(f"[Workspaces] Active workspace changed to {event.data[0]}")
 
-    def on_createworkspace(self, obj, event: SignalEvent):
+    def on_createworkspace(self, obj, event: HyprlandEvent):
         button_obj = self.buttons_map.get((int(event.data[0]) - 1))
         if not button_obj:
             return logger.info(
@@ -242,7 +208,7 @@ class Workspaces(WorkspacesEventBox):
         button_obj.set_empty()
         return logger.info(f"[Workspaces] Workspace {event.data[0]} destroyed")
 
-    def on_urgent(self, obj, event: SignalEvent):
+    def on_urgent(self, obj, event: HyprlandEvent):
         clients = json.loads(
             str(
                 connection.send_command(
@@ -324,15 +290,6 @@ class Workspaces(WorkspacesEventBox):
             button.label = (
                 button.label
                 if button.label is not None
-                else FormattedString(f"{button.id + 1}")
-                if button.id
-                else FormattedString(f"{index + 1}")
-            )
-            button.active_label = (
-                button.active_label
-                if button.active_label is not None
-                else button.label
-                if button.label
                 else FormattedString(f"{button.id + 1}")
                 if button.id
                 else FormattedString(f"{index + 1}")
@@ -441,11 +398,11 @@ class ActiveWindow(Button):
         self.initialize_active_window()
         return logger.info("[ActiveWindow] Connected to the hyprland socket")
 
-    def on_closewindow(self, obj, event: SignalEvent):
+    def on_closewindow(self, obj, event: HyprlandEvent):
         self.initialize_active_window()
         return logger.info(f"[ActiveWindow] Closed window 0x{event.data[0]}")
 
-    def on_activewindow(self, obj, event: SignalEvent):
+    def on_activewindow(self, obj, event: HyprlandEvent):
         GLib.idle_add(
             self.set_label,
             self.formatter.get_formatted(
@@ -523,7 +480,7 @@ class Language(Button):
             )
         )
 
-    def on_activelayout(self, obj, event: SignalEvent):
+    def on_activelayout(self, obj, event: HyprlandEvent):
         if len(event.data) < 2:
             return logger.warning(f"[Language] Got invalid data: {event.data}")
         keyboard_name, language = event.data

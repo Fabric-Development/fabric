@@ -4,7 +4,7 @@ import os
 import time
 import inspect
 from enum import Enum
-from typing import Callable, Literal, Iterable, Generator, Any
+from typing import Callable, Literal, Iterable, Generator, Union, Any
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("GtkLayerShell", "0.1")
@@ -181,31 +181,43 @@ def bulk_replace(
 
 
 def bulk_connect(
-    connectable: GObject.Object | object, mapping: dict[str:Callable]
-) -> list[object | int]:
+    connectable: GObject.Object | object, mapping: dict[str:Callable], *args
+) -> list[Union[object, int]]:
     """connects a list of signals to a list of callbacks to an object
 
     :param connectable: the object to connect the signals to
     :type connectable: GObject.Object | object
     :param mapping: the mapping of signals to callbacks, example: `{"signal-name": lambda *args: ...}`
     :type mapping: dict[str: Callable]
-    :rtype: list[object | int]
+    :rtype: list[Union[object, int]]
     """
-    return [
-        connectable.connect(signal, callback)
-        for signal, callback in zip(mapping.keys(), mapping.values())
-    ]
+    rlist = []
+    rlist.extend(
+        [
+            connectable.connect(signal, callback)
+            for signal, callback in zip(mapping.keys(), mapping.values())
+        ]
+    )
+    if len(args) > 1 and len(args) % 2:
+        raise ValueError(
+            f"extra passed arguments must follow this syntax (connectable, mapping, connectable, mapping, ...) but got {args}"
+        )
+    for index, item in enumerate(args):
+        if isinstance(item, GObject.Object):
+            rlist.extend(bulk_connect(item, args[index + 1]))
+    return rlist
 
 
 def bulk_disconnect(
-    disconnectable: GObject.Object | object, signals_or_funcs: list[str | Callable]
+    disconnectable: GObject.Object | object,
+    signals_or_funcs: list[Union[str, Callable]],
 ) -> list[int]:
     """does the opposite of bulk_connect
 
     :param disconnectable: the object to disconnect the signals from
     :type disconnectable: GObject.Object | object
     :param signals_or_funcs: the list of signals/callbacks to disconnect
-    :type signals: list[str | Callable]
+    :type signals: list[Union[str, Callable]]
     :return: a list of return values from the `disconnect` function
     :rtype: list[int]
     """
@@ -388,7 +400,7 @@ def exec_shell_command(cmd: str) -> str | bool:
         return False
 
 
-def invoke_repeater(interval: int, func: Callable, *args, **kwargs) -> int:
+def invoke_repeater(interval: int, func: Callable, *args) -> int | list[int]:
     """
     invokes a function repeatedly with a given interval
 
@@ -396,13 +408,25 @@ def invoke_repeater(interval: int, func: Callable, *args, **kwargs) -> int:
     :type interval: int
     :param func: the function to invoke
     :type func: Callable
-
-    *args and **kwargs are passed to the function
+    :param args: extra pairs of (interval, func, ...) to get registered as well
 
     :return: the result of the function
-    :rtype: int
+    :rtype: int | list[int]
     """
-    return GLib.timeout_add(interval, func, *args, **kwargs)
+    rlist = []
+    o = GLib.timeout_add(interval, func)
+    if len(args) > 1 and len(args) % 2:
+        raise ValueError(
+            f"extra passed arguments must follow this syntax (interval, func, interval, func, ...) but got {args}"
+        )
+    elif len(args) > 1:
+        rlist.append(o)
+    for index, item in enumerate(args):
+        if isinstance(item, (int, float)):
+            # item is a interval, get the callback
+            callback = args[index + 1]
+            rlist.append(GLib.timeout_add(item, callback))
+    return rlist if len(rlist) > 1 else o
 
 
 def get_relative_path(path: str, level: int = 1) -> str:
@@ -528,3 +552,13 @@ def bridge_signals(
                 custom_mapping.get(signal_name, signal_name), *args
             ),
         )
+
+
+def idlify(func: Callable, *args) -> int:
+    """add a function to be invoked in the main thread, useful for multi-threaded code
+
+    :param func: the function to be queued
+    :type func: Callable
+    :param args: arguments will be passed to the given function
+    """
+    return GLib.idle_add(func, *args)

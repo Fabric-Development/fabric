@@ -2,6 +2,7 @@ import gi
 import re
 import os
 import time
+import shlex
 import inspect
 from enum import Enum
 from typing import Callable, Literal, Iterable, Generator, Union, Any
@@ -383,10 +384,10 @@ def exec_shell_command(cmd: str) -> str | bool:
     """
     executes a shell command and returns the output
 
-    :param cmd: the command to execute
-    :type cmd: str or list of str
+    :param cmd: the shell command to execute
+    :type cmd: str
     :return: the output of the command
-    :rtype: str or list of str
+    :rtype: str | bool
     """
     if isinstance(cmd, str) is True:
         try:
@@ -398,6 +399,43 @@ def exec_shell_command(cmd: str) -> str | bool:
             return False
     else:
         return False
+
+
+def exec_shell_command_async(
+    cmd: str | list[str],
+    callback: Callable[[str], None],
+) -> tuple[Gio.Subprocess | None, Gio.DataInputStream]:
+    """
+    executes a shell command and returns the output asynchronously
+
+    :param cmd: the shell command to execute
+    :type cmd: str
+    :param callback: a function to retrieve the result at
+    :type cmd: Callable[[str], None]
+    :return: a Gio.Subprocess object which holds a referance to your process and a Gio.DataInputStream object for stdout
+    :rtype: tuple[Gio.Subprocess | None, Gio.DataInputStream]
+    """
+    process = Gio.Subprocess.new(
+        shlex.split(cmd) if isinstance(cmd, str) else cmd,
+        Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
+    )
+    stdout = Gio.DataInputStream(
+        base_stream=process.get_stdout_pipe(),
+        close_base_stream=True,
+    )
+
+    def reader_loop(stdout: Gio.DataInputStream):
+        def _callback(stream: Gio.DataInputStream, res):
+            output, _ = stream.read_line_finish_utf8(res)
+            if isinstance(output, str):
+                callback(output)
+                reader_loop(stream)
+
+        stdout.read_line_async(GLib.PRIORITY_DEFAULT, None, _callback)
+
+    reader_loop(stdout)
+
+    return process, stdout
 
 
 def invoke_repeater(interval: int, func: Callable, *args) -> int | list[int]:

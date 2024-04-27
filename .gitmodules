@@ -1,0 +1,3 @@
+[submodule "submodules/cinnamon-desktop"]
+	path = submodules/cinnamon-desktop
+	url = https://github.com/linuxmint/cinnamon-desktop

@@ -26,6 +26,9 @@ depends=(
 )
 makedepends=(
     python-setuptools
+    meson-python
+    ninja
+    meson
     git
 )
 optdepends=(
@@ -39,14 +42,21 @@ conflicts=(
 )
 
 source=(git+http://github.com/Fabric-Development/$reponame.git)
+
 sha256sums=("SKIP")
+
+prepare() {
+  cd "$srcdir/$reponame"
+  git submodule update --init
+}
 
 build() {
   cd "$srcdir/$reponame"
-  python setup.py build
+  meson --prefix=/usr build
+  ninja -C build
 }
 
 package() {
   cd "$srcdir/$reponame"
-  python setup.py install --root="$pkgdir/" --optimize=1
+  DESTDIR="$pkgdir" meson install -C build
 }

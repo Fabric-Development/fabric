@@ -1,0 +1,41 @@
+0a1,36
+> use_alsa = false
+> conf = configuration_data()
+> systemd = dependency('libsystemd',      required: false)
+> pkgconfig = import('pkgconfig')
+> gnome     = import('gnome')
+> cc                = meson.get_compiler('c')
+> 
+> timerfd_check = cc.compiles('''
+> #include <sys/timerfd.h>
+> #include <unistd.h>
+> int main () {
+>   timerfd_create (CLOCK_MONOTONIC, TFD_CLOEXEC);
+>   return 0;
+> }
+> ''')
+> 
+> gettext_package = meson.project_name()
+> conf.set_quoted('GETTEXT_PACKAGE', gettext_package)
+> conf.set_quoted('GNOMELOCALEDIR', join_paths(get_option('prefix'), get_option('localedir')))
+> conf.set_quoted('PACKAGE_VERSION', meson.project_version())
+> 
+> conf.set('HAVE_BIND_TEXTDOMAIN_CODESET', cc.has_function('bind_textdomain_codeset'))
+> conf.set('datadir',             get_option('datadir'))
+> conf.set('ENABLE_NLS',          cc.has_header('libintl.h'))
+> conf.set('HAVE_ALSA',           use_alsa)
+> conf.set('HAVE_GETTEXT',        true)
+> conf.set('HAVE_INTROSPECTION',  true)
+> conf.set('HAVE_SYSTEMD',        systemd.found())
+> conf.set('HAVE_TIMERFD',        timerfd_check)
+> 
+> configure_file(
+>   output: 'config.h',
+>   configuration: conf
+> )
+> 
+> 
+52c88
+<   include_directories: rootInclude,
+---
+>   include_directories: include_directories('.'),

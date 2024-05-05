@@ -98,7 +98,7 @@ class VerticalBar(Window):
         )
         self.time_sep_var = Fabricator(
             value="",
-            poll_from=lambda _: [
+            poll_from=lambda: [
                 "",
                 self.time_sep.set_style_classes(["day"]),
             ][0]
@@ -190,7 +190,7 @@ class VerticalBar(Window):
         self.battery_label = Label(label="0")
         self.system_info_var = Fabricator(
             value={"ram": 0, "cpu": 0, "battery": 42},
-            poll_from=lambda _: {
+            poll_from=lambda: {
                 "ram": str(int(psutil.virtual_memory().percent)),
                 "cpu": str(int(psutil.cpu_percent())),
                 "battery": str(
@@ -266,7 +266,9 @@ class VerticalBar(Window):
         self.show_all()
 
     def on_button_press(self, button: Button, event):
-        if event.button == 1 and event.type == 5 and self.run_button:  # trigger if double click
+        if (
+            event.button == 1 and event.type == 5 and self.run_button
+        ):  # trigger if double click
             return exec_shell_command("wofi -S drun --allow-images")
         elif button == self.power_button:
             return self.power_menu.toggle_window()

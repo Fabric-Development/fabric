@@ -267,7 +267,7 @@ class VerticalBar(Window):
 
     def on_button_press(self, button: Button, event):
         if (
-            event.button == 1 and event.type == 5 and self.run_button
+            event.button == 1 and event.type == 5 and button == self.run_button
         ):  # trigger if double click
             return exec_shell_command("wofi -S drun --allow-images")
         elif button == self.power_button:

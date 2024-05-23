@@ -4,12 +4,7 @@ import os
 import time
 import psutil
 from loguru import logger
-from fabric.widgets.box import Box
-from fabric.widgets.label import Label
-from fabric.widgets.wayland import Window
-from fabric.widgets.overlay import Overlay
-from fabric.widgets.date_time import DateTime
-from fabric.widgets.circular_progress_bar import CircularProgressBar
+from fabric.widgets import Box, Label, Window, Overlay, DateTime, CircularProgressBar
 from fabric.utils import (
     set_stylesheet_from_file,
     monitor_file,

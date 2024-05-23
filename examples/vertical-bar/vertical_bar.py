@@ -1,17 +1,21 @@
 import fabric
 import time
 import psutil
-from fabric.widgets.box import Box
-from fabric.widgets.image import Image
-from fabric.widgets.label import Label
-from fabric.widgets.button import Button
-from fabric.widgets.wayland import Window
-from fabric.widgets.date_time import DateTime
-from fabric.widgets.centerbox import CenterBox
+from fabric.widgets import (
+    Box,
+    Image,
+    Label,
+    Button,
+    Window,
+    DateTime,
+    CenterBox,
+    HyprlandLanguage as Language,
+    HyprlandWorkspaceButton as WorkspaceButton,
+    HyprlandWorkspaces as Workspaces,
+)
 from fabric.utils.fabricator import Fabricator
-from fabric.utils.string_formatter import FormattedString
-from fabric.hyprland.widgets import Language, WorkspaceButton, Workspaces
 from fabric.utils import (
+    FormattedString,
     set_stylesheet_from_file,
     bulk_replace,
     bulk_connect,
@@ -98,7 +102,7 @@ class VerticalBar(Window):
         )
         self.time_sep_var = Fabricator(
             value="",
-            poll_from=lambda: [
+            poll_from=lambda _: [
                 "",
                 self.time_sep.set_style_classes(["day"]),
             ][0]
@@ -190,7 +194,7 @@ class VerticalBar(Window):
         self.battery_label = Label(label="0")
         self.system_info_var = Fabricator(
             value={"ram": 0, "cpu": 0, "battery": 42},
-            poll_from=lambda: {
+            poll_from=lambda _: {
                 "ram": str(int(psutil.virtual_memory().percent)),
                 "cpu": str(int(psutil.cpu_percent())),
                 "battery": str(
@@ -267,7 +271,7 @@ class VerticalBar(Window):
 
     def on_button_press(self, button: Button, event):
         if (
-            event.button == 1 and event.type == 5 and button == self.run_button
+            event.button == 1 and event.type == 5 and self.run_button
         ):  # trigger if double click
             return exec_shell_command("wofi -S drun --allow-images")
         elif button == self.power_button:

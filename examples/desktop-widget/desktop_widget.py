@@ -2,9 +2,7 @@
 import fabric
 import os
 from loguru import logger
-from fabric.widgets.box import Box
-from fabric.widgets.wayland import Window
-from fabric.widgets.date_time import DateTime
+from fabric.widgets import Box, Window, DateTime
 from fabric.utils import (
     set_stylesheet_from_file,
     monitor_file,

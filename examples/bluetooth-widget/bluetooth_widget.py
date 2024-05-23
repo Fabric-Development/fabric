@@ -1,13 +1,15 @@
 import fabric
 from loguru import logger
-from fabric.widgets.box import Box
-from fabric.widgets.label import Label
-from fabric.widgets.image import Image
-from fabric.widgets.button import Button
-from fabric.widgets.wayland import Window
-from fabric.widgets.centerbox import CenterBox
-from fabric.widgets.scrolled_window import ScrolledWindow
-from fabric.bluetooth.service import BluetoothClient, BluetoothDevice
+from fabric.widgets import (
+    Box,
+    Label,
+    Image,
+    Button,
+    Window,
+    CenterBox,
+    ScrolledWindow,
+)
+from fabric.bluetooth import BluetoothClient, BluetoothDevice
 from fabric.utils import set_stylesheet_from_file, get_relative_path
 
 

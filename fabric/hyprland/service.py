@@ -106,24 +106,20 @@ class Hyprland(Service):
         """
         super().__init__(**kwargs)
         self.HYPRLAND_SIGNATURE = os.getenv("HYPRLAND_INSTANCE_SIGNATURE")
-        self.BASE_SOCKET_PATH = (
-            new_path
-            if os.path.isdir(
-                (
-                    new_path
-                    := f"{os.getenv('XDG_RUNTIME_DIR')}/hypr/{self.HYPRLAND_SIGNATURE}"
-                )
-            )
-            else f"/tmp/hypr/{self.HYPRLAND_SIGNATURE}"
-        )
-        if not os.path.isdir(self.BASE_SOCKET_PATH):
+        if self.HYPRLAND_SIGNATURE is None or not os.path.isdir(
+            f"/tmp/hypr/{self.HYPRLAND_SIGNATURE}"
+        ):
             # hyprland is not running.
             raise HyprlandSocketNotFoundError(
-                "Hyprland socket doenst seem to be found, Hyprland is running?"
+                "Hyprland socket doenst seem to be found,\nHyprland is running?"
             )
         # all aboard
-        self.HYPRLAND_EVENTS_SOCKET = f"{self.BASE_SOCKET_PATH}/.socket2.sock"
-        self.HYPRLAND_COMMANDS_SOCKET = f"{self.BASE_SOCKET_PATH}/.socket.sock"
+        self.HYPRLAND_EVENTS_SOCKET = (
+            f"/tmp/hypr/{self.HYPRLAND_SIGNATURE}/.socket2.sock"
+        )
+        self.HYPRLAND_COMMANDS_SOCKET = (
+            f"/tmp/hypr/{self.HYPRLAND_SIGNATURE}/.socket.sock"
+        )
         if not commands_only:
             self.event_socket_thread = GLib.Thread.new(
                 "hyprland-socket-service",

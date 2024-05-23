@@ -3,18 +3,24 @@ import fabric
 import os
 import psutil
 from loguru import logger
-from fabric.widgets.box import Box
-from fabric.widgets.label import Label
-from fabric.widgets.wayland import Window
-from fabric.widgets.overlay import Overlay
-from fabric.widgets.eventbox import EventBox
-from fabric.widgets.date_time import DateTime
-from fabric.widgets.centerbox import CenterBox
-from fabric.system_tray.widgets import SystemTray
-from fabric.utils.string_formatter import FormattedString
-from fabric.widgets.circular_progress_bar import CircularProgressBar
-from fabric.hyprland.widgets import WorkspaceButton, Workspaces, ActiveWindow, Language
+from fabric.widgets import (
+    Box,
+    Label,
+    Overlay,
+    EventBox,
+    DateTime,
+    CenterBox,
+    SystemTray,
+    CircularProgressBar,
+    WaylandWindow as Window,
+    HyprlandWorkspaceButton as WorkspaceButton,
+    HyprlandWorkspaces as Workspaces,
+    HyprlandActiveWindow as ActiveWindow,
+    HyprlandLanguage as Language,
+)
+
 from fabric.utils import (
+    FormattedString,
     set_stylesheet_from_file,
     bulk_replace,
     monitor_file,

@@ -27,7 +27,7 @@ classifiers = [
 system-status = ["psutil"]
 
 [tool.setuptools.package-data]
-"*" = ["*.xml"]
+"*" = ["*.xml", "*.js"]
 
 [project.urls]
 Repository = "https://github.com/Fabric-Development/fabric.git"

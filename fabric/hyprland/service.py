@@ -113,6 +113,8 @@ class Hyprland(Service):
         if not os.path.isdir(hyprland_dir):
             hyprland_dir = f"{self.XDG_RUNTIME_DIR}/hypr/{self.HYPRLAND_SIGNATURE}"
             if not os.path.isdir(hyprland_dir):
+
+                # hyprland is not running
                 raise HyprlandSocketNotFoundError(
                     "Hyprland socket doesn't seem to be found,\nIs Hyprland running?"
                 )

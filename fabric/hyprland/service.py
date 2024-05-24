@@ -90,7 +90,6 @@ HYPRLAND_SIGNALS = [
     Signal(name="pin", flags="run-first", rtype=None, args=(object,)),
 ]
 
-
 class Hyprland(Service):
     """
     a connection to the hyprland's socket
@@ -103,22 +102,27 @@ class Hyprland(Service):
         """
         :param commands_only: set to `True` if you're going to use this connection for sending commands only, defaults to False
         :type commands_only: bool, optional
+
+        NOTE: From Hyprland v0.40.0 the directory changed from /tmp/hypr/ to $XDG_RUNTIME_DIR/hypr/
         """
         super().__init__(**kwargs)
+        self.XDG_RUNTIME_DIR = os.getenv("XDG_RUNTIME_DIR")
         self.HYPRLAND_SIGNATURE = os.getenv("HYPRLAND_INSTANCE_SIGNATURE")
-        if self.HYPRLAND_SIGNATURE is None or not os.path.isdir(
-            f"/tmp/hypr/{self.HYPRLAND_SIGNATURE}"
-        ):
-            # hyprland is not running.
-            raise HyprlandSocketNotFoundError(
-                "Hyprland socket doenst seem to be found,\nHyprland is running?"
-            )
+        
+        hyprland_dir = f"/tmp/hypr/{self.HYPRLAND_SIGNATURE}"
+        if not os.path.isdir(hyprland_dir):
+            hyprland_dir = f"{self.XDG_RUNTIME_DIR}/hypr/{self.HYPRLAND_SIGNATURE}"
+            if not os.path.isdir(hyprland_dir):
+                raise HyprlandSocketNotFoundError(
+                    "Hyprland socket doesn't seem to be found,\nIs Hyprland running?"
+                )
+        
         # all aboard
         self.HYPRLAND_EVENTS_SOCKET = (
-            f"/tmp/hypr/{self.HYPRLAND_SIGNATURE}/.socket2.sock"
+            f"{hyprland_dir}/.socket2.sock"
         )
         self.HYPRLAND_COMMANDS_SOCKET = (
-            f"/tmp/hypr/{self.HYPRLAND_SIGNATURE}/.socket.sock"
+            f"{hyprland_dir}/.socket.sock"
         )
         if not commands_only:
             self.event_socket_thread = GLib.Thread.new(

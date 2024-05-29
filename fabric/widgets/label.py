@@ -109,10 +109,12 @@ class Label(Gtk.Label, Widget):
             name,
             size,
         )
-        if markup:
-            self.set_markup(label) if label is not None else None
-        else:
-            self.set_label(label) if label is not None else None
+
+        if label is not None and markup is True:
+            self.set_markup(label)
+        elif label is not None:
+            self.set_label(label)
+
         self.set_justify(
             {
                 "left": Gtk.Justification.LEFT,

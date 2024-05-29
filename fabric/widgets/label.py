@@ -10,6 +10,7 @@ class Label(Gtk.Label, Widget):
     def __init__(
         self,
         label: str | None = None,
+        markup: bool = False,
         justfication: Literal[
             "left",
             "right",
@@ -50,6 +51,8 @@ class Label(Gtk.Label, Widget):
         """
         :param label: the actual label text, defaults to None
         :type label: str | None, optional
+        :param markup: whether to use markup or plain text, defaults to False
+        :type markup: bool, optional
         :param justfication: justfication mode, defaults to None
         :type justfication: Literal["left", "right", "center", "fill",] | Gtk.Justification | None, optional
         :param ellipsization: ellipsization mode, defaults to None
@@ -106,7 +109,10 @@ class Label(Gtk.Label, Widget):
             name,
             size,
         )
-        self.set_label(label) if label is not None else None
+        if markup:
+            self.set_markup(label) if label is not None else None
+        else:
+            self.set_label(label) if label is not None else None
         self.set_justify(
             {
                 "left": Gtk.Justification.LEFT,

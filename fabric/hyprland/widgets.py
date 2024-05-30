@@ -310,15 +310,16 @@ class Workspaces(WorkspacesEventBox):
             button.bake_label()
             button.connect(
                 "button-press-event",
-                lambda _, __, obj=button: self.button_click_handler(obj),
+                self.button_click_handler(obj)
             )
             self.add(button)
         return workspaces_buttons
 
-    def button_click_handler(self, button: WorkspaceButton):
-        connection.send_command(
-            f"batch/dispatch workspace {button.id + 1}",
-        )
+    def button_click_handler(self, button: WorkspaceButton, event):
+        if event.button == 1 and event.type == 4:
+            connection.send_command(
+                f"batch/dispatch workspace {button.id + 1}",
+            )
         logger.info(f"[Workspaces] Moved to workspace {button.id + 1}")
         return
 

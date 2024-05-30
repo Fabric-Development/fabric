@@ -318,7 +318,7 @@ class Workspaces(WorkspacesEventBox):
     def button_click_handler(self, button: WorkspaceButton, event):
         if event.button == 1 and event.type == 4:
             connection.send_command(
-                f"batch/dispatch workspace {button.id + 1}",
+                f"/dispatch workspace {button.id + 1}",
             )
         logger.info(f"[Workspaces] Moved to workspace {button.id + 1}")
         return

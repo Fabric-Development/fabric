@@ -1,11 +1,12 @@
 # !/usr/bin/env bash
 
+# a script to install libcvc manually
+
 cinnamon_git="https://github.com/linuxmint/cinnamon-desktop"
 cinnamon_git_name="cinnamon-desktop"
 cwd="$(pwd)"
 
 pre_check_exists() {
-    # check if Cvc typelibs are installed
     echo "checking if libcvc is already installed..."
     if ls /usr/lib/girepository-1.0/Cvc-1.0.typelib 1> /dev/null 2>&1;
     then

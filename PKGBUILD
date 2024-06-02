@@ -43,6 +43,12 @@ conflicts=(
 source=(git+http://github.com/Fabric-Development/$reponame.git)
 sha256sums=("SKIP")
 
+pkgver() {
+  cd "$srcdir/$reponame"
+  ver=$(python -c "import importlib.metadata; print(importlib.metadata.version('$reponame'))")
+  printf "%s.r%s.%s" "$ver" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
+}
+
 build() {
   cd "$srcdir/$reponame"
   python setup.py build

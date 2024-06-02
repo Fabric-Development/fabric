@@ -43,7 +43,7 @@ sha256sums=("SKIP")
 
 pkgver() {
   cd "$srcdir/$reponame"
-  ver=$(python -c "import importlib.metadata;print(importlib.metadata.version('$reponame'))")
+  ver=$(python -c "import importlib.metadata; print(importlib.metadata.version('$reponame'))")
   printf "%s.r%s.%s" "$ver" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
 }
 

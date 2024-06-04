@@ -14,14 +14,7 @@ class Application:
         self.window_class: str | None = app.get_startup_wm_class()
         self.executable: str | None = app.get_executable()
         self.command_line: str | None = app.get_commandline()
-        self.icon: (
-            Gio.Icon
-            | Gio.ThemedIcon
-            | Gio.FileIcon
-            | Gio.LoadableIcon
-            | Gio.EmblemedIcon
-            | None
-        ) = app.get_icon()
+        self.icon: Gio.Icon | Gio.ThemedIcon | Gio.FileIcon | Gio.LoadableIcon | Gio.EmblemedIcon | None = app.get_icon()
         self.icon_name: str | None = (
             self.icon.to_string() if self.icon is not None else None
         )
@@ -75,7 +68,7 @@ class Application:
         return self._pixbuf
 
 
-def get_desktop_applications(include_hidden=False) -> list[Application]:
+def get_desktop_applications(include_hidden: bool = False) -> list[Application]:
     """
     get a list of all desktop applications
     this might be useful for writing application launchers

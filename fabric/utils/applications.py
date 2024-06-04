@@ -76,4 +76,8 @@ def get_desktop_applications(include_hidden = False) -> list[Application]:
     :return: a list of all desktop applications
     :rtype: list[Application]
     """
-    return [Application(app) for app in Gio.DesktopAppInfo.get_all() if app.should_show() and not include_hidden]
+    return [
+        Application(app)
+        for app in Gio.DesktopAppInfo.get_all()
+        if app.should_show() and not include_hidden
+    ]

@@ -68,7 +68,7 @@ class Application:
         return self._pixbuf
 
 
-def get_desktop_applications() -> list[Application]:
+def get_desktop_applications(include_hidden = False) -> list[Application]:
     """
     get a list of all desktop applications
     this might be useful for writing application launchers
@@ -76,4 +76,4 @@ def get_desktop_applications() -> list[Application]:
     :return: a list of all desktop applications
     :rtype: list[Application]
     """
-    return [Application(app) for app in Gio.DesktopAppInfo.get_all()]
+    return [Application(app) for app in Gio.DesktopAppInfo.get_all() if app.should_show() and not include_hidden]

@@ -11,7 +11,7 @@ class Label(Gtk.Label, Widget):
         self,
         label: str | None = None,
         markup: bool = False,
-        justfication: Literal[
+        justification: Literal[
             "left",
             "right",
             "center",
@@ -53,8 +53,8 @@ class Label(Gtk.Label, Widget):
         :type label: str | None, optional
         :param markup: whether to use markup or plain text, defaults to False
         :type markup: bool, optional
-        :param justfication: justfication mode, defaults to None
-        :type justfication: Literal["left", "right", "center", "fill",] | Gtk.Justification | None, optional
+        :param justification: justification mode, defaults to None
+        :type justification: Literal["left", "right", "center", "fill",] | Gtk.Justification | None, optional
         :param ellipsization: ellipsization mode, defaults to None
         :type ellipsization: Literal["none", "start", "middle", "end",] | Pango.EllipsizeMode | None, optional
         :param character_max_width: the maximum width of the label, defaults to None
@@ -121,8 +121,8 @@ class Label(Gtk.Label, Widget):
                 "right": Gtk.Justification.RIGHT,
                 "center": Gtk.Justification.CENTER,
                 "fill": Gtk.Justification.FILL,
-            }.get(justfication.lower(), Gtk.Justification.LEFT)
-        ) if justfication is not None else None
+            }.get(justification.lower(), Gtk.Justification.LEFT)
+        ) if justification is not None else None
         self.set_ellipsize(
             {
                 "none": Pango.EllipsizeMode.NONE,

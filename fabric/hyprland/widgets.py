@@ -146,7 +146,7 @@ class Workspaces(WorkspacesEventBox):
         buttons_list: list[WorkspaceButton] = None,
         invert_scroll: bool = False,
         empty_scroll: bool = False,
-        default_button: WorkspaceButton = None,
+        # default_button: WorkspaceButton = None,
         **kwargs,
     ):
         """
@@ -332,29 +332,21 @@ class Workspaces(WorkspacesEventBox):
         return
 
     def scroll_handler(self, widget, event: Gdk.EventScroll):
-        direction = (
-            {"UP": "-1", "DOWN": "+1"}
-            if self.invert_scroll
-            else {"UP": "+1", "DOWN": "-1"}
-        )
-        empty = "" if self.empty_scroll else "e"
-
+        cmd = "" if self.empty_scroll else "e"
         match event.direction:
             case Gdk.ScrollDirection.UP:
-                connection.send_command(
-                    f"batch/dispatch workspace {empty}{direction['UP']}",
-                )
-                logger.info("[Workspaces] Moved to the next workspace")
+                cmd += "-1" if self.invert_scroll is True else "+1"
+                logger.info("[Workspaces] Moving to the next workspace")
             case Gdk.ScrollDirection.DOWN:
-                connection.send_command(
-                    f"batch/dispatch workspace {empty}{direction['DOWN']}",
-                )
-                logger.info("[Workspaces] Moved to the previous workspace")
+                cmd += "+1" if self.invert_scroll is True else "-1"
+                logger.info("[Workspaces] Moving to the previous workspace")
             case _:
-                logger.info(
+                return logger.warning(
                     f"[Workspaces] Unknown scroll direction ({event.direction})"
                 )
-        return
+        return connection.send_command(
+            f"batch/dispatch workspace {cmd}",
+        )
 
 
 class ActiveWindow(Button):

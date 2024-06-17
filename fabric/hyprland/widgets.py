@@ -188,6 +188,9 @@ class Workspaces(WorkspacesEventBox):
         )
         self.connect("scroll-event", self.scroll_handler)
 
+        self.invert_scroll = invert_scroll
+        self.allow_empty = allow_empty
+
     def on_ready(self, obj):
         logger.info("[Workspaces] Connected to the hyprland socket")
         return self.initialize_workspaces()
@@ -328,20 +331,19 @@ class Workspaces(WorkspacesEventBox):
         logger.info(f"[Workspaces] Moved to workspace {button.id + 1}")
         return
 
-    def scroll_handler(self, widget, event: Gdk.EventScroll, invert_scroll: bool = False, allow_empty: bool = False):
-        direction_up = "-1" if invert_scroll else "+1"
-        direction_down = "+1" if invert_scroll else "-1"
-        empty = "" if allow_empty else "e"
+    def scroll_handler(self, widget, event: Gdk.EventScroll):
+        direction = {"UP": "-1", "DOWN": "+1"} if self.invert_scroll else {"UP": "+1", "DOWN": "-1"}
+        empty = "" if self.allow_empty else "e"
 
         match event.direction:
             case Gdk.ScrollDirection.UP:
                 connection.send_command(
-                    f"batch/dispatch workspace {empty}{direction_up}",
+                    f"batch/dispatch workspace {empty}{direction['UP']}",
                 )
                 logger.info("[Workspaces] Moved to the next workspace")
             case Gdk.ScrollDirection.DOWN:
                 connection.send_command(
-                    f"batch/dispatch workspace {empty}{direction_down}",
+                    f"batch/dispatch workspace {empty}{direction['DOWN']}",
                 )
                 logger.info("[Workspaces] Moved to the previous workspace")
             case _:

@@ -332,7 +332,11 @@ class Workspaces(WorkspacesEventBox):
         return
 
     def scroll_handler(self, widget, event: Gdk.EventScroll):
-        direction = {"UP": "-1", "DOWN": "+1"} if self.invert_scroll else {"UP": "+1", "DOWN": "-1"}
+        direction = (
+            {"UP": "-1", "DOWN": "+1"}
+            if self.invert_scroll
+            else {"UP": "+1", "DOWN": "-1"}
+        )
         empty = "" if self.empty_scroll else "e"
 
         match event.direction:

@@ -145,7 +145,7 @@ class Workspaces(WorkspacesEventBox):
         self,
         buttons_list: list[WorkspaceButton] = None,
         invert_scroll: bool = False,
-        allow_empty: bool = False,
+        empty_scroll: bool = False,
         default_button: WorkspaceButton = None,
         **kwargs,
     ):
@@ -154,8 +154,8 @@ class Workspaces(WorkspacesEventBox):
         :type button_list: list[WorkspaceButton], optional
         :param invert_scroll: invert the scroll direction, defaults to False
         :type invert_scroll: bool, optional
-        :param allow_empty: allow scrolling to empty workspaces, defaults to False
-        :type allow_empty: bool, optional
+        :param empty_scroll: allow scrolling to empty workspaces, defaults to False
+        :type empty_scroll: bool, optional
         """
         super().__init__(**kwargs)
         # TODO: use default_button to map a new button if it was not passed in the butttons list.
@@ -189,7 +189,7 @@ class Workspaces(WorkspacesEventBox):
         self.connect("scroll-event", self.scroll_handler)
 
         self.invert_scroll = invert_scroll
-        self.allow_empty = allow_empty
+        self.empty_scroll = empty_scroll
 
     def on_ready(self, obj):
         logger.info("[Workspaces] Connected to the hyprland socket")
@@ -333,7 +333,7 @@ class Workspaces(WorkspacesEventBox):
 
     def scroll_handler(self, widget, event: Gdk.EventScroll):
         direction = {"UP": "-1", "DOWN": "+1"} if self.invert_scroll else {"UP": "+1", "DOWN": "-1"}
-        empty = "" if self.allow_empty else "e"
+        empty = "" if self.empty_scroll else "e"
 
         match event.direction:
             case Gdk.ScrollDirection.UP:

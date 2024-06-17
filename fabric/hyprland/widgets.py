@@ -144,12 +144,18 @@ class Workspaces(WorkspacesEventBox):
     def __init__(
         self,
         buttons_list: list[WorkspaceButton] = None,
+        invert_scroll: bool = False,
+        allow_empty: bool = False,
         default_button: WorkspaceButton = None,
         **kwargs,
     ):
         """
         :param button_list: a list of `WorkspaceButton` objects, defaults to None and if none it will use a built-in list.
         :type button_list: list[WorkspaceButton], optional
+        :param invert_scroll: invert the scroll direction, defaults to False
+        :type invert_scroll: bool, optional
+        :param allow_empty: allow scrolling to empty workspaces, defaults to False
+        :type allow_empty: bool, optional
         """
         super().__init__(**kwargs)
         # TODO: use default_button to map a new button if it was not passed in the butttons list.
@@ -322,16 +328,20 @@ class Workspaces(WorkspacesEventBox):
         logger.info(f"[Workspaces] Moved to workspace {button.id + 1}")
         return
 
-    def scroll_handler(self, widget, event: Gdk.EventScroll):
+    def scroll_handler(self, widget, event: Gdk.EventScroll, invert_scroll: bool = False, allow_empty: bool = False):
+        direction_up = "-1" if invert_scroll else "+1"
+        direction_down = "+1" if invert_scroll else "-1"
+        empty = "" if allow_empty else "e"
+
         match event.direction:
             case Gdk.ScrollDirection.UP:
                 connection.send_command(
-                    "batch/dispatch workspace e+1",
+                    f"batch/dispatch workspace {empty}{direction_up}",
                 )
                 logger.info("[Workspaces] Moved to the next workspace")
             case Gdk.ScrollDirection.DOWN:
                 connection.send_command(
-                    "batch/dispatch workspace e-1",
+                    f"batch/dispatch workspace {empty}{direction_down}",
                 )
                 logger.info("[Workspaces] Moved to the previous workspace")
             case _:

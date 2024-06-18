@@ -144,12 +144,18 @@ class Workspaces(WorkspacesEventBox):
     def __init__(
         self,
         buttons_list: list[WorkspaceButton] = None,
-        default_button: WorkspaceButton = None,
+        invert_scroll: bool = False,
+        empty_scroll: bool = False,
+        # default_button: WorkspaceButton = None,
         **kwargs,
     ):
         """
         :param button_list: a list of `WorkspaceButton` objects, defaults to None and if none it will use a built-in list.
         :type button_list: list[WorkspaceButton], optional
+        :param invert_scroll: invert the scroll direction, defaults to False
+        :type invert_scroll: bool, optional
+        :param empty_scroll: allow scrolling to empty workspaces, defaults to False
+        :type empty_scroll: bool, optional
         """
         super().__init__(**kwargs)
         # TODO: use default_button to map a new button if it was not passed in the butttons list.
@@ -181,6 +187,9 @@ class Workspaces(WorkspacesEventBox):
             },
         )
         self.connect("scroll-event", self.scroll_handler)
+
+        self.invert_scroll = invert_scroll
+        self.empty_scroll = empty_scroll
 
     def on_ready(self, obj):
         logger.info("[Workspaces] Connected to the hyprland socket")
@@ -323,22 +332,21 @@ class Workspaces(WorkspacesEventBox):
         return
 
     def scroll_handler(self, widget, event: Gdk.EventScroll):
+        cmd = "" if self.empty_scroll else "e"
         match event.direction:
             case Gdk.ScrollDirection.UP:
-                connection.send_command(
-                    "batch/dispatch workspace e+1",
-                )
-                logger.info("[Workspaces] Moved to the next workspace")
+                cmd += "-1" if self.invert_scroll is True else "+1"
+                logger.info("[Workspaces] Moving to the next workspace")
             case Gdk.ScrollDirection.DOWN:
-                connection.send_command(
-                    "batch/dispatch workspace e-1",
-                )
-                logger.info("[Workspaces] Moved to the previous workspace")
+                cmd += "+1" if self.invert_scroll is True else "-1"
+                logger.info("[Workspaces] Moving to the previous workspace")
             case _:
-                logger.info(
+                return logger.warning(
                     f"[Workspaces] Unknown scroll direction ({event.direction})"
                 )
-        return
+        return connection.send_command(
+            f"batch/dispatch workspace {cmd}",
+        )
 
 
 class ActiveWindow(Button):

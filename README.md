@@ -16,10 +16,10 @@ fabric.start()
 
 
 ## Features
-* Simple — a widget in ten lines
-* Powerful features like [services](https://wiki.ffpy.org/services.html), [fabricators](https://wiki.ffpy.org/fabricators.html), and CSS support make creating a beautiful, dynamic widget easy
-* Wayland and X11 ready
-* Use any Python library you want in your widget
+* Simple as pie — a widget in just a few lines
+* Powerful features make creating beautiful, dynamic, and interactive widgets divine
+* Wayland and X11 ready!
+* Access all your other beloved Python libraries
 * [Code auto-completions supported](https://wiki.ffpy.org/installing-stubs.html)
 * Signal-based flow; no polling required
 * No external scripts necessary, meaning better performance — everything is done entirely in Python!

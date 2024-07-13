@@ -7,14 +7,8 @@ A quick example:
 
 ```python
 import fabric
-from fabric.widgets.window import Window
-from fabric.widgets.label import Label
-
-window = Window()
-label = Label("Hello, World")
-window.add(label)
-window.show_all()
-
+from fabric.widgets import Window, Label
+Window(children=Label("Hello, World"), all_visible=True)
 fabric.start()
 ```
 

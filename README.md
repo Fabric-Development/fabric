@@ -12,7 +12,7 @@ Window(children=Label("Hello, World"), all_visible=True)
 fabric.start()
 ```
 
-![A window with a gray background that says Hello, World in the center](assets/example-file-simple.png)
+![A window with a gray background that says Hello, World in the center](https://wiki.ffpy.org/assets/first-widget-label.png)
 
 
 ## Features

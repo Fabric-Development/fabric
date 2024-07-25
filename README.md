@@ -23,6 +23,7 @@ fabric.start()
 * [Code auto-completions supported](https://wiki.ffpy.org/installing-stubs.html)
 * Signal-based flow; no polling required
 * No external scripts necessary, meaning better performance — everything is done entirely in Python!
+* Inspired from other projects on the community like [eww](https://github.com/elkowar/eww), [ags](https://github.com/Aylur/ags), and [Waybar](https://github.com/Alexays/Waybar), providing a familiar experience
 
 ## Installation
 See the [installation guide](https://wiki.ffpy.org/installation-guide.html).

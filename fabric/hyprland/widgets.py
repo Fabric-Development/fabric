@@ -10,7 +10,6 @@ from fabric.utils import bulk_connect
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import (
-    Gtk,
     Gdk,
     GLib,
 )
@@ -183,6 +182,7 @@ class Workspaces(WorkspacesEventBox):
                 "workspace": self.on_workspace,
                 "createworkspace": self.on_createworkspace,
                 "destroyworkspace": self.on_destroyworkspace,
+                "focusedmon": self.on_focusedmon,
                 "urgent": self.on_urgent,
             },
         )
@@ -216,6 +216,10 @@ class Workspaces(WorkspacesEventBox):
             )
         button_obj.set_empty()
         return logger.info(f"[Workspaces] Workspace {event.data[0]} destroyed")
+
+    def on_focusedmon(self, obj, event: HyprlandEvent):
+        GLib.idle_add(self.set_active_workspace, (int(event.data[1]) - 1))
+        return logger.info(f"[Workspaces] Monitor focused to {event.data[0]}. Active workspace changed to {event.data[1]}")
 
     def on_urgent(self, obj, event: HyprlandEvent):
         clients = json.loads(

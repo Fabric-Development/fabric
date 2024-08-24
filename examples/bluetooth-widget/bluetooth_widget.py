@@ -1,119 +1,112 @@
-import fabric
-from loguru import logger
-from fabric.widgets import (
-    Box,
-    Label,
-    Image,
-    Button,
-    Window,
-    CenterBox,
-    ScrolledWindow,
-)
+from fabric import Application
+from fabric.widgets.box import Box
+from fabric.widgets.label import Label
+from fabric.widgets.image import Image
+from fabric.widgets.button import Button
+from fabric.widgets.window import Window
+from fabric.widgets.centerbox import CenterBox
+from fabric.widgets.scrolledwindow import ScrolledWindow
 from fabric.bluetooth import BluetoothClient, BluetoothDevice
-from fabric.utils import set_stylesheet_from_file, get_relative_path
 
 
-class BtDeviceBox(CenterBox):
+class BluetoothDeviceSlot(CenterBox):
     def __init__(self, device: BluetoothDevice, **kwargs):
-        super().__init__(spacing=2, name="bt-device-box", **kwargs)
+        super().__init__(**kwargs)
         self.device = device
-        self.device.connect("closed", lambda _: self.destroy())
-
-        self.connect_button = Button()
-        self.connect_button.connect(
-            "clicked", lambda _: self.device.set_connection(not self.device.connected)
+        self.device.connect("changed", self.on_changed)
+        self.device.connect(
+            "notify::closed", lambda *_: self.device.closed and self.destroy()
         )
-        self.device.connect("connecting", self.on_device_connecting)
-        self.device.connect("notify::connected", self.on_device_connect)
 
-        self.add_start(Image(icon_name=device.icon, icon_size=6))  # type: ignore
-        self.add_start(Label(label=device.name))  # type: ignore
-        self.add_end(self.connect_button)
+        self.connection_label = Label(label="Disconnected")
+        self.connect_button = Button(
+            label="Connect",
+            on_clicked=lambda *_: self.device.set_connecting(not self.device.connected),
+        )
 
-    def on_device_connecting(self, device, connecting):
-        self.connect_button.set_label(
-            "connecting..."
-        ) if connecting else self.connect_button.set_label("failed to connect")
+        self.start_children = [
+            Image(icon_name=device.icon_name + "-symbolic", size=32),
+            Label(label=device.name),
+        ]
+        self.center_children = self.connection_label
+        self.end_children = self.connect_button
 
-    def on_device_connect(self, *args):
-        self.connect_button.set_label(
-            "connected"
-        ) if self.device.connected else self.connect_button.set_label("disconnected")
+        self.device.emit("changed")  # to update display status
+
+    def on_changed(self, *_):
+        self.connection_label.set_label(
+            "Connected" if self.device.connected else "Disconnected"
+        )
+        if self.device.connecting:
+            self.connect_button.set_label(
+                "Connecting..." if not self.device.connecting else "Disconnecting..."
+            )
+        else:
+            self.connect_button.set_label(
+                "Connect" if not self.device.connected else "Disconnect"
+            )
+        return
 
 
-class BtConnectionsList(Box):
+class BluetoohConnections(Box):
     def __init__(self, **kwargs):
         super().__init__(
+            spacing=4,
             orientation="vertical",
-            spacing=5,
-            name="bt-box",
+            style="margin: 8px",
             **kwargs,
         )
 
-        self.client = BluetoothClient()
-        self.client.connect("device-added", self.new_device)
-        self.scan_button = Button()
-        self.scan_button.connect("clicked", lambda _: self.client.toggle_scan())
-        self.client.connect(
-            "notify::scanning",
-            lambda *args: self.scan_button.set_label("stop")
-            if self.client.scanning
-            else self.scan_button.set_label("scan"),
-        )
-        self.toggle_button = Button()
-        self.toggle_button.connect("clicked", lambda _: self.client.toggle_power())
+        self.client = BluetoothClient(on_device_added=self.on_device_added)
+        self.scan_button = Button(on_clicked=lambda *_: self.client.toggle_scan())
+        self.toggle_button = Button(on_clicked=lambda *_: self.client.toggle_power())
+
         self.client.connect(
             "notify::enabled",
-            lambda *args: self.toggle_button.set_label("bluetooth on")
-            if self.client.enabled
-            else self.toggle_button.set_label("bluetooth off"),
+            lambda *_: self.toggle_button.set_label(
+                "Bluetooth " + ("ON" if self.client.enabled else "OFF")
+            ),
+        )
+        self.client.connect(
+            "notify::scanning",
+            lambda *_: self.scan_button.set_label(
+                "Stop" if self.client.scanning else "Scan"
+            ),
         )
 
-        self.paired_box = Box(orientation="vertical")
-        self.available_box = Box(orientation="vertical")
+        self.paired_box = Box(spacing=2, orientation="vertical")
+        self.available_box = Box(spacing=2, orientation="vertical")
 
-        self.add(
-            CenterBox(start_children=self.scan_button, end_children=self.toggle_button)
-        )
-        self.add(Label("Paired Devices"))
-        self.add(self.paired_box)
-        self.add(Label("Available Devices"))
-        self.add(
-            ScrolledWindow(
-                min_content_height=400,
-                children=self.available_box,
-            )
-        )
+        self.children = [
+            CenterBox(start_children=self.scan_button, end_children=self.toggle_button),
+            Label("Paired Devices"),
+            ScrolledWindow(min_content_size=(400, -1), child=self.paired_box),
+            Label("Available Devices"),
+            ScrolledWindow(min_content_size=(-1, 400), child=self.available_box),
+        ]
 
-    def new_device(self, client: BluetoothClient, address):
-        device: BluetoothDevice = client.get_device_from_addr(address)
+        # to run notify closures thus display the status
+        # without having to wait until an actual change
+        self.client.notify("scanning")
+        self.client.notify("enabled")
+
+    def on_device_added(self, client: BluetoothClient, address: str):
+        if not (device := client.get_device(address)):
+            return
+        slot = BluetoothDeviceSlot(device)
+
         if device.paired:
-            self.paired_box.add(BtDeviceBox(device))
-        else:
-            self.available_box.add(BtDeviceBox(device))
-
-
-class BluetoothWidget(Window):
-    def __init__(self, **kwargs):
-        super().__init__(
-            layer="top",
-            anchor="top right",
-            name="main-window",
-            visible=False,
-            all_visible=False,
-            exclusive=True,
-        )
-        self.btbox = BtConnectionsList()
-        self.add(self.btbox)
-        self.show_all()
-
-
-def apply_style(*args):
-    logger.info("[Bluetooth Widget] CSS applied")
-    return set_stylesheet_from_file(get_relative_path("bluetooth_widget.css"))
+            return self.paired_box.add(slot)
+        return self.available_box.add(slot)
 
 
 if __name__ == "__main__":
-    bt = BluetoothWidget()
-    apply_style()
-    fabric.start()
+    bluetooth_widget = Window(
+        child=BluetoohConnections(),
+        visible=True,
+        all_visible=True,
+        on_destroy=lambda *_: app.quit(),
+    )
+    app = Application("bluetooth-widget", bluetooth_widget)
+
+    app.run()

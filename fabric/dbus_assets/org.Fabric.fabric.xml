@@ -11,6 +11,7 @@
     </method>
   </interface>
   <interface name="org.Fabric.fabric">
+    <property name="Windows" type="a{sb}" access="read"/>
     <property name="File" type="s" access="read"/>
     <method name="Execute">
       <arg direction="in"  type="s" name="source" />

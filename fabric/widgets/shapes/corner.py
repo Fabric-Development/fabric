@@ -1,14 +1,17 @@
 import gi
 import cairo
+from enum import Enum
 from typing import Literal
+from collections.abc import Iterable
+from fabric.core.service import Property
 from fabric.widgets.widget import Widget
-from fabric.utils import ValueEnum
+from fabric.utils.helpers import get_enum_member
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk
 
 
-class CornerOrientation(ValueEnum):
+class CornerOrientation(Enum):
     TOP_LEFT = 1
     TOP_RIGHT = 2
     BOTTOM_LEFT = 3
@@ -16,22 +19,18 @@ class CornerOrientation(ValueEnum):
 
 
 class Corner(Gtk.DrawingArea, Widget):
-    """
-    a corner that can be placed on the edges of the screen.
-    use the css property `background-color` to set the color of this corner
-    also use the `size` argument, otherwise parent's widget size will be used
-    """
+    @Property(CornerOrientation, "readable")
+    def orientation(self) -> CornerOrientation:
+        return self._orientation
 
     def __init__(
         self,
         orientation: Literal["top-left", "top-right", "bottom-left", "bottom-right"]
-        | CornerOrientation = "top-right",
+        | CornerOrientation = CornerOrientation.TOP_RIGHT,
+        name: str | None = None,
         visible: bool = True,
         all_visible: bool = False,
         style: str | None = None,
-        style_compiled: bool = True,
-        style_append: bool = False,
-        style_add_brackets: bool = True,
         tooltip_text: str | None = None,
         tooltip_markup: str | None = None,
         h_align: Literal["fill", "start", "end", "center", "baseline"]
@@ -42,82 +41,30 @@ class Corner(Gtk.DrawingArea, Widget):
         | None = None,
         h_expand: bool = False,
         v_expand: bool = False,
-        name: str | None = None,
-        size: tuple[int] | int | None = None,
+        size: Iterable[int] | int | None = None,
         **kwargs,
     ):
-        """
-        :param orientation: the orientation of this corner, defaults to "top-right"
-        :type orientation: Literal["top-left", "top-right", "bottom-left", "bottom-right"] | CornerOrientation, optional
-        :param visible: whether the widget is initially visible, defaults to True
-        :type visible: bool, optional
-        :param all_visible: whether all child widgets are initially visible, defaults to False
-        :type all_visible: bool, optional
-        :param style: inline css style string, defaults to None
-        :type style: str | None, optional
-        :param style_compiled: whether the passed css should get compiled before applying, defaults to True
-        :type style_compiled: bool, optional
-        :param style_append: whether the passed css should be appended to the existing css, defaults to False
-        :type style_append: bool, optional
-        :param style_add_brackets: whether the passed css should be wrapped in brackets if they were missing, defaults to True
-        :type style_add_brackets: bool, optional
-        :param tooltip_text: the text added to the tooltip, defaults to None
-        :type tooltip_text: str | None, optional
-        :param tooltip_markup: the markup added to the tooltip, defaults to None
-        :type tooltip_markup: str | None, optional
-        :param h_align: the horizontal alignment, defaults to None
-        :type h_align: Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None, optional
-        :param v_align: the vertical alignment, defaults to None
-        :type v_align: Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None, optional
-        :param h_expand: the horizontal expansion, defaults to False
-        :type h_expand: bool, optional
-        :param v_expand: the vertical expansion, defaults to False
-        :type v_expand: bool, optional
-        :param name: the name of the widget it can be used to style the widget, defaults to None
-        :type name: str | None, optional
-        :param size: the size of the widget, defaults to None
-        :type size: tuple[int] | int | None, optional
-        """
-        super().__init__(
+        Gtk.DrawingArea.__init__(self)  # type: ignore
+        Widget.__init__(
+            self,
+            name,
             visible,
             all_visible,
             style,
-            style_compiled,
-            style_append,
-            style_add_brackets,
             tooltip_text,
             tooltip_markup,
             h_align,
             v_align,
             h_expand,
             v_expand,
-            name,
             size,
-            **(self.do_get_filtered_kwargs(kwargs)),
+            **kwargs,
         )
-        if (
-            orientation is None
-            or isinstance(orientation, (CornerOrientation, str)) is not True
-        ):
-            raise ValueError(
-                "orientation must the name of the orientation or a CornerOrientation",
-                f"but got {orientation}",
-            )
-        self.orientation = (
-            orientation
-            if isinstance(orientation, CornerOrientation)
-            else {
-                "bottom-left": CornerOrientation.BOTTOM_LEFT,
-                "bottom-right": CornerOrientation.BOTTOM_RIGHT,
-                "top-left": CornerOrientation.TOP_LEFT,
-                "top-right": CornerOrientation.TOP_RIGHT,
-            }.get(orientation.lower(), CornerOrientation.TOP_RIGHT)
-        )
-        self.do_connect_signals_for_kwargs(kwargs)
+        self._orientation = get_enum_member(CornerOrientation, orientation)
         self.connect("draw", self.on_draw)
 
     def on_draw(self, widget: "Corner", cr: cairo.Context):
-        aloc: cairo.Rectangle = self.get_allocation()
+        aloc: cairo.Rectangle = self.get_allocation()  # type: ignore
         # ^ hear me out, Gtk.Allocation == Gdk.Rectangle == cairo.Rectangle
         width, height = aloc.width, aloc.height
 

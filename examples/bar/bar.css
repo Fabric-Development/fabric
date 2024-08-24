@@ -1,6 +1,5 @@
-/* uncomment if you do have pywal configured */
-/* @import url("/home/USER/.cache/wal/colors-widgets.css"); */
-
+/* we can use webcss variables, fabric compiles that to gtk css.
+   global variables can be stored in :vars */
 :vars {
     --background: #150d16;
     --foreground: #f5dbc4;
@@ -27,146 +26,144 @@
     --ws-inactive: var(--color3);
     --ws-empty: var(--color8);
     --ws-hover: var(--color1);
-    --ws-urgent: var(--color11);
+    --ws-urgent: var(--color12);
 }
 
+/* unset so we can style everything from the ground up. */
 * {
-    /* unsets everything so we can style everything from scratch. */
     all: unset;
-    font-family: "Iosevka Nerd Font";
-    font-weight: 500;
-    font-size: 14px;
     color: var(--foreground);
-    /* we can use webcss variables, fabric compiles that to gtk css. */
-}
-
-#main-window {
-    border: solid 2px;
-    border-color: var(--border-color);
-    background-color: var(--window-bg);
+    font-size: 16px;
+    font-family: "Jost*", sans-serif;
     border-radius: 100px;
 }
 
 button {
-    border-radius: 100px;
     background-size: 400% 400%;
 }
 
-#workspaces {
-    margin: 3px;
-    padding: 6px;
-    background-color: var(--module-bg);
-    border-radius: 100px;
+#bar-inner {
+    padding: 4px;
+    border: solid 2px;
+    border-color: var(--border-color);
+    background-color: var(--window-bg);
+    min-height: 28px;
 }
 
-#workspaces > button {
-    padding: 0px 9px;
-    /* transition: min-width 0.15s cubic-bezier(0.2, 0.0, 0, 1.0); */
-    transition: min-width 0.15s cubic-bezier(0.075, 0.82, 0.165, 1);
+#workspaces {
+    padding: 6px;
+    min-width: 0px;
+    background-color: var(--module-bg);
+}
+
+#workspaces>button {
+    padding: 0px 8px;
+    transition: padding 0.05s steps(8);
     background-color: var(--ws-inactive);
 }
 
-#workspaces > button > label {
-    color: #30303e;
+#workspaces>button>label {
+    font-size: 0px;
 }
 
-#workspaces > button.active {
-    min-width: 48px;
-    background-color: var(--ws-active);
+#workspaces>button:hover {
+    background-color: var(--ws-hover);
 }
 
-#workspaces > button.active > label {
-    font-weight: 900;
-    color: #bec0f8;
-}
-
-#workspaces > button.empty {
-    background-color: var(--ws-empty);
-}
-
-#workspaces > button.urgent {
+#workspaces>button.urgent {
     background-color: var(--ws-urgent);
 }
 
-#workspaces > button:hover {
-    background-color: var(--ws-hover);
+#workspaces>button.active {
+    padding: 0px 32px;
+    background-color: var(--ws-active);
 }
+
+#workspaces>button.empty {
+    background-color: var(--ws-empty);
+}
+
 
 #date-time,
 #hyprland-language,
 #hyprland-window {
     background-color: var(--module-bg);
     padding: 0px 8px;
-    margin: 3px;
 }
 
-#Mode > label,
-#date-time > label,
-menu > menuitem > label,
-#hyprland-language > label,
-#hyprland-window > label {
+menu>menuitem>label,
+#date-time>label,
+#hyprland-language>label,
+#hyprland-window>label {
     font-weight: 900;
 }
 
-#center-box {
-    margin: 1px;
-}
-
 /* system tray */
-
 #system-tray {
-    margin: 3px;
-    padding: 0px 2px;
+    padding: 2px 4px;
     background-color: var(--module-bg);
-    border-radius: 100px;
-}
-
-#system-tray > button {
-    padding: 0px 2px;
-    margin: 3px;
 }
 
 /* menu and menu items (written for the system tray) */
-
 menu {
     border: solid 2px;
-    border-color: var(--border-color);
     border-radius: 10px;
+    border-color: var(--border-color);
+    background-color: var(--window-bg);
 }
 
-menu > menuitem {
+menu>menuitem {
+    border-radius: 0px;
     background-color: var(--module-bg);
     padding: 6px;
     margin-left: 2px;
     margin-right: 2px;
 }
 
-menu > menuitem:first-child {
-    margin-top: 1.5px;
+menu>menuitem:first-child {
+    margin-top: 1px;
     border-radius: 8px 8px 0px 0px;
 }
 
-menu > menuitem:last-child {
-    margin-bottom: 1.5px;
+menu>menuitem:last-child {
+    margin-bottom: 1px;
     border-radius: 0px 0px 8px 8px;
 }
 
-menu > menuitem:hover {
+menu>menuitem:hover {
     background-color: var(--border-color);
 }
 
-#volume-circular-progress-bar,
-#ram-circular-progress-bar {
-    border: solid 10px var(--border-color);
+
+#cpu-progress-bar,
+#ram-progress-bar,
+#volume-progress-bar {
+    color: transparent;
+    background-color: transparent
 }
 
-#cpu-circular-progress-bar {
+
+#cpu-progress-bar {
     border: solid 0px alpha(var(--color9), 0.8);
 }
 
+#ram-progress-bar,
+#volume-progress-bar {
+    border: solid 0px var(--border-color);
+}
+
+
 #widgets-container {
-    border-radius: 100px;
     background-color: var(--module-bg);
-    padding: 3px;
-    margin: 3px;
+    padding: 2px;
+}
+
+tooltip {
+    border: solid 2px;
+    border-color: var(--border-color);
+    background-color: var(--window-bg);
+}
+
+tooltip>* {
+    padding: 2px 4px
 }

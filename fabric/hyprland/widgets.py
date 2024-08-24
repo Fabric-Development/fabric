@@ -1,504 +1,441 @@
 import gi
+import re
 import json
 from loguru import logger
+from fabric.core.service import Property
+from collections.abc import Iterable, Callable
+from typing import Literal
 from fabric.widgets.box import Box
 from fabric.widgets.button import Button
 from fabric.widgets.eventbox import EventBox
 from fabric.hyprland.service import Hyprland, HyprlandEvent
-from fabric.utils.string_formatter import FormattedString
-from fabric.utils import bulk_connect
+from fabric.utils.helpers import FormattedString, bulk_connect, truncate
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import (
-    Gtk,
-    Gdk,
-    GLib,
-)
-
-connection = Hyprland()
-# FIXME: better way to handle the connection variable.
+from gi.repository import Gtk, Gdk
 
 
-class WorkspacesEventBox(EventBox):
-    """
-    a subclass of Gtk.EventBox that is designed to hold buttons for workspaces.
+connection: Hyprland | None = None
 
-    provides methods for adding, removing, and managing child widgets within the box.
-    """
 
-    def __init__(self, **kwargs):
-        self.children_box = Box(**kwargs)
-        super().__init__(children=self.children_box, events="scroll")
+def get_hyprland_connection() -> Hyprland:
+    global connection
+    if not connection:
+        connection = Hyprland()
 
-    def show(self):
-        return super().show(), self.children_box.show()
-
-    def show_all(self):
-        return super().show_all(), self.children_box.show_all()
-
-    def get_children(self):
-        return self.children_box.get_children()
-
-    def remove(self, widget=None):
-        return self.children_box.remove(widget)
-
-    def add(self, widget=None):
-        return self.children_box.add(widget)
-
-    def set_name(self, name=None):
-        return self.children_box.set_name(name)
-
-    def get_name(self):
-        return self.children_box.get_name()
+    return connection
 
 
 class WorkspaceButton(Button):
+    @Property(int, "readable")
+    def id(self) -> int:
+        return self._id
+
+    @Property(bool, "read-write", default_value=False)
+    def active(self) -> bool:
+        return self._active
+
+    @active.setter
+    def active(self, value: bool):
+        self._active = value
+        if value is True:
+            self.urgent = False
+        (self.remove_style_class if not value else self.add_style_class)("active")
+        return self.do_bake_label()
+
+    @Property(bool, "read-write", default_value=False)
+    def urgent(self) -> bool:
+        return self._urgent
+
+    @urgent.setter
+    def urgent(self, value: bool):
+        self._urgent = value
+        (self.remove_style_class if not value else self.add_style_class)("urgent")
+        return self.do_bake_label()
+
+    @Property(bool, "read-write", default_value=True)
+    def empty(self) -> bool:
+        return self._empty
+
+    @empty.setter
+    def empty(self, value: bool):
+        self._empty = value
+        (self.remove_style_class if not value else self.add_style_class)("empty")
+        return self.do_bake_label()
+
     def __init__(
         self,
+        id: int,
         label: FormattedString | str | None = None,
-        visible: bool = True,
-        can_appear: bool = True,
-        id: int | None = None,
+        image: Gtk.Image | None = None,
+        child: Gtk.Widget | None = None,
         name: str | None = None,
+        visible: bool = True,
+        all_visible: bool = False,
+        style: str | None = None,
+        tooltip_text: str | None = None,
+        tooltip_markup: str | None = None,
+        h_align: Literal["fill", "start", "end", "center", "baseline"]
+        | Gtk.Align
+        | None = None,
+        v_align: Literal["fill", "start", "end", "center", "baseline"]
+        | Gtk.Align
+        | None = None,
+        h_expand: bool = False,
+        v_expand: bool = False,
+        size: Iterable[int] | int | None = None,
         **kwargs,
     ):
-        """
-        A Button that will get rendered on a workspaces widget, this contians the button properties
-
-        :param label: the label for the normal state of this button. if not passed it will fallback to the button `id + 1`, we expose the button object to you via the `button` variable, defaults to None
-        :type label: FormattedString, optional
-        :param active_label: the label for this button when it gets activated. if not passed it will fallback to the normal `label`, we expose the button object to you via the `button` variable, defaults to None
-        :type active_label: FormattedString, optional
-        :param visible: makes you able to make this button invisible and only show up if the open workspace is the same as this button `id`, defaults to True
-        :type visible: bool, optional
-        :param can_appear: optional, set to false to make this workspace unable to appear whatever happens, useful if you want to make some specific workspace invisible to the widget, defaults to True
-        :type can_appear: bool, optional
-        :param id: this will make you able to select a specific workspace, optional since it can get assigend automatically via the index of this button in the buttons list, NOTE: the value the id should starts with 0 as a first index value., defaults to None
-        :type id: int, optional
-        """
         super().__init__(
+            None,
+            image,
+            child,
+            name,
+            visible,
+            all_visible,
+            style,
+            tooltip_text,
+            tooltip_markup,
+            h_align,
+            v_align,
+            h_expand,
+            v_expand,
+            size,
             **kwargs,
         )
-        self.label = FormattedString(label) if isinstance(label, str) else label
-        self.visible = visible
-        self.can_appear = can_appear
-        self.id = id
-        self.name = name
+        self._id: int = id
+        self._label: FormattedString | None = (
+            FormattedString(label) if isinstance(label, str) else label
+        )
         self._active: bool = False
         self._urgent: bool = False
-        self._empty: bool = False
+        self._empty: bool = True
 
-    def set_active(self):
-        self._active = True
-        if self.can_appear:
-            self.show()
-        self.add_class("active")
-        self.remove_class("urgent")
-        return
-
-    def unset_active(self):
         self.active = False
-        if not self.visible:
-            self.hide()
-        self.bake_label()
-        self.remove_class("active")
-        return
+        self.urgent = False
+        self.empty = True
 
-    def add_class(self, class_name: str):
-        GLib.idle_add(self.get_style_context().add_class, class_name)
-        return
-
-    def remove_class(self, class_name: str):
-        GLib.idle_add(self.get_style_context().remove_class, class_name)
-        return
-
-    def bake_label(self):
-        return self.set_label(self.label.get_formatted(button=self))
-
-    def set_urgent(self):
-        self._urgent = True
-        self.add_class("urgent")
-        return
-
-    def unset_urgent(self):
-        self._urgent = False
-        self.remove_class("urgent")
-        return
-
-    def set_empty(self):
-        self._empty = True
-        self.add_class("empty")
-        return
-
-    def unset_empty(self):
-        self._empty = False
-        self.remove_class("empty")
-        return
+    def do_bake_label(self):
+        if not self._label:
+            return
+        return self.set_label(self._label.format(button=self))
 
 
-class Workspaces(WorkspacesEventBox):
-    """
-    a widget provides you the workspaces controls, it uses the hyprland IPC.
-    """
+class Workspaces(EventBox):
+    @staticmethod
+    def default_buttons_factory(workspace_id: int):
+        return WorkspaceButton(id=workspace_id, label=str(workspace_id))
 
     def __init__(
         self,
-        buttons_list: list[WorkspaceButton] = None,
+        buttons: Iterable[WorkspaceButton] | None = None,
+        buttons_factory: Callable[[int], WorkspaceButton | None]
+        | None = default_buttons_factory,
         invert_scroll: bool = False,
         empty_scroll: bool = False,
-        # default_button: WorkspaceButton = None,
         **kwargs,
     ):
-        """
-        :param button_list: a list of `WorkspaceButton` objects, defaults to None and if none it will use a built-in list.
-        :type button_list: list[WorkspaceButton], optional
-        :param invert_scroll: invert the scroll direction, defaults to False
-        :type invert_scroll: bool, optional
-        :param empty_scroll: allow scrolling to empty workspaces, defaults to False
-        :type empty_scroll: bool, optional
-        """
-        super().__init__(**kwargs)
-        # TODO: use default_button to map a new button if it was not passed in the butttons list.
-        self.buttons_list = (
-            self.setup_buttons(
-                [
-                    WorkspaceButton(),
-                    WorkspaceButton(),
-                    WorkspaceButton(),
-                    WorkspaceButton(),
-                    WorkspaceButton(),
-                    WorkspaceButton(),
-                    WorkspaceButton(),
-                ]
-            )
-            if not buttons_list
-            else self.setup_buttons(buttons_list)
-        )
-        self._last_workspace_id: int = None
-        self.buttons_map = {obj.id: obj for obj in self.buttons_list}
+        super().__init__(events="scroll")
+        self.connection = get_hyprland_connection()
+        self._container = Box(**kwargs)
+        self.children = self._container
+
+        self._active_workspace: int | None = None
+        self._buttons: dict[int, WorkspaceButton] = {}
+        self._buttons_preset: list[WorkspaceButton] = [
+            button for button in buttons or ()
+        ]
+        self._buttons_factory = buttons_factory
+        self._invert_scroll = invert_scroll
+        self._empty_scroll = empty_scroll
+
         bulk_connect(
-            connection,
+            self.connection,
             {
-                "ready": self.on_ready,
-                "workspace": self.on_workspace,
-                "createworkspace": self.on_createworkspace,
-                "destroyworkspace": self.on_destroyworkspace,
-                "urgent": self.on_urgent,
+                "event::workspace": self.on_workspace,
+                "event::createworkspace": self.on_createworkspace,
+                "event::destroyworkspace": self.on_destroyworkspace,
+                "event::urgent": self.on_urgent,
             },
         )
+
+        # all aboard...
+        if self.connection.ready:
+            self.on_ready(None)
+        else:
+            self.connection.connect("event::ready", self.on_ready)
         self.connect("scroll-event", self.scroll_handler)
 
-        self.invert_scroll = invert_scroll
-        self.empty_scroll = empty_scroll
-
-    def on_ready(self, obj):
-        logger.info("[Workspaces] Connected to the hyprland socket")
-        return self.initialize_workspaces()
-
-    def on_workspace(self, obj, event: HyprlandEvent):
-        GLib.idle_add(self.set_active_workspace, (int(event.data[0]) - 1))
-        return logger.info(f"[Workspaces] Active workspace changed to {event.data[0]}")
-
-    def on_createworkspace(self, obj, event: HyprlandEvent):
-        button_obj = self.buttons_map.get((int(event.data[0]) - 1))
-        if not button_obj:
-            return logger.info(
-                f"[Workspaces] we've received a createworkspace signal, but WorkspaceButton with id {event.data[0]} does not exist, skipping..."
-            )
-        button_obj.unset_empty()
-        return logger.info(f"[Workspaces] Workspace {event.data[0]} created")
-
-    def on_destroyworkspace(self, obj, event):
-        button_obj = self.buttons_map.get((int(event.data[0]) - 1))
-        if not button_obj:
-            return logger.info(
-                f"[Workspaces] we've received a destroyworkspace signal, but WorkspaceButton with id {event.data[0]} does not exist, skipping..."
-            )
-        button_obj.set_empty()
-        return logger.info(f"[Workspaces] Workspace {event.data[0]} destroyed")
-
-    def on_urgent(self, obj, event: HyprlandEvent):
-        clients = json.loads(
-            str(
-                connection.send_command(
-                    "j/clients",
-                ).reply.decode()
+    def on_ready(self, _):
+        open_workspaces: tuple[int, ...] = tuple(
+            workspace["id"]
+            for workspace in json.loads(
+                str(self.connection.send_command("j/workspaces").reply.decode())
             )
         )
-        clients_map = {client["address"]: client for client in clients}
-        urgent_client = clients_map.get(f"0x{event.data[0]}")
-        if not urgent_client or not urgent_client.get("workspace"):
-            return logger.info(
-                f"[Workspaces] we've received an urgent signal, but received data ({event.data[0]}) is uncorrect, skipping..."
-            )
-        urgent_workspace = int(urgent_client["workspace"]["id"])
-        self.buttons_map.get(urgent_workspace - 1).set_urgent() if self.buttons_map.get(
-            urgent_workspace - 1
-        ) is not None else None
-        return logger.info(
-            f"[Workspaces] Workspace {urgent_workspace} setted to urgent"
-        )
-
-    def initialize_workspaces(self):
-        open_ws = json.loads(
-            str(
-                connection.send_command(
-                    "j/workspaces",
-                ).reply.decode()
-            )
-        )
-        current_ws: int = json.loads(
-            str(
-                connection.send_command(
-                    "j/activeworkspace",
-                ).reply.decode()
-            )
+        self._active_workspace = json.loads(
+            str(self.connection.send_command("j/activeworkspace").reply.decode())
         )["id"]
-        open_workspaces = tuple(
-            workspace["id"] - 1 for workspace in open_ws
-        )  # a generator
-        for ws_button in self.buttons_list:
-            if ws_button.id in open_workspaces:
-                pass
-            else:
-                ws_button.set_empty()
-            self.unset_active_workspace(ws_button.id)
-        # The current workspace is based on the hyprland specs (1 indexed.)
-        self.set_active_workspace(current_ws - 1)
 
-    def unset_active_workspace(self, workspace_id):
-        button_obj = self.buttons_map.get(workspace_id)
-        if button_obj is not None and button_obj.can_appear:
-            button_obj.unset_active()
+        for btn in self._buttons_preset:
+            self.insert_button(btn)
+
+        for id in open_workspaces:
+            if not (btn := self.lookup_or_bake_button(id)):
+                continue
+
+            btn.empty = False
+            if id == self._active_workspace:
+                btn.active = True
+            self.insert_button(btn)
         return
 
-    def set_active_workspace(self, workspace_id):
-        if self._last_workspace_id is not None:
-            # TODO: good place for log
-            self.buttons_map.get(
-                self._last_workspace_id
-            ).unset_active() if self.buttons_map.get(
-                self._last_workspace_id
-            ) is not None else None
-        button_obj = self.buttons_map.get(workspace_id)
-        if button_obj and button_obj.can_appear:
-            self._last_workspace_id = button_obj.id
-            button_obj.set_active()
-        return
+    def on_workspace(self, _, event: HyprlandEvent):
+        if len(event.data) < 1:
+            return
 
-    def setup_buttons(
-        self, button_list: list[WorkspaceButton]
-    ) -> list[WorkspaceButton]:
-        workspaces_buttons = []
-        for index, button in enumerate(button_list):
-            button.id = index if button.id is None else button.id
-            button.can_appear = (
-                button.can_appear if button.can_appear is not None else True
+        active_workspace = int(event.data[0])
+        if active_workspace == self._active_workspace:
+            return
+
+        if self._active_workspace is not None and (
+            old_btn := self._buttons.get(self._active_workspace)
+        ):
+            old_btn.active = False
+
+        self._active_workspace = active_workspace
+        if not (btn := self.lookup_or_bake_button(active_workspace)):
+            return
+
+        btn.urgent = False
+        btn.active = True
+
+        if btn in self._container.children:
+            return
+        return self.insert_button(btn)
+
+    def on_createworkspace(self, _, event: HyprlandEvent):
+        if len(event.data) < 1:
+            return
+        new_workspace = int(event.data[0])
+
+        if not (btn := self.lookup_or_bake_button(new_workspace)):
+            return
+
+        btn.empty = False
+        if btn in self._buttons_preset:
+            return
+        return self.insert_button(btn)
+
+    def on_destroyworkspace(self, _, event: HyprlandEvent):
+        if len(event.data) < 1:
+            return
+
+        destroyed_workspace = int(event.data[0])
+        if not (btn := self._buttons.get(destroyed_workspace)):
+            return  # doens't exist, skip
+
+        btn.active = False
+        btn.urgent = False
+        btn.empty = True
+
+        if btn in self._buttons_preset:
+            return
+        return self.remove_button(btn)
+
+    def on_urgent(self, _, event: HyprlandEvent):
+        if len(event.data) < 1:
+            return
+
+        clients = json.loads(self.connection.send_command("j/clients").reply.decode())
+        clients_map = {client["address"]: client for client in clients}
+        urgent_client: dict = clients_map.get("0x" + event.data[0], {})
+        if not (raw_workspace := urgent_client.get("workspace")):
+            return logger.warning(
+                f"[Workspaces] received urgent signal, but data received ({event.data[0]}) is uncorrect, skipping..."
             )
-            button.visible = button.visible if button.visible is not None else True
-            button.label = (
-                button.label
-                if button.label is not None
-                else FormattedString(f"{button.id + 1}")
-                if button.id
-                else FormattedString(f"{index + 1}")
-            )
-            button._active = False
-            button._empty = False
-            button._urgent = False
-            button.bake_label()
-            workspaces_buttons.append(button)
-        return self.initialize_buttons(workspaces_buttons)
 
-    def initialize_buttons(self, workspaces_buttons: list[WorkspaceButton]):
-        for button in workspaces_buttons:
-            if not button.can_appear and button.visible:
-                button.show()
-            else:
-                button.hide()
-            button.bake_label()
-            button.connect(
-                "button-press-event",
-                lambda _, __, obj=button: self.button_click_handler(obj),
-            )
-            self.add(button)
-        return workspaces_buttons
+        urgent_workspace = int(raw_workspace["id"])
+        if not (btn := self._buttons.get(urgent_workspace)):
+            return  # doens't exist, skip
 
-    def button_click_handler(self, button: WorkspaceButton):
-        connection.send_command(
-            f"batch/dispatch workspace {button.id + 1}",
-        )
-        logger.info(f"[Workspaces] Moved to workspace {button.id + 1}")
-        return
+        btn.urgent = True
+        return logger.info(f"[Workspaces] workspace {urgent_workspace} is now urgent")
 
-    def scroll_handler(self, widget, event: Gdk.EventScroll):
-        cmd = "" if self.empty_scroll else "e"
-        match event.direction:
+    def scroll_handler(self, _, event: Gdk.EventScroll):
+        cmd = "" if self._empty_scroll else "e"
+        match event.direction:  # type: ignore
             case Gdk.ScrollDirection.UP:
-                cmd += "-1" if self.invert_scroll is True else "+1"
+                cmd += "-1" if self._invert_scroll is True else "+1"
                 logger.info("[Workspaces] Moving to the next workspace")
             case Gdk.ScrollDirection.DOWN:
-                cmd += "+1" if self.invert_scroll is True else "-1"
+                cmd += "+1" if self._invert_scroll is True else "-1"
                 logger.info("[Workspaces] Moving to the previous workspace")
             case _:
                 return logger.warning(
-                    f"[Workspaces] Unknown scroll direction ({event.direction})"
+                    f"[Workspaces] Unknown scroll direction ({event.direction})"  # type: ignore
                 )
-        return connection.send_command(
-            f"batch/dispatch workspace {cmd}",
-        )
+        return self.connection.send_command(f"batch/dispatch workspace {cmd}")
+
+    def insert_button(self, button: WorkspaceButton) -> None:
+        self._buttons[button.id] = button
+        self._container.add(button)
+        button.connect("clicked", self.do_handle_button_press)
+        return self.reorder_buttons()
+
+    def reorder_buttons(self):
+        for _, child in sorted(self._buttons.items(), key=lambda i: i[0]):
+            self._container.reorder_child(child, (child.id - 1))
+        return
+
+    def remove_button(self, button: WorkspaceButton) -> None:
+        if self._buttons.pop(button.id, None) is not None:
+            self._container.remove(button)
+        return button.destroy()
+
+    def lookup_or_bake_button(self, workspace_id: int) -> WorkspaceButton | None:
+        if not (btn := self._buttons.get(workspace_id)):
+            if self._buttons_factory:
+                btn = self._buttons_factory(workspace_id)
+        return btn
+
+    def do_handle_button_press(self, button: WorkspaceButton):
+        self.connection.send_command(f"batch/dispatch workspace {button.id}")
+        return logger.info(f"[Workspaces] Moved to workspace {button.id}")
 
 
 class ActiveWindow(Button):
     def __init__(
         self,
         formatter: FormattedString = FormattedString(
-            "{test_title(win_title)}",
-            test_title=lambda x, max_length=20: "Desktop"
-            if len(x) == 0
-            else (x if len(x) <= max_length else x[: max_length - 3] + "..."),
+            "{'Desktop' if not win_title else truncate(win_title, 42)}",
+            truncate=truncate,
         ),
-        # TODO: add the argument hints for the superclass
+        # TODO: hint super's kwargs
         **kwargs,
     ):
         super().__init__(**kwargs)
+        self.connection = get_hyprland_connection()
         self.formatter = formatter
+
         bulk_connect(
-            connection,
+            self.connection,
             {
-                "ready": self.on_ready,
-                "activewindow": self.on_activewindow,
-                "closewindow": self.on_closewindow,
+                "event::activewindow": self.on_activewindow,
+                "event::closewindow": self.on_closewindow,
             },
         )
-        self.show()
 
-    def initialize_active_window(self):
-        win_data: dict = json.loads(
-            str(
-                (
-                    connection.send_command(
-                        "j/activewindow",
-                    )
-                ).reply.decode()
-            )
-        )
-        win_class = win_data.get("class")
-        win_title = win_data.get("title")
-        if win_class is None:
-            win_class = ""
-        if win_title is None:
-            if win_class is not None:
-                win_title = win_class
-            else:
-                win_title = ""
-        return (
-            GLib.idle_add(
-                self.set_label,
-                self.formatter.get_formatted(
-                    win_class=win_class,
-                    win_title=win_title,
-                ),
-            ),
+        # all aboard...
+        if self.connection.ready:
+            self.on_ready(None)
+        else:
+            self.connection.connect("event::ready", self.on_ready)
+
+    def on_ready(self, _):
+        return self.do_initialize(), logger.info(
+            "[ActiveWindow] Connected to the hyprland socket"
         )
 
-    def on_ready(self, obj):
-        self.initialize_active_window()
-        return logger.info("[ActiveWindow] Connected to the hyprland socket")
-
-    def on_closewindow(self, obj, event: HyprlandEvent):
-        self.initialize_active_window()
-        return logger.info(f"[ActiveWindow] Closed window 0x{event.data[0]}")
-
-    def on_activewindow(self, obj, event: HyprlandEvent):
-        GLib.idle_add(
-            self.set_label,
-            self.formatter.get_formatted(
-                win_class=event.data[0],
-                win_title=event.data[1],
-            ),
+    def on_closewindow(self, _, event: HyprlandEvent):
+        if len(event.data) < 1:
+            return
+        return self.do_initialize(), logger.info(
+            f"[ActiveWindow] Closed window 0x{event.data[0]}"
         )
-        return logger.info(
+
+    def on_activewindow(self, _, event: HyprlandEvent):
+        if len(event.data) < 2:
+            return
+        return self.set_label(
+            self.formatter.format(win_class=event.data[0], win_title=event.data[1])
+        ), logger.info(
             f"[ActiveWindow] Activated window {event.data[0]}, {event.data[1]}"
+        )
+
+    def do_initialize(self):
+        win_data: dict = json.loads(
+            self.connection.send_command("j/activewindow").reply.decode()
+        )
+        win_class = win_data.get("class", "unknown")
+        win_title = win_data.get("title", win_class)
+
+        return self.set_label(
+            self.formatter.format(win_class=win_class, win_title=win_title)
         )
 
 
 class Language(Button):
     def __init__(
         self,
-        keyboard_name: str = "usb-usb-keyboard",
+        keyboard: str = ".*",
         formatter: FormattedString = FormattedString("{language}"),
+        # TODO: hint super's kwargs
         **kwargs,
-        # TODO: add the argument hints for the superclass
     ):
         super().__init__(**kwargs)
+        self.connection = get_hyprland_connection()
+        self.keyboard = keyboard
         self.formatter = formatter
-        self.keyboard_name = keyboard_name
 
-        bulk_connect(
-            connection,
-            {
-                "ready": self.on_ready,
-                "activelayout": self.on_activelayout,
-            },
+        self.connection.connect("event::activelayout", self.on_activelayout)
+
+        # all aboard...
+        if self.connection.ready:
+            self.on_ready(None)
+        else:
+            self.connection.connect("event::ready", self.on_ready)
+
+    def on_ready(self, _):
+        return self.do_initialize(), logger.info(
+            "[Language] Connected to the hyprland socket"
         )
 
-        self.show()
-
-    def on_ready(self, obj):
-        self.initialize_language()
-        return logger.info("[Language] Connected to the hyprland socket")
-
-    def initialize_language(self):
-        devices = json.loads(
-            str(
-                (
-                    connection.send_command(
-                        "j/devices",
-                    ).reply.decode()
-                )
-            )
-        )
-        if devices is None or devices.get("keyboards") is None:
+    def on_activelayout(self, _, event: HyprlandEvent):
+        if len(event.data) < 2:
             return logger.warning(
-                f"[Language] Got no devices from hyprctl with data\n{devices}"
+                f"[Language] got invalid event data from hyprland, raw data is\n{event.raw_data}"
             )
-        keyboards = devices.get("keyboards")
-        language = None
-        for i, kb in enumerate(keyboards):
-            if kb.get("name") == self.keyboard_name:
-                language = keyboards[i].get("active_keymap")
-                if language is None:
-                    continue
-                logger.debug(f"[Language] Got language: {language}")
-                GLib.idle_add(
-                    self.set_label,
-                    self.formatter.get_formatted(
-                        language=language,
-                    ),
-                )
-                break
+        keyboard, language = event.data
+        matched: bool = False
+
+        if re.match(self.keyboard, keyboard) and (matched := True):
+            self.set_label(self.formatter.format(language=language))
+
+        return logger.debug(
+            f"[Language] Keyboard: {keyboard}, Language: {language}, Match: {matched}"
+        )
+
+    def do_initialize(self):
+        devices: dict[str, list[dict[str, str]]] = json.loads(
+            str(self.connection.send_command("j/devices").reply.decode())
+        )
+        if not devices or not (keyboards := devices.get("keyboards")):
+            return logger.warning(
+                f"[Language] cound't get devices from hyprctl, gotten data\n{devices}"
+            )
+
+        language: str | None = None
+        for kb in keyboards:
+            if (
+                not (kb_name := kb.get("name"))
+                or not re.match(self.keyboard, kb_name)
+                or not (language := kb.get("active_keymap"))
+            ):
+                continue
+
+            self.set_label(self.formatter.format(language=language))
+            logger.debug(
+                f"[Language] found language: {language} for keyboard {kb_name}"
+            )
+            break
+
         return (
             logger.info(
-                f"[Language] Set language: {language} for keyboard: {self.keyboard_name}"
+                f"[Language] Could not find language for keyboard: {self.keyboard}, gotten keyboards: {keyboards}"
             )
-            if language is not None
+            if not language
             else logger.info(
-                f"[Language] Could not find language for keyboard: {self.keyboard_name}, gotten keyboards: {keyboards}"
+                f"[Language] Set language: {language} for keyboard: {self.keyboard}"
             )
-        )
-
-    def on_activelayout(self, obj, event: HyprlandEvent):
-        if len(event.data) < 2:
-            return logger.warning(f"[Language] Got invalid data: {event.data}")
-        keyboard_name, language = event.data
-        if keyboard_name == self.keyboard_name:
-            GLib.idle_add(
-                self.set_label,
-                self.formatter.get_formatted(
-                    language=language,
-                ),
-            )
-        return logger.debug(
-            f"[Language] Keyboard: {keyboard_name}, Language: {language}, Match: {keyboard_name == self.keyboard_name}"
         )

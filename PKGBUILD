@@ -27,8 +27,8 @@ depends=(
     pkgconf
 )
 makedepends=(
-    python-setuptools
     git
+    python-setuptools
 )
 optdepends=(
     "python-psutil: for system stats, this package is a dependency of the bar example file"
@@ -40,20 +40,20 @@ conflicts=(
     python-fabric
 )
 
-source=(git+http://github.com/Fabric-Development/$reponame.git)
+source=(git+https://github.com/Fabric-Development/$reponame.git)
 sha256sums=("SKIP")
 
 pkgver() {
-  cd "$srcdir/$reponame"
-  printf "%s.r%s.%s" "$pkgver" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
+    cd "$srcdir/$reponame"
+    printf "%s.r%s.%s" "$pkgver" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
 }
 
 build() {
-  cd "$srcdir/$reponame"
-  python setup.py build
+    cd "$srcdir/$reponame"
+    python setup.py build
 }
 
 package() {
-  cd "$srcdir/$reponame"
-  python setup.py install --root="$pkgdir/" --optimize=1
+    cd "$srcdir/$reponame"
+    python setup.py install --root="$pkgdir/" --optimize=1
 }

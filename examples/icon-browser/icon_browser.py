@@ -88,7 +88,7 @@ class IconBrowser(Window):
 
         self.viewport.add(
             Button(
-                child=Image(icon_name=icon_name, h_align="center", size=32),
+                child=Image(icon_name=icon_name, icon_size="large-toolbar", h_align="center", size=32),
                 tooltip_text=icon_name,
             )
         )

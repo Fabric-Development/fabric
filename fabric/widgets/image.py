@@ -2,6 +2,7 @@ import gi
 from typing import Literal, overload
 from collections.abc import Iterable
 from fabric.widgets.widget import Widget
+from fabric.utils.helpers import get_enum_member
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GdkPixbuf
@@ -13,6 +14,17 @@ class Image(Gtk.Image, Widget):
         self,
         image_file: str | None = None,
         icon_name: None = None,
+        icon_size: Literal[
+            "invalid",
+            "menu",
+            "small-toolbar",
+            "large-toolbar",
+            "button",
+            "dnd",
+            "dialog",
+        ]
+        | Gtk.IconSize
+        | int = Gtk.IconSize.BUTTON,
         pixbuf: None = None,
         name: str | None = None,
         visible: bool = True,
@@ -37,6 +49,17 @@ class Image(Gtk.Image, Widget):
         self,
         image_file: None = None,
         icon_name: str | None = None,
+        icon_size: Literal[
+            "invalid",
+            "menu",
+            "small-toolbar",
+            "large-toolbar",
+            "button",
+            "dnd",
+            "dialog",
+        ]
+        | Gtk.IconSize
+        | int = Gtk.IconSize.BUTTON,
         pixbuf: None = None,
         name: str | None = None,
         visible: bool = True,
@@ -60,6 +83,17 @@ class Image(Gtk.Image, Widget):
         self,
         image_file: None = None,
         icon_name: None = None,
+        icon_size: Literal[
+            "invalid",
+            "menu",
+            "small-toolbar",
+            "large-toolbar",
+            "button",
+            "dnd",
+            "dialog",
+        ]
+        | Gtk.IconSize
+        | int = Gtk.IconSize.BUTTON,
         pixbuf: GdkPixbuf.Pixbuf | None = None,
         name: str | None = None,
         visible: bool = True,
@@ -83,6 +117,17 @@ class Image(Gtk.Image, Widget):
         self,
         image_file: str | None = None,
         icon_name: str | None = None,
+        icon_size: Literal[
+            "invalid",
+            "menu",
+            "small-toolbar",
+            "large-toolbar",
+            "button",
+            "dnd",
+            "dialog",
+        ]
+        | Gtk.IconSize
+        | int = Gtk.IconSize.BUTTON,
         pixbuf: GdkPixbuf.Pixbuf | None = None,
         name: str | None = None,
         visible: bool = True,
@@ -118,12 +163,34 @@ class Image(Gtk.Image, Widget):
             **kwargs,
         )
 
-        alloc = self.get_size_request()
-        pixsize: tuple[int, int] = (alloc.width, alloc.height)  # type: ignore
         if image_file is not None:
+            alloc = self.get_size_request()
+            pixsize: tuple[int, int] = (alloc.width, alloc.height)  # type: ignore
             pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(image_file, *pixsize)
         elif icon_name is not None:
-            pixbuf = Gtk.IconTheme.get_default().load_icon(
-                icon_name, pixsize[0], Gtk.IconLookupFlags.FORCE_SIZE
-            )
+            self.set_from_icon_name(icon_name, icon_size)
+
         self.set_from_pixbuf(pixbuf) if pixbuf is not None else None
+
+    # overrides
+    def set_from_icon_name(
+        self,
+        icon_name: str,
+        icon_size: Literal[
+            "invalid",
+            "menu",
+            "small-toolbar",
+            "large-toolbar",
+            "button",
+            "dnd",
+            "dialog",
+        ]
+        | Gtk.IconSize
+        | int = Gtk.IconSize.BUTTON,
+    ):
+        return super().set_from_icon_name(
+            icon_name,
+            get_enum_member(Gtk.IconSize, icon_size, default=Gtk.IconSize.BUTTON)
+            if not isinstance(icon_size, int)
+            else icon_size,  # type: ignore
+        )

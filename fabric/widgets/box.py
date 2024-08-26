@@ -40,8 +40,12 @@ class Box(Gtk.Box, Container):
         **kwargs,
     ) -> None:
         orientation = get_enum_member(
-            Gtk.Orientation, orientation, {"v": "vertical", "h": "horizontal"}
+            Gtk.Orientation,
+            orientation,
+            {"v": "vertical", "h": "horizontal"},
+            default=Gtk.Orientation.HORIZONTAL,
         )
+
         Gtk.Box.__init__(self, spacing=spacing, orientation=orientation)  # type: ignore
         Container.__init__(
             self,

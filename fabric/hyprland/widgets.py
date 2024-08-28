@@ -187,6 +187,10 @@ class Workspaces(EventBox):
             btn.empty = False
             if id == self._active_workspace:
                 btn.active = True
+
+            if btn in self._buttons_preset:
+                continue
+
             self.insert_button(btn)
         return
 

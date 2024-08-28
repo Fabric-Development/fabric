@@ -148,12 +148,18 @@ class Label(Gtk.Label, Widget):
         )
         self.set_label(label) if label is not None else None
         self.set_markup(markup) if markup is not None else None
-        get_enum_member(
-            Gtk.Justification, justification, default=Gtk.Justification.LEFT
+
+        self.set_justify(
+            get_enum_member(
+                Gtk.Justification, justification, default=Gtk.Justification.LEFT
+            )
         )
-        get_enum_member(
-            Pango.EllipsizeMode, ellipsization, default=Pango.EllipsizeMode.NONE
+        self.set_ellipsize(
+            get_enum_member(
+                Pango.EllipsizeMode, ellipsization, default=Pango.EllipsizeMode.NONE
+            )
         )
+
         self.set_width_chars(chars_width)
         self.set_max_width_chars(max_chars_width)
         if line_wrap is not None:

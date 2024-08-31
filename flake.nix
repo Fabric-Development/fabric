@@ -1,6 +1,6 @@
 {
   description = ''
-  next-gen framework for building desktop widgets using Python (check the rewrite branch for progress)
+    next-gen framework for building desktop widgets using Python (check the rewrite branch for progress)
   '';
 
   inputs = {
@@ -10,7 +10,6 @@
   };
 
   outputs = {
-    self,
     nixpkgs,
     nixpkgs-unstable,
     utils,
@@ -18,26 +17,40 @@
   }:
     utils.lib.eachDefaultSystem
     (system: let
-      pkgs = nixpkgs.legacyPackages.${system};
+      overlay = final: prev: {
+        pythonPackagesExtensions =
+          prev.pythonPackagesExtensions
+          ++ [
+            (
+              python-final: python-prev: {
+                fabric-widgets = prev.callPackage ./default.nix {};
+              }
+            )
+          ];
+      };
+
+      pkgs = nixpkgs.legacyPackages.${system}.extend overlay;
       unstable-pkgs = nixpkgs-unstable.legacyPackages.${system};
 
-      pythonWithPackages = pkgs.python311.withPackages (ps: with ps; [
-        setuptools
-        wheel
-        build
-        click
-        pycairo
-        pygobject3
-        loguru
-        psutil
-        self.packages.${system}.default
+      pythonWithPackages = pkgs.python3.withPackages (ps:
+        with ps; [
+          setuptools
+          wheel
+          build
+          click
+          pycairo
+          pygobject3
+          loguru
+          psutil
+          fabric-widgets
         ]);
     in {
       packages = {
-        default = pkgs.callPackage ./default.nix { };
+        default = pkgs.python3Packages.fabric-widgets;
       };
-      apps = {
-      };
+
+      overlays.default = overlay;
+
       devShells = {
         default = pkgs.mkShell {
           name = "fabric-shell";
@@ -57,5 +70,3 @@
       };
     });
 }
-
-

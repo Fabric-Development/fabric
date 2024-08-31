@@ -12,7 +12,7 @@
 }:
 
 python311Packages.buildPythonPackage {
-  pname = "fabric";
+  pname = "python-fabric";
   version = "0.0.1";
   pyproject = true;
 

@@ -17,8 +17,7 @@
         overlay = final: prev: {
           pythonPackagesExtensions = prev.pythonPackagesExtensions ++ [
             (python-final: python-prev: {
-              # `fabric` was taken
-              fabric-widgets = prev.callPackage ./default.nix { };
+              python-fabric = prev.callPackage ./default.nix { };
             })
           ];
         };
@@ -29,18 +28,17 @@
         overlays.default = overlay;
         formatter = pkgs.nixfmt-rfc-style;
         packages = {
-          default = pkgs.python3Packages.fabric-widgets;
+          default = pkgs.python3Packages.python-fabric ;
           run-widget =
             let
               python = pkgs.python3.withPackages (
                 ps: with ps; [
-                  fabric-widgets
                   click
                   pycairo
                   pygobject3
                   loguru
                   psutil
-                  fabric-widgets
+                  python-fabric
                   pygobject-stubs
                 ]
               );
@@ -94,7 +92,7 @@
                   pygobject-stubs
                   loguru
                   psutil
-                  fabric-widgets
+                  python-fabric
                 ]
               ))
             ];

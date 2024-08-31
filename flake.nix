@@ -41,6 +41,7 @@
                   loguru
                   psutil
                   fabric-widgets
+                  pygobject-stubs
                 ]
               );
             in
@@ -90,6 +91,7 @@
                   click
                   pycairo
                   pygobject3
+                  pygobject-stubs
                   loguru
                   psutil
                   fabric-widgets

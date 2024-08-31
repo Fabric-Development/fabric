@@ -34,6 +34,7 @@ python311Packages.buildPythonPackage {
     click
     pycairo
     pygobject3
+    pygobject-stubs
     loguru
     psutil
   ];

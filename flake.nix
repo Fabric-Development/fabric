@@ -26,9 +26,48 @@
         pkgs = nixpkgs.legacyPackages.${system}.extend overlay;
       in
       {
-        packages.default = pkgs.python3Packages.fabric-widgets;
         overlays.default = overlay;
         formatter = pkgs.nixfmt-rfc-style;
+        packages = {
+          default = pkgs.python3Packages.fabric-widgets;
+          run-widget =
+            let
+              python = pkgs.python3.withPackages (
+                ps: with ps; [
+                  fabric-widgets
+                  click
+                  pycairo
+                  pygobject3
+                  loguru
+                  psutil
+                  fabric-widgets
+                ]
+              );
+            in
+            pkgs.stdenv.mkDerivation {
+              name = "run-widget";
+              propagatedBuildInputs = with pkgs; [
+                gtk3
+                gtk-layer-shell
+                cairo
+                gobject-introspection
+                libdbusmenu-gtk3
+                gdk-pixbuf
+                gnome.gnome-bluetooth
+                cinnamon.cinnamon-desktop
+              ];
+              phases = [ "installPhase" ];
+              installPhase = ''
+                mkdir -p $out/bin
+                cat > $out/bin/run-widget << EOF
+                #!/bin/sh
+                GI_TYPELIB_PATH=$GI_TYPELIB_PATH \
+                ${python.interpreter} "\$@"
+                EOF
+                chmod +x $out/bin/run-widget
+              '';
+            };
+        };
 
         devShells = {
           default = pkgs.mkShell {
@@ -42,6 +81,7 @@
               libdbusmenu-gtk3
               gdk-pixbuf
               gnome.gnome-bluetooth
+              cinnamon.cinnamon-desktop
               (python3.withPackages (
                 ps: with ps; [
                   setuptools

@@ -7,6 +7,7 @@
   gobject-introspection,
   libdbusmenu-gtk3,
   gdk-pixbuf,
+  cinnamon,
   gnome,
 }:
 
@@ -24,6 +25,7 @@ python311Packages.buildPythonPackage {
     gobject-introspection
     libdbusmenu-gtk3
     gdk-pixbuf
+    cinnamon.cinnamon-desktop
     gnome.gnome-bluetooth
   ];
 

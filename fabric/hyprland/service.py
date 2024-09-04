@@ -12,6 +12,7 @@ from gi.repository import (
 )
 
 P = ParamSpec("P")
+HYPRLAND_COMMAND_BUFFER_SIZE = 1_048_576  # 12mb -> binary bytes
 
 
 # exceptions
@@ -169,9 +170,7 @@ class Hyprland(Service):
 
             # read return data
             input_stream = Gio.DataInputStream.new(conn.get_input_stream())  # type: ignore
-            raw_data: GLib.Bytes = input_stream.read_bytes(
-                input_stream.get_buffer_size()
-            )
+            raw_data: GLib.Bytes = input_stream.read_bytes(HYPRLAND_COMMAND_BUFFER_SIZE)
             resp: bytes = raw_data.get_data()  # type: ignore
         except Exception as e:
             logger.error(
@@ -228,12 +227,11 @@ class Hyprland(Service):
             conn: Gio.SocketConnection = client.connect_finish(res)
             stream: Gio.OutputStream = conn.get_output_stream()  # type: ignore
             input_stream = Gio.DataInputStream.new(conn.get_input_stream())  # type: ignore
-            buffer_size: int = input_stream.get_buffer_size()
 
             # write command's content
             stream.write_async(  # type: ignore
                 command.encode(),
-                buffer_size,
+                HYPRLAND_COMMAND_BUFFER_SIZE,
                 None,  # type: ignore
                 None,
                 None,
@@ -247,7 +245,9 @@ class Hyprland(Service):
             # the GC will collect the connection object and thus the input stream
             # this will result in a undefined behaviour
             # this is a bug with PyGObject (or at least an issue with the ref counter)
-            input_stream.read_bytes_async(buffer_size, 1, None, reader_callback, conn)
+            input_stream.read_bytes_async(
+                HYPRLAND_COMMAND_BUFFER_SIZE, 1, None, reader_callback, conn
+            )
 
         client.connect_async(socket_addr, None, client_callback, None)
 

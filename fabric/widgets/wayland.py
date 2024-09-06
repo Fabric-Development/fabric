@@ -266,9 +266,9 @@ class WaylandWindow(Window):
         self.layer = layer
         self.anchor = anchor
         self.margin = margin
-        self.pass_through = pass_through
         self.keyboard_mode = keyboard_mode
         self.exclusivity = exclusivity
+        self.pass_through = pass_through
         self.show_all() if all_visible is True else self.show() if visible is True else None
 
     def steal_input(self) -> None:
@@ -279,18 +279,19 @@ class WaylandWindow(Window):
 
     # custom overrides
     def show(self) -> None:
-        self.do_warn_if_no_children()
-        return super().show()
+        super().show()
+        return self.do_handle_post_show_request()
 
     def show_all(self) -> None:
-        self.do_warn_if_no_children()
-        return super().show_all()
+        super().show_all()
+        return self.do_handle_post_show_request()
 
-    def do_warn_if_no_children(self) -> None:
+    def do_handle_post_show_request(self) -> None:
         if not self.get_children():
             logger.warning(
                 "[WaylandWindow] showing an empty window is not recommended, some compositors might freak out."
             )
+        self.pass_through = self._pass_through
         return
 
     @staticmethod

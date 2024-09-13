@@ -1,40 +1,11 @@
 import gi
 from typing import Literal
 from collections.abc import Iterable
+from fabric.widgets.widget import EVENT_TYPE
 from fabric.widgets.container import Container
-from fabric.utils.helpers import get_enum_member
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk
-
-EVENT_TYPE = Literal[
-    "exposure",
-    "pointer-motion",
-    "pointer-motion-hint",
-    "button-motion",
-    "button-1-motion",
-    "button-2-motion",
-    "button-3-motion",
-    "button-press",
-    "button-release",
-    "key-press",
-    "key-release",
-    "enter-notify",
-    "leave-notify",
-    "focus-change",
-    "structure",
-    "property-change",
-    "visibility-notify",
-    "proximity-in",
-    "proximity-out",
-    "substructure",
-    "scroll",
-    "touch",
-    "smooth-scroll",
-    "touchpad-gesture",
-    "tablet-pad",
-    "all",
-]
 
 
 class EventBox(Gtk.EventBox, Container):
@@ -80,15 +51,3 @@ class EventBox(Gtk.EventBox, Container):
             **kwargs,
         )
         self.add_events(events) if events is not None else None
-
-    def add_events(
-        self, events: EVENT_TYPE | Gdk.EventMask | Iterable[EVENT_TYPE | Gdk.EventMask]
-    ):
-        _events: int = 0
-        events_map: dict[str, str] = {
-            x: (x if x != "all" else "all-events") + "-mask"
-            for x in EVENT_TYPE.__args__
-        }
-        for event in (events,) if not isinstance(events, (tuple, list)) else events:
-            _events |= get_enum_member(Gdk.EventMask, event, events_map, 0)  # type: ignore
-        return super().add_events(_events)

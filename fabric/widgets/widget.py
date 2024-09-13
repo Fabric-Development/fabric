@@ -51,6 +51,35 @@ CURSOR_TYPE = Literal[
     "zoom-out",
 ]
 
+EVENT_TYPE = Literal[
+    "exposure",
+    "pointer-motion",
+    "pointer-motion-hint",
+    "button-motion",
+    "button-1-motion",
+    "button-2-motion",
+    "button-3-motion",
+    "button-press",
+    "button-release",
+    "key-press",
+    "key-release",
+    "enter-notify",
+    "leave-notify",
+    "focus-change",
+    "structure",
+    "property-change",
+    "visibility-notify",
+    "proximity-in",
+    "proximity-out",
+    "substructure",
+    "scroll",
+    "touch",
+    "smooth-scroll",
+    "touchpad-gesture",
+    "tablet-pad",
+    "all",
+]
+
 
 class Widget(Gtk.Widget, Service):
     """the base widget, all other widgets should inherit from this class"""
@@ -243,14 +272,26 @@ class Widget(Gtk.Widget, Service):
         return window.set_cursor(cursor)
 
     def is_hovered(self, event: Gdk.EventAny | None = None) -> bool:
-        x, y = self.get_pointer()
+        x, y = self.get_pointer()  # type: ignore
         allocation = self.get_allocation()
         if event:
-            x, y = event.get_coords()
-        return 0 < x < allocation.width and 0 < y < allocation.height
+            x, y = event.get_coords()  # type: ignore
+        return 0 < x < allocation.width and 0 < y < allocation.height  # type: ignore
 
     def add_style_class(self, class_name: str):
         return self.get_style_context().add_class(class_name)
 
     def remove_style_class(self, class_name: str):
         return self.get_style_context().remove_class(class_name)
+
+    def add_events(
+        self, events: EVENT_TYPE | Gdk.EventMask | Iterable[EVENT_TYPE | Gdk.EventMask]
+    ):
+        _events: int = 0
+        events_map: dict[str, str] = {
+            x: (x if x != "all" else "all-events") + "-mask"
+            for x in EVENT_TYPE.__args__
+        }
+        for event in (events,) if not isinstance(events, (tuple, list)) else events:
+            _events |= get_enum_member(Gdk.EventMask, event, events_map, 0)  # type: ignore
+        return super().add_events(_events)

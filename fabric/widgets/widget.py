@@ -1,5 +1,5 @@
 import gi
-from typing import overload, Literal
+from typing import cast, overload, Literal
 from fabric.utils import compile_css, get_enum_member
 from fabric.core.service import Service, Property
 from collections.abc import Iterable
@@ -125,11 +125,17 @@ class Widget(Gtk.Widget, Service):
         return self.get_style_context().list_classes() or []
 
     @style_classes.setter
-    def style_classes(self, classes: list[str]) -> None:
-        for cls in self.style_classes:
-            self.remove_style_class(cls)
-        for cls in classes:
-            self.add_style_class(cls)
+    def style_classes(self, classes: Iterable[str] | str) -> None:
+        for klass in self.style_classes:
+            self.remove_style_class(klass)
+
+        for klass in (
+            # this should handle whitespace
+            [klass for klass in cast(str, classes).split(" ") if klass]
+            if not isinstance(classes, (tuple, list))
+            else classes
+        ):
+            self.add_style_class(klass)
         return
 
     def __init__(

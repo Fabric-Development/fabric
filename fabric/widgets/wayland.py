@@ -3,7 +3,7 @@ import re
 import cairo
 from enum import Enum
 from loguru import logger
-from typing import Literal
+from typing import cast, Literal
 from collections.abc import Iterable
 from fabric.core.service import Property
 from fabric.widgets.window import Window
@@ -48,13 +48,13 @@ class WaylandWindow(Window):
 
     @Property(int, "read-write")
     def monitor(self) -> int:
-        window = self.get_window()
-        if not window:
-            return None  # type: ignore
-        gdk_window: Gdk.Window = window.get_window()  # type: ignore
-        if not gdk_window:
-            return None  # type: ignore
-        return gdk_window.get_screen().get_monitor_at_window(gdk_window)
+        if not (monitor := cast(Gdk.Monitor, GtkLayerShell.get_monitor(self))):
+            return -1
+        display = monitor.get_display() or Gdk.Display.get_default()
+        for i in range(0, display.get_n_monitors()):
+            if display.get_monitor(i) is monitor:
+                return i
+        return -1
 
     @monitor.setter
     def monitor(self, monitor: int | Gdk.Monitor) -> bool:

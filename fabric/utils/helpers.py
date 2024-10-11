@@ -212,36 +212,135 @@ def get_gdk_rgba(color: str | Iterable[Number]) -> Gdk.RGBA:
     return parse_color(color)
 
 
-def compile_css(css_string: str) -> str:
+def compile_css(
+    css_string: str,
+    exposed_functions: dict[str, Callable] | Iterable[Callable] | None = None,
+) -> str:
     """
-    compile a CSS string to GTK's CSS syntax
+    preprocess and transpile a CSS string to GTK's CSS syntax.
 
-    issues might happen, this thing uses a chain of regex
+    supports transpiling web-css like variables over to GTK's `@define-color` syntax.
 
-    :param css_string: the CSS string
+    also supports having CSS macros. syntax example:
+    .. code-block:: css
+        /* define a macro */
+        @define my-macro(--arg-1, --arg-2) {
+            /* CSS body goes here. example body.. */
+            color: --arg-1;
+            background-color: --arg-2;
+        }
+
+        #my-widget {
+            @apply my-macro(red, blue);
+            /* compiles to
+                color: --arg-1;
+                background-color: --arg-2;
+            */
+        }
+
+    **Note:** this function relies on a series of regular expressions for its processing, which may lead to potential issues in certain edge cases.
+
+    :param css_string: the input CSS as a string.
     :type css_string: str
-    :return: the compiled CSS string
+    :param exposed_functions: a dictionary of macro functions or an iterable of callable functions to use as extra macros. if a dictionary is provided, the keys are macro names, and the values are the corresponding functions.
+    :type exposed_functions: dict[str, Callable] | Iterable[Callable] | None, optional
+    :return: the compiled CSS string converted to GTK's CSS syntax.
     :rtype: str
     """
+
     vars_selector_pattern = re.compile(r":vars\s*{\s*([^}]+)\s*}")
     vars_declaration_pattern = re.compile(r"--([\w-]+)\s*:\s*([^;]+)\s*;")
     vars_reference_pattern = re.compile(r"var\(--([\w-]+)\)")
 
-    # special selector for variables
-    match = vars_selector_pattern.search(css_string)
-    if match is not None:
-        css = f"{match.group(1)}\n\n{css_string.replace(match.group(0), '')}"
-    else:
-        css = css_string
+    constant_pattern = re.compile(r"@define\s+([\w-]+)\s+([^;]+);")
+    constant_apply_pattern = re.compile(r"apply\(([\w-]+)\)")
 
-    # variable declarations
-    css = vars_declaration_pattern.sub(
-        lambda m: f"@define-color {m.group(1)} {m.group(2)};", css
+    macro_pattern = re.compile(r"@define\s+([\w-]+)\(([^)]*)\)\s*{\s*([^}]+)\s*}")
+    macro_apply_pattern = re.compile(r"@apply\s+([\w-]+)\(([^)]*)\)\s*;?")
+
+    exposed_functions: dict[str, Callable] = (
+        {}
+        if not exposed_functions
+        else (
+            {
+                snake_case_to_kebab_case(func.__name__): func
+                for func in (
+                    exposed_functions
+                    if not isinstance(exposed_functions, Callable)
+                    else (exposed_functions,)
+                )
+            }
+            if isinstance(exposed_functions, (list, tuple, Callable))
+            else exposed_functions
+        )
     )
 
-    # variable references
-    css = vars_reference_pattern.sub(r"@\1", css)
-    return css
+    # color variables
+    match = vars_selector_pattern.search(css_string)
+    css_output = (
+        f"{match.group(1)}\n\n{css_string.replace(match.group(0), '')}"
+        if match
+        else css_string
+    )
+
+    # this could be preprocessed as the original value not (a translation to Gtk's syntax)
+    css_output = vars_declaration_pattern.sub(
+        lambda m: f"@define-color {m.group(1)} {m.group(2)};", css_output
+    )
+    css_output = vars_reference_pattern.sub(r"@\1", css_output)
+
+    # preprocessing
+    constants: dict[str, str] = {
+        m.group(1): m.group(2) for m in constant_pattern.finditer(css_output)
+    }
+    css_output = constant_pattern.sub("", css_output)
+    css_output = constant_apply_pattern.sub(
+        lambda m: constants.get(m.group(1), m.group(0)), css_output
+    )
+
+    # keys are macro names.
+    # tuple's first item is a list of arguments
+    # and last item is the macro's body
+    macros: dict[str, tuple[tuple[str], str]] = {
+        m.group(1): (
+            args_group.split(",") if (args_group := m.group(2)) else (),
+            m.group(3).strip(),
+        )
+        for m in macro_pattern.finditer(css_output)
+    }
+    css_output = macro_pattern.sub("", css_output)
+
+    def apply_macro_replacement(match: re.Match) -> str:
+        macro_name = match.group(1)
+        macro_func = exposed_functions.get(macro_name, None)
+        macro_args, macro_body = macros.get(macro_name, (None, None))
+        if not macro_args and not macro_body and not macro_func:
+            logger.warning(f"[FASS] couldn't find a macro with name {macro_name}")
+            return match.group(0)  # like nothing has happened
+
+        logger.info(f"[FASS] applying a macro with name {macro_name}")
+
+        # passed in parameters
+        passed_params: list[str] = (
+            [arg_name.strip() for arg_name in args_group.split(",")]
+            if (args_group := match.group(2))
+            else []
+        )
+
+        if macro_func:
+            return macro_func(*passed_params)
+
+        for param, arg in zip(macro_args, passed_params):
+            macro_body = macro_body.replace(param.strip(), arg)
+
+        return macro_body
+
+    css_output = macro_apply_pattern.sub(apply_macro_replacement, css_output)
+
+    # clean up
+    css_output = re.sub(r"\n\s*\n", "\n", css_output).strip()
+
+    return css_output
 
 
 def bulk_replace(

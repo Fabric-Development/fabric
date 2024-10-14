@@ -206,12 +206,17 @@ class Application(Gtk.Application, Service):
             self.remove_window(window)
         return self._windows.extend(windows)
 
+    @Property(list[Gtk.StyleProvider], "readable")
+    def style_providers(self) -> list[Gtk.StyleProvider]:
+        return self._style_providers
+
     @overload
     def __init__(
         self,
         name: str = "default",
         *windows: Gtk.Window,
         open_client: bool = True,
+        open_inspector: bool = False,
         **kwargs,
     ): ...
 
@@ -220,6 +225,7 @@ class Application(Gtk.Application, Service):
         self,
         *windows: Gtk.Window,
         open_client: bool = True,
+        open_inspector: bool = False,
         **kwargs,
     ): ...
 
@@ -227,6 +233,7 @@ class Application(Gtk.Application, Service):
         self,
         *args: str | Gtk.Window,
         open_client: bool = True,
+        open_inspector: bool = False,
         **kwargs,
     ):
         name: str
@@ -263,14 +270,15 @@ class Application(Gtk.Application, Service):
             self,
             **kwargs,
         )
-
         self._windows: list[Gtk.Window] = []
         self._open_client = open_client
+        self._style_providers = []
 
         self.name = name
         self.windows = [window for window in windows]
-
         GLib.set_application_name(name) if name else None
+
+        self.open_inspector() if open_inspector else None
 
     def remove_window(self, window: Gtk.Window):
         self._windows.remove(window)
@@ -364,13 +372,15 @@ class Application(Gtk.Application, Service):
         )
         return proxy
 
-    @staticmethod
-    def set_stylesheet(
+    def add_style_provider(
+        self,
         provider: Gtk.StyleProvider,
         priority: Literal["fallback", "theme", "settings", "application", "user"]
         | int = Gtk.STYLE_PROVIDER_PRIORITY_USER,
     ) -> None:
         # well, i have to manually bind this
+        self._style_providers.append(provider)
+        self.notify("style-providers")
         return Gtk.StyleContext.add_provider_for_screen(  # type: ignore
             Gdk.Screen.get_default(),
             provider,
@@ -387,26 +397,59 @@ class Application(Gtk.Application, Service):
             ),
         )
 
-    @staticmethod
+    def remove_style_provider(self, provider: Gtk.StyleProvider) -> None:
+        screen = Gdk.Screen.get_default()
+        return Gtk.StyleContext.remove_provider_for_screen(screen, provider)  # type: ignore
+
+    def reset_styles(self) -> None:
+        for style_provider in self.style_providers:
+            self.remove_style_provider(style_provider)
+            self._style_providers.remove(style_provider)
+        return
+
+    def set_style_provider(
+        self,
+        provider: Gtk.StyleProvider,
+        priority: Literal["fallback", "theme", "settings", "application", "user"]
+        | int = Gtk.STYLE_PROVIDER_PRIORITY_USER,
+    ) -> None:
+        self.reset_styles()
+        return self.add_style_provider(provider, priority)
+
     def set_stylesheet_from_file(
-        file_path: str, compile: bool = True, *args, **kwargs
+        self,
+        file_path: str,
+        compile: bool = True,
+        append: bool = False,
+        *args,
+        **kwargs,
     ) -> None:
         if compile:
             with open(file_path, "r") as f:
-                Application.set_stylesheet_from_string(f.read(), True)
+                self.set_stylesheet_from_string(
+                    f.read(), compile, append, *args, **kwargs
+                )
             return
         provider = Gtk.CssProvider()
         provider.load_from_path(file_path)
-        Application.set_stylesheet(provider, *args, **kwargs)
-        return
 
-    @staticmethod
+        return (self.set_style_provider if not append else self.add_style_provider)(
+            provider, *args, **kwargs
+        )
+
     def set_stylesheet_from_string(
-        style_string: str, compile: bool = True, *args, **kwargs
-    ):
+        self,
+        style_string: str,
+        compile: bool = True,
+        append: bool = False,
+        *args,
+        **kwargs,
+    ) -> None:
         provider = Gtk.CssProvider()
         provider.load_from_data(
             bytearray(compile_css(style_string) if compile else style_string, "utf-8")  # type: ignore
         )
-        Application.set_stylesheet(provider, *args, **kwargs)
-        return
+
+        return (self.set_style_provider if not append else self.add_style_provider)(
+            provider, *args, **kwargs
+        )

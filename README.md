@@ -1,38 +1,39 @@
-_**ricing made easy!**_ 🍙
-# What is this?
-Fabric is a python widgets _~~thing~~ framework_   made for \*Nix based systems (Wayland and X11), using GTK+
+<div align="center">
 
-Fabric aims to provide you high-level and signal-based flow, neither polling nor bash scripting is required to do **basic** stuff, old men!
+Ricing, Made <b>Easy</b> 🍚⚡
 
-Also Fabric is configured in python which make's it easier than ever!
+[<kbd> <br> Wiki Pages <br> </kbd>](https://its-darsh.github.io/fabric-wiki/) [<kbd> <br> Discord Server <br> </kbd>](https://discord.gg/3sDbYc9SZP)
+
+</div>
+
+---
+
+## What is Fabric?
+
+Fabric is a Desktop Widgets System that you can customize using Python. It offers a variety of features to make the often tedious process of creating widgets much easier and more enjoyable!
+
+Our goal is to provide a high-level, signal-based workflow—no polling or bash scripting required for even the most **basic** tasks.
 
 > [!NOTE]
-> Please note that Fabric is still a work in progress, also the API is a subject to change.
+> Fabric is still a work in progress. this means is that the API is a subject to change.
 
-For discussions and questions, [join us on discord](https://discord.gg/3sDbYc9SZP)
+## Key Features
 
-Fabric Wiki: https://fabric-development.github.io/fabric-wiki/
-
-### key features
 1. **Simple** yet **Powerful**
+2. Supports both **X11 and Wayland**
+3. Access to **all other Python modules**
+4. Excellent **Developer Experience (DevEX)** and typing support
+5. **Low resource usage**
+   - Built-in Python code replaces the need for resource-heavy shell scripts
 
-	asking how simple actually it is?
+## Visual Tour
 
-	 \- head over to examples
-1. X11 and Wayland ready!
-2. All python modules are accessible to you!
-3. Code  auto-completions ready!, see the stubs guide for more info: TBD
-5. Less resource usage
+A Collection of Desktop rices that muscle-show what are you able to do using Fabric!
 
-	since everything can be written within the widget code this will no longer require you using external scripts, this will decrease the widget resource usage
+- Example files (combined)
+  ![config can be found under the examples/bar and examples/side-panel directory](assets/example-files-bar-showcase.png)
 
----
-## Showcase Section
-these are some bars/widgets made using Fabric
-- example files
-	![config can be found under the examples/bar and examples/side-panel directory](assets/example-files-bar-showcase.png)
-    ![config can be found under the examples/vertical-bar directory](assets/example-files-vertical-bar-showcase.png)
 
----
-# Hacking and Contributing
-seek over [our wiki pages](https://fabric-development.github.io/fabric-wiki/hacking-guide.html)
+## Hacking and Contributing
+
+Interested in contributing? Check out the full guide in [our wiki pages](https://its-darsh.github.io/fabric-wiki/guide/hacking-guide/).

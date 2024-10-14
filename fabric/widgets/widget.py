@@ -131,7 +131,7 @@ class Widget(Gtk.Widget, Service):
 
         for klass in (
             # this should handle whitespace
-            [klass for klass in cast(str, classes).split(" ") if klass]
+            [klass for klass in cast(str, classes).split() if klass]
             if not isinstance(classes, (tuple, list))
             else classes
         ):

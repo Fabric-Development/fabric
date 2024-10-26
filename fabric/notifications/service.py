@@ -1,6 +1,7 @@
 import gi
 from enum import Enum
 from typing import cast
+from dataclasses import dataclass
 from fabric.core.service import Service, Signal, Property
 from fabric.utils.helpers import load_dbus_xml
 
@@ -52,7 +53,21 @@ class NotificationImagePixmap:
         return self._pixbuf
 
 
+@dataclass
+class NotificationAction:
+    identifier: str
+    label: str
+
+    parent: "Notification"
+
+    def invoke(self):
+        return self.parent.invoke_action(self.identifier)
+
+
 class Notification(Service):
+    @Signal
+    def action_invoked(self, action: str) -> None: ...
+
     @Property(str, "readable")
     def app_name(self) -> str:
         return self._app_name
@@ -81,6 +96,10 @@ class Notification(Service):
     def timeout(self) -> int:
         return self._timeout
 
+    @Property(list[NotificationAction], "readable")
+    def actions(self) -> list[NotificationAction]:
+        return self._actions
+
     @Property(NotificationImagePixmap, "readable")
     def image_pixmap(self) -> NotificationImagePixmap:
         return self._image_pixmap  # type: ignore
@@ -89,8 +108,16 @@ class Notification(Service):
     def image_file(self) -> str:
         return self._image_file  # type: ignore
 
-    def __init__(self, raw_variant: GLib.Variant, id: int, **kwarg):
-        super().__init__(**kwarg)
+    @Property(GdkPixbuf.Pixbuf, "readable")
+    def image_pixbuf(self) -> GdkPixbuf.Pixbuf:
+        if self.image_pixmap:
+            return self.image_pixmap.as_pixbuf()
+        if self.image_file:
+            return GdkPixbuf.Pixbuf.new_from_file(self.image_file)
+        return None  # type: ignore
+
+    def __init__(self, id: int, raw_variant: GLib.Variant, **kwargs):
+        super().__init__(**kwargs)
         self._id: int = id
 
         self._app_name: str = raw_variant.get_child_value(0).unpack()  # type: ignore
@@ -98,7 +125,13 @@ class Notification(Service):
         self._app_icon: str = raw_variant.get_child_value(2).unpack()  # type: ignore
         self._summary: str = raw_variant.get_child_value(3).unpack()  # type: ignore
         self._body: str = raw_variant.get_child_value(4).unpack()  # type: ignore
-        self._actions: list[str] = raw_variant.get_child_value(5).unpack()  # type: ignore
+
+        raw_actions: list[str] = raw_variant.get_child_value(5).unpack()  # type: ignore
+        self._actions: list[NotificationAction] = [
+            NotificationAction(raw_actions[i], raw_actions[i + 1], self)
+            for i in range(0, len(raw_actions), 2)
+        ]
+
         self._hints: GLib.Variant = raw_variant.get_child_value(6)  # type: ignore
         self._timeout: int = raw_variant.get_child_value(7).unpack()  # type: ignore
 
@@ -119,12 +152,8 @@ class Notification(Service):
     def do_get_hint_entry(self, entry_key: str) -> GLib.Variant | None:
         return self._hints.lookup_value(entry_key)
 
-    def get_image_pixbuf(self) -> GdkPixbuf.Pixbuf | None:
-        if self.image_pixmap:
-            return self.image_pixmap.as_pixbuf()
-        if self.image_file:
-            return GdkPixbuf.Pixbuf.new_from_file(self.image_file)
-        return None
+    def invoke_action(self, action: str):
+        return self.action_invoked(action)
 
 
 class Notifications(Service):
@@ -149,8 +178,8 @@ class Notifications(Service):
         self.notification_removed(notification_id)
         self.do_emit_bus_signal(
             "NotificationClosed",
-            GLib.Variant.new(
-                "(ii)", notification_id, cast(NotificationCloseReason, reason).value
+            GLib.Variant(
+                "(uu)", (notification_id, cast(NotificationCloseReason, reason).value)
             ),
         )
         return
@@ -210,6 +239,7 @@ class Notifications(Service):
         invocation: Gio.DBusMethodInvocation,
         user_data: object = None,
     ) -> None:
+        print(target)
         match target:
             case "Get":
                 prop_name = params[1] if len(params) >= 1 else None
@@ -229,27 +259,28 @@ class Notifications(Service):
             case "GetCapabilities":
                 invocation.return_value(
                     GLib.Variant(
-                        "as",
-                        [
-                            "action-icons",
-                            "actions",
-                            "body",
-                            "body-hyperlinks",
-                            "body-images",
-                            "body-markup",
-                            # "icon-multi",
-                            "icon-static",
-                            "persistence",
-                            # "sound",
-                        ],
+                        "(as)",
+                        (
+                            [
+                                "action-icons",
+                                "actions",
+                                "body",
+                                "body-hyperlinks",
+                                "body-images",
+                                "body-markup",
+                                # "icon-multi",
+                                "icon-static",
+                                "persistence",
+                                # "sound",
+                            ],
+                        ),
                     )
                 )
 
             case "GetServerInformation":
                 invocation.return_value(
                     GLib.Variant(
-                        "(ssss)",
-                        ("fabric", "Fabric-Development", "0.0.2", "1.2"),
+                        "(ssss)", ("fabric", "Fabric-Development", "0.0.2", "1.2")
                     )
                 )
 
@@ -257,8 +288,9 @@ class Notifications(Service):
                 notif_id = self.new_notification_id()
 
                 self._notifications[notif_id] = Notification(
-                    cast(GLib.Variant, params),
-                    notif_id,
+                    id=notif_id,
+                    raw_variant=cast(GLib.Variant, params),
+                    on_action_invoked=self.do_handle_notification_action_invoke,
                 )
                 self.notification_added(notif_id)
 
@@ -276,9 +308,15 @@ class Notifications(Service):
         ) if self._connection is not None else None
         return
 
+    def do_handle_notification_action_invoke(
+        self, notification: Notification, action: str
+    ):
+        # a pointer to a function is better than a new lambda on every notification
+        return self.invoke_notification_action(notification.id, action)
+
     def invoke_notification_action(self, notification_id: int, action: str):
         return self.do_emit_bus_signal(
-            "ActionInvoked", GLib.Variant.new("(is)", notification_id, action)
+            "ActionInvoked", GLib.Variant("(us)", (notification_id, action))
         )
 
     def get_notification_from_id(self, notification_id: int) -> Notification | None:

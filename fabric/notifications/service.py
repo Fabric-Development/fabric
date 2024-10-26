@@ -1,9 +1,10 @@
 import gi
 from enum import Enum
-from typing import cast
+from loguru import logger
+from typing import cast, Literal
 from dataclasses import dataclass
 from fabric.core.service import Service, Signal, Property
-from fabric.utils.helpers import load_dbus_xml
+from fabric.utils.helpers import load_dbus_xml, get_enum_member
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gio, GLib, GdkPixbuf
@@ -67,6 +68,9 @@ class NotificationAction:
 class Notification(Service):
     @Signal
     def action_invoked(self, action: str) -> None: ...
+
+    @Signal
+    def closed(self, reason: object) -> None: ...
 
     @Property(str, "readable")
     def app_name(self) -> str:
@@ -155,6 +159,15 @@ class Notification(Service):
     def invoke_action(self, action: str):
         return self.action_invoked(action)
 
+    def close(
+        self,
+        reason: Literal[
+            "expired", "dismissed-by-user", "closed-by-application", "unknown"
+        ]
+        | NotificationCloseReason = NotificationCloseReason.DISMISSED_BY_USER,
+    ):
+        return self.closed(get_enum_member(NotificationCloseReason, reason))
+
 
 class Notifications(Service):
     @Signal
@@ -208,9 +221,10 @@ class Notifications(Service):
             NOTIFICATIONS_BUS_NAME,
             Gio.BusNameOwnerFlags.NONE,
             self.on_bus_acquired,
-            # FIXME: add logging
-            print,
-            print,
+            None,
+            lambda *_: logger.warning(
+                "[Notifications] couldn't own the DBus name, another notifications daemon is probably running."
+            ),
         )
 
     def on_bus_acquired(
@@ -239,7 +253,6 @@ class Notifications(Service):
         invocation: Gio.DBusMethodInvocation,
         user_data: object = None,
     ) -> None:
-        print(target)
         match target:
             case "Get":
                 prop_name = params[1] if len(params) >= 1 else None
@@ -290,6 +303,7 @@ class Notifications(Service):
                 self._notifications[notif_id] = Notification(
                     id=notif_id,
                     raw_variant=cast(GLib.Variant, params),
+                    on_closed=self.do_handle_notification_closed,
                     on_action_invoked=self.do_handle_notification_action_invoke,
                 )
                 self.notification_added(notif_id)
@@ -308,11 +322,37 @@ class Notifications(Service):
         ) if self._connection is not None else None
         return
 
+    def do_remove_notification(self, notification_id: int):
+        self._notifications.pop(notification_id, None)
+
+        self.notification_removed(notification_id)
+        self.notify("notifications")
+        self.changed()
+        return
+
+    def do_close_notification(
+        self,
+        notification_id: int,
+        reason: NotificationCloseReason = NotificationCloseReason.DISMISSED_BY_USER,
+    ):
+        self.do_emit_bus_signal(
+            "NotificationClosed",
+            GLib.Variant(
+                "(uu)", (notification_id, cast(NotificationCloseReason, reason).value)
+            ),
+        )
+        return self.do_remove_notification(notification_id)
+
     def do_handle_notification_action_invoke(
         self, notification: Notification, action: str
     ):
         # a pointer to a function is better than a new lambda on every notification
         return self.invoke_notification_action(notification.id, action)
+
+    def do_handle_notification_closed(
+        self, notification: Notification, reason: NotificationCloseReason
+    ):
+        return self.do_close_notification(notification.id, reason)
 
     def invoke_notification_action(self, notification_id: int, action: str):
         return self.do_emit_bus_signal(

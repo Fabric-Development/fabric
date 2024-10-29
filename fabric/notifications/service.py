@@ -1,8 +1,9 @@
 import gi
+import base64
 from enum import Enum
 from loguru import logger
-from typing import cast, Literal
 from dataclasses import dataclass
+from typing import cast, Literal, TypedDict
 from fabric.core.service import Service, Signal, Property
 from fabric.utils.helpers import load_dbus_xml, get_enum_member
 
@@ -25,6 +26,26 @@ class NotificationCloseReason(Enum):
 
 
 class NotificationImagePixmap:
+    @classmethod
+    def deserialize(cls, data: tuple[int, int, int, bool, int, int, str]):
+        self = cls.__new__(cls)
+
+        (
+            self.width,
+            self.height,
+            self.rowstride,
+            self.has_alpha,
+            self.bits_per_sample,
+            self.channels,
+            self.byte_array,
+        ) = data
+
+        self.byte_array = GLib.Bytes.new(base64.b64decode(self.byte_array))  # type: ignore
+
+        self._pixbuf = None
+
+        return self
+
     def __init__(self, raw_variant: GLib.Variant):
         # manually unpack children so we don't lock up the interpreter
         # trying to unpack hugely sized object recursively
@@ -53,6 +74,19 @@ class NotificationImagePixmap:
         )
         return self._pixbuf
 
+    def serialize(self) -> tuple[int, int, int, bool, int, int, str]:
+        return (
+            self.width,
+            self.height,
+            self.rowstride,
+            self.has_alpha,
+            self.bits_per_sample,
+            self.channels,
+            base64.b64encode(cast(bytes, self.byte_array.unref_to_array())).decode(
+                "ascii"
+            ),
+        )
+
 
 @dataclass
 class NotificationAction:
@@ -63,6 +97,23 @@ class NotificationAction:
 
     def invoke(self):
         return self.parent.invoke_action(self.identifier)
+
+
+NotificationSerializedData = TypedDict(
+    "NotificationSerializedData",
+    {
+        "id": int,
+        "replaces-id": int,
+        "app-name": str,
+        "app-icon": str,
+        "summary": str,
+        "body": str,
+        "timeout": int,
+        "actions": list[tuple[str, str]],
+        "image-file": str | None,
+        "image-pixmap": tuple[int, int, int, bool, int, int, str] | None,
+    },
+)
 
 
 class Notification(Service):
@@ -120,6 +171,34 @@ class Notification(Service):
             return GdkPixbuf.Pixbuf.new_from_file(self.image_file)
         return None  # type: ignore
 
+    @classmethod
+    def deserialize(cls, data: NotificationSerializedData, **kwargs):
+        self = cls.__new__(cls)
+        Service.__init__(self, **kwargs)
+
+        self._id = data["id"]
+        self._app_name = data["app-name"]
+        self._replaces_id = data["replaces-id"]
+        self._app_icon = data["app-icon"]
+
+        self._summary = data["summary"]
+        self._body = data["body"]
+
+        self._timeout = data["timeout"]
+
+        self._actions = [
+            NotificationAction(action[0], action[1], self) for action in data["actions"]
+        ]
+
+        self._image_file = data["image-file"]
+        self._image_pixmap = (
+            NotificationImagePixmap.deserialize(data["image-pixmap"])
+            if data["image-pixmap"]
+            else None
+        )
+
+        return self
+
     def __init__(self, id: int, raw_variant: GLib.Variant, **kwargs):
         super().__init__(**kwargs)
         self._id: int = id
@@ -131,6 +210,7 @@ class Notification(Service):
         self._body: str = raw_variant.get_child_value(4).unpack()  # type: ignore
 
         raw_actions: list[str] = raw_variant.get_child_value(5).unpack()  # type: ignore
+
         self._actions: list[NotificationAction] = [
             NotificationAction(raw_actions[i], raw_actions[i + 1], self)
             for i in range(0, len(raw_actions), 2)
@@ -139,25 +219,39 @@ class Notification(Service):
         self._hints: GLib.Variant = raw_variant.get_child_value(6)  # type: ignore
         self._timeout: int = raw_variant.get_child_value(7).unpack()  # type: ignore
 
-        self._image_file: str | None = (
-            image_file_raw := (
-                self.do_get_hint_entry("image-path")
-                or self.do_get_hint_entry("image_path")
-            ),
-            image_file_raw.unpack() if image_file_raw is not None else None,  # type: ignore
-        )[1]
+        self._image_file: str | None = None
+        if raw_image_file := (
+            self.do_get_hint_entry("image-path") or self.do_get_hint_entry("image_path")
+        ):
+            self._image_file = raw_image_file.unpack()  # type: ignore
 
         self._image_pixmap: NotificationImagePixmap | None = None
-        if image_data := (
+        if raw_image_data := (
             self.do_get_hint_entry("image-data") or self.do_get_hint_entry("icon_data")
         ):
-            self._image_pixmap = NotificationImagePixmap(image_data)
+            self._image_pixmap = NotificationImagePixmap(raw_image_data)
 
     def do_get_hint_entry(self, entry_key: str) -> GLib.Variant | None:
         return self._hints.lookup_value(entry_key)
 
     def invoke_action(self, action: str):
         return self.action_invoked(action)
+
+    def serialize(self) -> NotificationSerializedData:
+        return {
+            "id": self._id,
+            "replaces-id": self._replaces_id,
+            "app-name": self._app_name,
+            "app-icon": self._app_icon,
+            "summary": self._summary,
+            "body": self._body,
+            "timeout": self._timeout,
+            "actions": [(action.identifier, action.label) for action in self._actions],
+            "image-file": self._image_file,
+            "image-pixmap": self._image_pixmap.serialize()
+            if self._image_pixmap
+            else None,
+        }
 
     def close(
         self,
@@ -210,10 +304,6 @@ class Notifications(Service):
 
         # all aboard...
         self.do_register()
-
-    def new_notification_id(self) -> int:
-        self._counter += 1
-        return self._counter
 
     def do_register(self) -> int:  # the bus id
         return Gio.bus_own_name(
@@ -322,26 +412,9 @@ class Notifications(Service):
         ) if self._connection is not None else None
         return
 
-    def do_remove_notification(self, notification_id: int):
-        self._notifications.pop(notification_id, None)
-
-        self.notification_removed(notification_id)
-        self.notify("notifications")
-        self.changed()
-        return
-
-    def do_close_notification(
-        self,
-        notification_id: int,
-        reason: NotificationCloseReason = NotificationCloseReason.DISMISSED_BY_USER,
-    ):
-        self.do_emit_bus_signal(
-            "NotificationClosed",
-            GLib.Variant(
-                "(uu)", (notification_id, cast(NotificationCloseReason, reason).value)
-            ),
-        )
-        return self.do_remove_notification(notification_id)
+    def new_notification_id(self) -> int:
+        self._counter += 1
+        return self._counter
 
     def do_handle_notification_action_invoke(
         self, notification: Notification, action: str
@@ -352,12 +425,42 @@ class Notifications(Service):
     def do_handle_notification_closed(
         self, notification: Notification, reason: NotificationCloseReason
     ):
-        return self.do_close_notification(notification.id, reason)
+        return self.close_notification(notification.id, reason)
+
+    def get_notification_from_id(self, notification_id: int) -> Notification | None:
+        return self._notifications.get(notification_id)
 
     def invoke_notification_action(self, notification_id: int, action: str):
         return self.do_emit_bus_signal(
             "ActionInvoked", GLib.Variant("(us)", (notification_id, action))
         )
 
-    def get_notification_from_id(self, notification_id: int) -> Notification | None:
-        return self._notifications.get(notification_id)
+    def remove_notification(self, notification_id: int):
+        return self.notification_removed(notification_id)
+
+    def close_notification(
+        self,
+        notification_id: int,
+        reason: NotificationCloseReason = NotificationCloseReason.DISMISSED_BY_USER,
+    ):
+        return self.notification_closed(notification_id, reason)
+
+    def serialize(self) -> list[NotificationSerializedData]:
+        return [notif.serialize() for notif in self._notifications.values()]
+
+    def deserialize(self, data: list[NotificationSerializedData]):
+        for notif_data in data:
+            self._notifications[notif_data["id"]] = Notification.deserialize(
+                data=notif_data,
+                on_closed=self.do_handle_notification_closed,
+                on_action_invoked=self.do_handle_notification_action_invoke,
+            )
+            self.notification_added(notif_data["id"])
+
+        # just to make sure we don't break newcoming notifications
+        # yet this doesn't fix "overwritten" notifications in the above loop
+        # all "overwritten" notifications are going to meet the VOID one day or another
+        # so this method _shall_ be used once the class is initialized
+        # TODO: a fix for this might be by randomizing the notification id
+        self._counter += max(self._notifications.keys() or (1,))
+        return

@@ -1,4 +1,8 @@
 _**ricing made easy!**_ 🍙
+
+> [!WARNING]
+> Please use the new Fabric rewrite (mentioned at [#43](https://github.com/Fabric-Development/fabric/pull/43)), this branch is NOT going to **receive any more maintenance** until the rewrite is merged!
+
 # What is this?
 Fabric is a python widgets _~~thing~~ framework_   made for \*Nix based systems (Wayland and X11), using GTK+
 

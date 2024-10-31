@@ -1,0 +1,40 @@
+:vars {
+    --foreground: rgb(255, 255, 255);
+    --background: rgb(26, 28, 30);
+    --border-color: rgb(42, 43, 45);
+    --button-color: var(--border-color);
+}
+
+* {
+    all: unset;
+    color: var(--foreground);
+    font-family: "Jost*", "Cantarell", "Helvetica", "Arial", sans-serif;
+}
+
+#notification {
+    padding: 0.8rem;
+    border: solid 1px var(--border-color);
+    border-radius: 1rem;
+    background-color: var(--background);
+}
+
+#notification .summary {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+#notification .body {
+    color: darker(var(--foreground));
+    font-weight: normal;
+}
+
+button {
+    padding: 0.6rem;
+    font-weight: 600;
+    border-radius: 3rem;
+    background-color: var(--button-color);
+}
+
+button:hover {
+    background-color: lighter(var(--button-color));
+}

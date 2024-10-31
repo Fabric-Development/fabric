@@ -3,7 +3,7 @@ import base64
 from enum import Enum
 from loguru import logger
 from dataclasses import dataclass
-from typing import cast, Literal, TypedDict
+from typing import cast, Literal, TypedDict, Any
 from fabric.core.service import Service, Signal, Property
 from fabric.utils.helpers import load_dbus_xml, get_enum_member
 
@@ -109,6 +109,7 @@ NotificationSerializedData = TypedDict(
         "summary": str,
         "body": str,
         "timeout": int,
+        "urgency": int,
         "actions": list[tuple[str, str]],
         "image-file": str | None,
         "image-pixmap": tuple[int, int, int, bool, int, int, str] | None,
@@ -118,10 +119,10 @@ NotificationSerializedData = TypedDict(
 
 class Notification(Service):
     @Signal
-    def action_invoked(self, action: str) -> None: ...
+    def closed(self, reason: object) -> None: ...
 
     @Signal
-    def closed(self, reason: object) -> None: ...
+    def action_invoked(self, action: str) -> None: ...
 
     @Property(str, "readable")
     def app_name(self) -> str:
@@ -150,6 +151,10 @@ class Notification(Service):
     @Property(int, "readable")
     def timeout(self) -> int:
         return self._timeout
+
+    @Property(int, "readable")
+    def urgency(self) -> int:
+        return self._urgency
 
     @Property(list[NotificationAction], "readable")
     def actions(self) -> list[NotificationAction]:
@@ -185,6 +190,7 @@ class Notification(Service):
         self._body = data["body"]
 
         self._timeout = data["timeout"]
+        self._urgency = data["urgency"]
 
         self._actions = [
             NotificationAction(action[0], action[1], self) for action in data["actions"]
@@ -219,23 +225,26 @@ class Notification(Service):
         self._hints: GLib.Variant = raw_variant.get_child_value(6)  # type: ignore
         self._timeout: int = raw_variant.get_child_value(7).unpack()  # type: ignore
 
-        self._image_file: str | None = None
-        if raw_image_file := (
-            self.do_get_hint_entry("image-path") or self.do_get_hint_entry("image_path")
-        ):
-            self._image_file = raw_image_file.unpack()  # type: ignore
+        self._urgency: int = self.do_get_hint_entry("urgency") or 1  # type: ignore
+
+        self._image_file: str | None = self.do_get_hint_entry(
+            "image-path"
+        ) or self.do_get_hint_entry("image_path")  # type: ignore
 
         self._image_pixmap: NotificationImagePixmap | None = None
         if raw_image_data := (
-            self.do_get_hint_entry("image-data") or self.do_get_hint_entry("icon_data")
+            self.do_get_hint_entry("image-data", False)
+            or self.do_get_hint_entry("icon_data", False)
         ):
             self._image_pixmap = NotificationImagePixmap(raw_image_data)
 
-    def do_get_hint_entry(self, entry_key: str) -> GLib.Variant | None:
-        return self._hints.lookup_value(entry_key)
-
-    def invoke_action(self, action: str):
-        return self.action_invoked(action)
+    def do_get_hint_entry(
+        self, entry_key: str, unpack: bool = True
+    ) -> GLib.Variant | Any | None:
+        variant = self._hints.lookup_value(entry_key)
+        if not unpack or not variant:
+            return variant
+        return variant.unpack()  # type: ignore
 
     def serialize(self) -> NotificationSerializedData:
         return {
@@ -246,12 +255,16 @@ class Notification(Service):
             "summary": self._summary,
             "body": self._body,
             "timeout": self._timeout,
+            "urgency": self._urgency,
             "actions": [(action.identifier, action.label) for action in self._actions],
             "image-file": self._image_file,
             "image-pixmap": self._image_pixmap.serialize()
             if self._image_pixmap
             else None,
         }
+
+    def invoke_action(self, action: str):
+        return self.action_invoked(action)
 
     def close(
         self,

@@ -1,13 +1,14 @@
-from collections.abc import Iterator
 from fabric import Application
+from collections.abc import Iterator
 from fabric.widgets.box import Box
-from fabric.widgets.flowbox import FlowBox
-from fabric.widgets.button import Button
-from fabric.widgets.image import Image
 from fabric.widgets.entry import Entry
-from fabric.widgets.scrolledwindow import ScrolledWindow
+from fabric.widgets.image import Image
+from fabric.widgets.button import Button
 from fabric.widgets.window import Window
+from fabric.widgets.flowbox import FlowBox
+from fabric.widgets.scrolledwindow import ScrolledWindow
 from fabric.utils import idle_add, remove_handler
+
 from gi.repository import Gtk
 
 
@@ -69,7 +70,7 @@ class IconBrowser(Window):
 
         self.viewport.children = []
         self._arranger_handler = idle_add(
-            self.add_next_application,
+            self.add_next_icon,
             iter(
                 sorted(
                     icon_name
@@ -82,13 +83,15 @@ class IconBrowser(Window):
 
         return False
 
-    def add_next_application(self, icons_iter: Iterator[str]):
+    def add_next_icon(self, icons_iter: Iterator[str]):
         if not (icon_name := next(icons_iter, None)):
             return False
 
         self.viewport.add(
             Button(
-                child=Image(icon_name=icon_name, icon_size="large-toolbar", h_align="center", size=32),
+                child=Image(
+                    icon_name=icon_name, icon_size=32, h_align="center", size=32
+                ),
                 tooltip_text=icon_name,
             )
         )

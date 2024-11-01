@@ -12,6 +12,7 @@ from functools import wraps
 from dataclasses import dataclass
 from collections.abc import Callable, Iterable, Generator
 from typing import (
+    cast,
     Literal,
     NamedTuple,
     Union,
@@ -214,6 +215,7 @@ def get_gdk_rgba(color: str | Iterable[Number]) -> Gdk.RGBA:
 
 def compile_css(
     css_string: str,
+    base_path: str = ".",
     exposed_functions: dict[str, Callable] | Iterable[Callable] | None = None,
 ) -> str:
     """
@@ -242,11 +244,15 @@ def compile_css(
 
     :param css_string: the input CSS as a string.
     :type css_string: str
+    :param base_path: for `@import` statements, used for relative imports.
+    :type base_path: str, optional
     :param exposed_functions: a dictionary of macro functions or an iterable of callable functions to use as extra macros. if a dictionary is provided, the keys are macro names, and the values are the corresponding functions.
     :type exposed_functions: dict[str, Callable] | Iterable[Callable] | None, optional
     :return: the compiled CSS string converted to GTK's CSS syntax.
     :rtype: str
     """
+
+    import_pattern = re.compile(r'@import\s+(?:url\()?["\']?([^"\')]+)["\']?\)?\s*;')
 
     vars_selector_pattern = re.compile(r":vars\s*{\s*([^}]+)\s*}")
     vars_declaration_pattern = re.compile(r"--([\w-]+)\s*:\s*([^;]+)\s*;")
@@ -258,7 +264,7 @@ def compile_css(
     macro_pattern = re.compile(r"@define\s+([\w-]+)\(([^)]*)\)\s*{\s*([^}]+)\s*}")
     macro_apply_pattern = re.compile(r"@apply\s+([\w-]+)\(([^)]*)\)\s*;?")
 
-    exposed_functions: dict[str, Callable] = (
+    functions_map: dict[str, Callable] = (
         {}
         if not exposed_functions
         else (
@@ -273,14 +279,34 @@ def compile_css(
             if isinstance(exposed_functions, (list, tuple, Callable))
             else exposed_functions
         )
-    )
+    )  # type: ignore
+
+    def resolve_imports(css_content: str) -> str:
+        def import_replacement(match: re.Match) -> str:
+            file_path = match.group(1)
+            full_path = os.path.join(base_path, file_path)
+
+            try:
+                with open(full_path, "r") as imported_file:
+                    imported_content = imported_file.read()
+                return resolve_imports(imported_content)
+            except Exception as e:
+                logger.warning(
+                    f"[FASS] couldn't find the imported file: {full_path}, Error: {e}"
+                )
+                return f"/* couldn't import file: {file_path} */"
+
+        return import_pattern.sub(import_replacement, css_content)
+
+    # resolve @import statements before passing over to the preprocessor
+    css_output = resolve_imports(css_string)
 
     # color variables
-    match = vars_selector_pattern.search(css_string)
+    match = vars_selector_pattern.search(css_output)
     css_output = (
-        f"{match.group(1)}\n\n{css_string.replace(match.group(0), '')}"
+        f"{match.group(1)}\n\n{css_output.replace(match.group(0), '')}"
         if match
-        else css_string
+        else css_output
     )
 
     # this could be preprocessed as the original value not (a translation to Gtk's syntax)
@@ -301,9 +327,9 @@ def compile_css(
     # keys are macro names.
     # tuple's first item is a list of arguments
     # and last item is the macro's body
-    macros: dict[str, tuple[tuple[str], str]] = {
-        m.group(1): (
-            args_group.split(",") if (args_group := m.group(2)) else (),
+    macros: dict[str, tuple[tuple[str, ...], str]] = {
+        cast(str, m.group(1)): (
+            tuple(args_group.split(",")) if (args_group := m.group(2)) else (),
             m.group(3).strip(),
         )
         for m in macro_pattern.finditer(css_output)
@@ -312,8 +338,8 @@ def compile_css(
 
     def apply_macro_replacement(match: re.Match) -> str:
         macro_name = match.group(1)
-        macro_func = exposed_functions.get(macro_name, None)
-        macro_args, macro_body = macros.get(macro_name, (None, None))
+        macro_func = functions_map.get(macro_name, None)
+        macro_args, macro_body = macros.get(macro_name, (None, ""))
         if not macro_args and not macro_body and not macro_func:
             logger.warning(f"[FASS] couldn't find a macro with name {macro_name}")
             return match.group(0)  # like nothing has happened
@@ -330,7 +356,7 @@ def compile_css(
         if macro_func:
             return macro_func(*passed_params)
 
-        for param, arg in zip(macro_args, passed_params):
+        for param, arg in zip(cast(tuple[str, ...], macro_args), passed_params):
             macro_body = macro_body.replace(param.strip(), arg)
 
         return macro_body

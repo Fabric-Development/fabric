@@ -1,5 +1,6 @@
 import gi
 import re
+import os
 import atexit
 import inspect
 from loguru import logger
@@ -427,7 +428,12 @@ class Application(Gtk.Application, Service):
         if compile:
             with open(file_path, "r") as f:
                 self.set_stylesheet_from_string(
-                    f.read(), compile, append, *args, **kwargs
+                    f.read(),
+                    compile,
+                    append,
+                    base_path=os.path.dirname(file_path),
+                    *args,
+                    **kwargs,
                 )
             return
         provider = Gtk.CssProvider()
@@ -447,9 +453,12 @@ class Application(Gtk.Application, Service):
     ) -> None:
         provider = Gtk.CssProvider()
         provider.load_from_data(
-            bytearray(compile_css(style_string) if compile else style_string, "utf-8")  # type: ignore
+            bytearray(
+                compile_css(style_string, *args, **kwargs) if compile else style_string,
+                "utf-8",
+            )  # type: ignore
         )
 
         return (self.set_style_provider if not append else self.add_style_provider)(
-            provider, *args, **kwargs
+            provider
         )

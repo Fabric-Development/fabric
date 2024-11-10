@@ -1,5 +1,5 @@
 import gi
-from typing import cast, overload, Literal
+from typing import overload, Literal
 from fabric.utils import compile_css, get_enum_member
 from fabric.core.service import Service, Property
 from collections.abc import Iterable
@@ -126,16 +126,8 @@ class Widget(Gtk.Widget, Service):
 
     @style_classes.setter
     def style_classes(self, classes: Iterable[str] | str) -> None:
-        for klass in self.style_classes:
-            self.remove_style_class(klass)
-
-        for klass in (
-            # this should handle whitespace
-            [klass for klass in cast(str, classes).split() if klass]
-            if not isinstance(classes, (tuple, list))
-            else classes
-        ):
-            self.add_style_class(klass)
+        self.remove_style_class(self.style_classes)
+        self.add_style_class(classes)
         return
 
     def __init__(
@@ -144,6 +136,7 @@ class Widget(Gtk.Widget, Service):
         visible: bool = True,
         all_visible: bool = False,
         style: str | None = None,
+        style_classes: Iterable[str] | str | None = None,
         tooltip_text: str | None = None,
         tooltip_markup: str | None = None,
         h_align: Literal["fill", "start", "end", "center", "baseline"]
@@ -167,17 +160,22 @@ class Widget(Gtk.Widget, Service):
         self.set_tooltip_text(tooltip_text) if tooltip_text is not None else None
         self.set_tooltip_markup(tooltip_markup) if tooltip_markup is not None else None
 
-        if v_align is not None:
+        if v_align:
             self.v_align = v_align
-        if h_align is not None:
+        if h_align:
             self.h_align = h_align
+
         self.v_expand = v_expand
         self.h_expand = h_expand
 
-        self.set_size_request(
-            *((size, size) if isinstance(size, int) else size)
-        ) if size is not None else None
-        self.set_style(style) if style is not None else None
+        if size is not None:
+            self.set_size_request(*((size, size) if isinstance(size, int) else size))
+
+        if style_classes:
+            self.add_style_class(style_classes)  # to not override default classes
+
+        if style:
+            self.set_style(style)
 
         self.show_all() if all_visible is True else self.show() if visible is True else None
 
@@ -284,11 +282,19 @@ class Widget(Gtk.Widget, Service):
             x, y = event.get_coords()  # type: ignore
         return 0 < x < allocation.width and 0 < y < allocation.height  # type: ignore
 
-    def add_style_class(self, class_name: str):
-        return self.get_style_context().add_class(class_name)
+    def add_style_class(self, class_name: str | Iterable[str]):
+        if isinstance(class_name, str):
+            class_name = class_name.strip().lstrip().split()
+        for klass in class_name:
+            self.get_style_context().add_class(klass)
+        return
 
-    def remove_style_class(self, class_name: str):
-        return self.get_style_context().remove_class(class_name)
+    def remove_style_class(self, class_name: str | Iterable[str]):
+        if isinstance(class_name, str):
+            class_name = class_name.strip().lstrip().split()
+        for klass in class_name:
+            self.get_style_context().remove_class(klass)
+        return
 
     def add_events(
         self, events: EVENT_TYPE | Gdk.EventMask | Iterable[EVENT_TYPE | Gdk.EventMask]

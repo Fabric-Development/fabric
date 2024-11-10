@@ -36,6 +36,7 @@ class Label(Gtk.Label, Widget):
         visible: bool = True,
         all_visible: bool = False,
         style: str | None = None,
+        style_classes: Iterable[str] | str | None = None,
         tooltip_text: str | None = None,
         tooltip_markup: str | None = None,
         h_align: Literal["fill", "start", "end", "center", "baseline"]
@@ -77,6 +78,7 @@ class Label(Gtk.Label, Widget):
         visible: bool = True,
         all_visible: bool = False,
         style: str | None = None,
+        style_classes: Iterable[str] | str | None = None,
         tooltip_text: str | None = None,
         tooltip_markup: str | None = None,
         h_align: Literal["fill", "start", "end", "center", "baseline"]
@@ -117,6 +119,7 @@ class Label(Gtk.Label, Widget):
         visible: bool = True,
         all_visible: bool = False,
         style: str | None = None,
+        style_classes: Iterable[str] | str | None = None,
         tooltip_text: str | None = None,
         tooltip_markup: str | None = None,
         h_align: Literal["fill", "start", "end", "center", "baseline"]
@@ -137,6 +140,7 @@ class Label(Gtk.Label, Widget):
             visible,
             all_visible,
             style,
+            style_classes,
             tooltip_text,
             tooltip_markup,
             h_align,

@@ -144,6 +144,7 @@ class WebView(WebKit2.WebView, Widget):
         visible: bool = True,
         all_visible: bool = False,
         style: str | None = None,
+        style_classes: Iterable[str] | str | None = None,
         tooltip_text: str | None = None,
         tooltip_markup: str | None = None,
         h_align: Literal["fill", "start", "end", "center", "baseline"]
@@ -168,6 +169,7 @@ class WebView(WebKit2.WebView, Widget):
         visible: bool = True,
         all_visible: bool = False,
         style: str | None = None,
+        style_classes: Iterable[str] | str | None = None,
         tooltip_text: str | None = None,
         tooltip_markup: str | None = None,
         h_align: Literal["fill", "start", "end", "center", "baseline"]
@@ -192,6 +194,7 @@ class WebView(WebKit2.WebView, Widget):
         visible: bool = True,
         all_visible: bool = False,
         style: str | None = None,
+        style_classes: Iterable[str] | str | None = None,
         tooltip_text: str | None = None,
         tooltip_markup: str | None = None,
         h_align: Literal["fill", "start", "end", "center", "baseline"]
@@ -216,6 +219,7 @@ class WebView(WebKit2.WebView, Widget):
         visible: bool = True,
         all_visible: bool = False,
         style: str | None = None,
+        style_classes: Iterable[str] | str | None = None,
         tooltip_text: str | None = None,
         tooltip_markup: str | None = None,
         h_align: Literal["fill", "start", "end", "center", "baseline"]
@@ -239,6 +243,7 @@ class WebView(WebKit2.WebView, Widget):
             visible,
             all_visible,
             style,
+            style_classes,
             tooltip_text,
             tooltip_markup,
             h_align,
@@ -249,7 +254,7 @@ class WebView(WebKit2.WebView, Widget):
             **kwargs,
         )
         if url is not None and html is not None:
-            raise ValueError("you can't use pass both url and html")
+            raise ValueError("you can't pass both url and html")
 
         self.bridge = (
             JavaScriptBridge(self, self.get_user_content_manager())

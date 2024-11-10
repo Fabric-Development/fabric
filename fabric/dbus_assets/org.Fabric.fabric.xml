@@ -1,30 +1,30 @@
 <node name="/org/Fabric/fabric">
-  <interface name="org.freedesktop.DBus.Peer">
-    <method name="Ping"/>
-    <method name="GetMachineId">
-    <arg direction="out" type="s" name="machine_uuid" />
-    </method>
-  </interface>
-  <interface name="org.freedesktop.DBus.Introspectable">
-    <method name="Introspect">
-      <arg direction="out" type="s" />
-    </method>
-  </interface>
-  <interface name="org.Fabric.fabric">
-    <property name="Windows" type="a{sb}" access="read"/>
-    <property name="File" type="s" access="read"/>
-    <method name="Execute">
-      <arg direction="in"  type="s" name="source" />
-      <arg direction="out" type="s" />
-    </method>    
-    <method name="Evaluate">
-      <arg direction="in"  type="s" name="code" />
-      <arg direction="out" type="s" />
-      <arg direction="out" type="s" />
-    </method>
-    <method name="Log">
-      <arg direction="in"  type="y" name="level" />
-      <arg direction="in"  type="s" name="message" />
-    </method>
-  </interface>
+	<interface name="org.freedesktop.DBus.Peer">
+		<method name="Ping" />
+		<method name="GetMachineId">
+			<arg direction="out" type="s" name="machine_uuid" />
+		</method>
+	</interface>
+	<interface name="org.freedesktop.DBus.Introspectable">
+		<method name="Introspect">
+			<arg direction="out" type="s" />
+		</method>
+	</interface>
+	<interface name="org.Fabric.fabric">
+		<property name="Windows" type="a{sb}" access="read" />
+		<property name="File" type="s" access="read" />
+		<method name="Execute">
+			<arg direction="in" type="s" name="source" />
+			<arg direction="out" type="s" />
+		</method>
+		<method name="Evaluate">
+			<arg direction="in" type="s" name="code" />
+			<arg direction="out" type="s" />
+			<arg direction="out" type="s" />
+		</method>
+		<method name="Log">
+			<arg direction="in" type="y" name="level" />
+			<arg direction="in" type="s" name="message" />
+		</method>
+	</interface>
 </node>

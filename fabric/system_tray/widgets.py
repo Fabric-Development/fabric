@@ -2,94 +2,79 @@ from loguru import logger
 from fabric.widgets.box import Box
 from fabric.widgets.image import Image
 from fabric.widgets.button import Button
-from fabric.system_tray.service import SystemTray as SystemTrayService
-from fabric.system_tray.service import SystemTrayItem as SystemTrayItemService
-from fabric.utils import bulk_connect
-from gi.repository import Gdk
+from fabric.system_tray.service import (
+    SystemTray as SystemTrayService,
+    SystemTrayItem as SystemTrayItemService,
+)
 
 
 class SystemTrayItem(Button):
     def __init__(self, item: SystemTrayItemService, icon_size: int, **kwargs):
         super().__init__(**kwargs)
-        self.item = item
-        self.image = Image()
-        self.icon_size = icon_size
-        self.add_events(Gdk.EventMask.SCROLL_MASK | Gdk.EventMask.SMOOTH_SCROLL_MASK)
-        self.item.connect("changed", self.do_update_properties)
-        bulk_connect(
-            self,
-            {
-                "button-press-event": self.on_clicked,
-                "scroll-event": self.on_scroll,
-            },
-        )
+        self._item = item
+        self._icon_size = icon_size
+        self._image = Image()
+        self.set_image(self._image)
+
+        self._item.changed.connect(self.do_update_properties)
+        self.connect("button-press-event", self.on_clicked)
+
         self.do_update_properties()
 
-    def do_update_properties(self, *arg):
-        pixbuf = self.item.get_preferred_icon_pixbuf(
-            size=self.icon_size, resize_method="bilinear"
-        )
+    def do_update_properties(self, *_):
+        pixbuf = self._item.get_preferred_icon_pixbuf(self._icon_size)
         if pixbuf is not None:
-            self.image.set_from_pixbuf(pixbuf)
-            self.set_image(self.image)
-        tooltip = self.item.get_tooltip()
-        title = self.item.get_title()
+            self._image.set_from_pixbuf(pixbuf)
+        else:
+            self._image.set_from_icon_name("image-missing", self._icon_size)
+
+        tooltip = self._item.tooltip
         self.set_tooltip_markup(
-            tooltip.description or tooltip.title
-        ) if tooltip is not None else self.set_tooltip_markup(
-            title.title()
-        ) if title is not None else None
+            tooltip.description or tooltip.title or self._item.title.title()
+        )
         return
 
-    def on_clicked(self, _, event: Gdk.EventButton):
+    def on_clicked(self, _, event):
         match event.button:
             case 1:
                 try:
-                    self.item.activate_for_event(event)
+                    self._item.activate_for_event(event)
                 except Exception as e:
                     logger.warning(
-                        f"[SystemTrayItem] can't activate item with name {self.item.get_title() or self.item.identifier} ({e})"
+                        f"[SystemTrayItem] can't activate item with name {self._item.title or self._item.identifier} ({e})"
                     )
             case 3:
-                self.item.invoke_menu_for_event(event)
-        return
-
-    def on_scroll(self, _, event: Gdk.EventScroll):
-        try:
-            self.item.scroll_for_event(event)
-        except Exception as e:
-            logger.warning(
-                f"[SystemTrayItem] can't scroll an item with name {self.item.get_title() or self.item.identifier} ({e})"
-            )
+                self._item.invoke_menu_for_event(event)
         return
 
 
 class SystemTray(Box):
     def __init__(self, icon_size: int = 24, **kwargs):
         super().__init__(**kwargs)
-        self.icon_size = icon_size
-        self._widget_items: dict[str, SystemTrayItem] = {}
-        self.watcher = SystemTrayService()
-        bulk_connect(
-            self.watcher,
-            {
-                "item-added": self.on_item_added,
-                "item-removed": self.on_item_removed,
-            },
+        self._icon_size = icon_size
+        self._items: dict[str, SystemTrayItem] = {}
+        self._watcher = SystemTrayService(
+            on_item_added=self.on_item_added, on_item_removed=self.on_item_removed
         )
 
     def on_item_added(self, _, item_identifier: str):
-        item = self.watcher.get_items().get(item_identifier)
+        item = self._watcher.items.get(item_identifier)
         if not item:
             return
-        item_widget = SystemTrayItem(item, self.icon_size)
-        self.add(item_widget)
-        self._widget_items[item.identifier] = item_widget
+
+        item_button = SystemTrayItem(item, self._icon_size)
+        self.add(item_button)
+        self._items[item.identifier] = item_button
         return
 
     def on_item_removed(self, _, item_identifier):
-        item_widget = self._widget_items.get(item_identifier)
-        if not item_widget:
+        item_button = self._items.get(item_identifier)
+        if not item_button:
             return
-        self.remove(item_widget)
-        self._widget_items.pop(item_identifier)
+
+        self.remove(item_button)
+        self._items.pop(item_identifier)
+        return
+
+
+__all__ = ["SystemTray", "SystemTrayItem"]

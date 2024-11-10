@@ -1,27 +1,29 @@
 [project]
 name = "fabric"
-version = "0.0.1"
-dependencies = [
-  "click",
-  "pycairo",
-  "PyGObject",
-  "loguru",
-]
+version = "0.0.2"
+dependencies = ["click", "pycairo", "PyGObject", "loguru"]
 requires-python = ">=3.11"
 authors = [
-  {name = "Yousef El-Darsh", email = "yousef.eldarsh@gmail.com"},
-  {name = "Kai Read", email = "ready@kairead.com"},
+  { name = "Yousef El-Darsh", email = "yousef.eldarsh@gmail.com" },
+  { name = "Kai Read", email = "ready@kairead.com" },
 ]
 maintainers = [
-  {name = "Yousef El-Darsh", email = "yousef.eldarsh@gmail.com"},
-  {name = "Kai Read", email = "ready@kairead.com"},
+  { name = "Yousef El-Darsh", email = "yousef.eldarsh@gmail.com" },
+  { name = "Kai Read", email = "ready@kairead.com" },
 ]
 description = "Next-Gen python framework for creating system widgets on *Nix systems!"
 readme = "README.md"
-keywords = ["widgets", "gtk", "linux", "pygobject", "bar", "statusbar", "panel", "dock"]
-classifiers = [
-  "Programming Language :: Python"
+keywords = [
+  "widgets",
+  "gtk",
+  "linux",
+  "pygobject",
+  "bar",
+  "statusbar",
+  "panel",
+  "dock",
 ]
+classifiers = ["Programming Language :: Python"]
 
 [project.optional-dependencies]
 system-status = ["psutil"]
@@ -30,7 +32,10 @@ system-status = ["psutil"]
 "*" = ["*.xml", "*.js"]
 
 [project.urls]
-Repository = "https://github.com/Fabric-Development/fabric.git"
-Documentation = "https://github.com/Fabric-Development/fabric/wiki"
+"Website" = "https://ffpy.org"
+"Documentation" = "https://wiki.ffpy.org"
+"Website (mirror)" = "https://fabric-widgets.org"
+"Documentation (mirror)" = "https://wiki.fabric-widgets.org"
+"Source" = "https://github.com/Fabric-Development/fabric"
 "Bug Tracker" = "https://github.com/Fabric-Development/fabric/issues"
-Changelog = "https://github.com/Fabric-Development/fabric/blob/master/CHANGELOG.md"
+"Changelog" = "https://github.com/Fabric-Development/fabric/blob/master/CHANGELOG.md"

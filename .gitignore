@@ -130,3 +130,7 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# binary files
+*.o
+*.so

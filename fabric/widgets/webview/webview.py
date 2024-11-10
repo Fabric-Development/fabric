@@ -3,10 +3,10 @@ import json
 import inspect
 import traceback
 from loguru import logger
-from typing import Literal, Callable
-from fabric.service import *
+from collections.abc import Iterable, Callable
+from typing import Literal, overload
 from fabric.widgets.widget import Widget
-from fabric.utils import get_relative_path
+from fabric.utils.helpers import get_relative_path
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("WebKit2", "4.1")
@@ -21,7 +21,7 @@ def get_javascript_bridge_code() -> str:
 JAVSCRIPT_BRIDGE_CODE = get_javascript_bridge_code()
 
 
-class JavaScriptBridge(Service):
+class JavaScriptBridge:
     def __init__(
         self,
         webview: "WebView",
@@ -30,15 +30,16 @@ class JavaScriptBridge(Service):
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
-        self._registered_functions = {}
-        self._bridge_initialized = False
+        self._registered_functions: dict[str, Callable] = {}
+        self._bridge_initialized: bool = False
+
         self.webview = webview
         self.content_manager = content_manager
         self.content_manager.register_script_message_handler("fabricJsBridge")
-        self.webview.connect("load_changed", self.on_load_finish)  # odd signal name
         self.content_manager.connect("script-message-received", self.on_javascript_call)
+        self.webview.connect("load_changed", self.on_load_finish)  # odd signal name
 
-    def on_load_finish(self, webview: WebKit2.WebView, status: WebKit2.LoadEvent):
+    def on_load_finish(self, _: WebKit2.WebView, status: WebKit2.LoadEvent):
         # inject javascript bridge as soon as the page is loaded
         if status == WebKit2.LoadEvent.FINISHED:
             self.webview.run_javascript(
@@ -53,7 +54,7 @@ class JavaScriptBridge(Service):
             self._bridge_initialized = True
         return
 
-    def expose_function(self, func: Callable, func_name: str = None):
+    def expose_function(self, func: Callable, func_name: str | None = None):
         name = func_name or func.__name__
         self._registered_functions[name] = func
         args = list(inspect.getfullargspec(func).args)
@@ -65,35 +66,37 @@ class JavaScriptBridge(Service):
 
     def on_javascript_call(
         self,
-        content_manager: WebKit2.UserContentManager,
+        _: WebKit2.UserContentManager,
         js_result: WebKit2.JavascriptResult,
     ):
         func_name, func_args, value_id = json.loads(
-            js_result.get_js_value().to_string()
+            js_result.get_js_value().to_string()  # a serialized json string is what we expect
         )
+        func_name: str
+        func_args: dict[str, str]
+        value_id: int
         func = self._registered_functions.get(func_name)
-
-        if func is not None:
-            try:
-                GLib.Thread.new(
-                    "call-from-js",
-                    self.do_javascript_callback,
-                    func_name,
-                    func,
-                    func_args,
-                    value_id,
-                )
-            except Exception as e:
-                logger.warning(
-                    f"[WebView][JavaScriptBridge] can't create a thread for calling a function {func_name}: {e}"
-                )
-        else:
-            logger.warning(
+        if not func:
+            return logger.warning(
                 f"[WebView][JavaScriptBridge] javascript is trying to call a function ({func_name}) that doesn't exist"
             )
-        return
+        try:
+            GLib.Thread.new(
+                "call-from-js",
+                self.do_javascript_callback,
+                func_name,
+                func,
+                func_args,
+                value_id,
+            )
+        except Exception as e:
+            logger.warning(
+                f"[WebView][JavaScriptBridge] can't create a thread for calling a function {func_name}: {e}"
+            )
 
-    def do_javascript_callback(self, func_name, func, args, value_id):
+    def do_javascript_callback(
+        self, func_name: str, func: Callable, args: dict[str, str], value_id: int
+    ):
         logger.debug(
             f"[WebView][JavaScriptBridge] calling python function from javascript, function name {func_name} with args {args}"
         )
@@ -116,22 +119,32 @@ class JavaScriptBridge(Service):
 class WebView(WebKit2.WebView, Widget):
     """
     a widget for loading a web page, it can load local and remote pages
-    it provides a bridge to communicate with python from javascript
-    to expose python functions to javascript, use the `expose_function` method of the `bridge` property
-    NOTE: using the bridge with non-local pages is not recommended for security reasons
+    it provides a bridge to communicate with python from javascript (and vice versa)
+    ---
+    ## `.bridge`
+    this object will hold a field for interacting with the javascript
+    bridge, the field name is `bridge`, it will be set only if you set `open_bridge` to `True`
+    otherwise it will be set to `None`
+
+    ## exposing functions
+    to expose a python function you can use the method `expose_function` which's a member of the `bridge` field
+
+    ### security warning
+    using the bridge with non-local pages is not recommended for security reasons
     """
 
+    @overload
     def __init__(
         self,
-        url: str = None,
-        open_inspector: bool = False,
+        url: None = None,
+        html: None = None,
         open_bridge: bool = True,
+        open_inspector: bool = False,
+        name: str | None = None,
         visible: bool = True,
         all_visible: bool = False,
         style: str | None = None,
-        style_compiled: bool = True,
-        style_append: bool = False,
-        style_add_brackets: bool = True,
+        style_classes: Iterable[str] | str | None = None,
         tooltip_text: str | None = None,
         tooltip_markup: str | None = None,
         h_align: Literal["fill", "start", "end", "center", "baseline"]
@@ -142,76 +155,125 @@ class WebView(WebKit2.WebView, Widget):
         | None = None,
         h_expand: bool = False,
         v_expand: bool = False,
+        size: Iterable[int] | int | None = None,
+        **kwargs,
+    ): ...
+    @overload
+    def __init__(
+        self,
+        url: str | None = None,
+        html: None = None,
+        open_bridge: bool = True,
+        open_inspector: bool = False,
         name: str | None = None,
-        size: tuple[int] | int | None = None,
+        visible: bool = True,
+        all_visible: bool = False,
+        style: str | None = None,
+        style_classes: Iterable[str] | str | None = None,
+        tooltip_text: str | None = None,
+        tooltip_markup: str | None = None,
+        h_align: Literal["fill", "start", "end", "center", "baseline"]
+        | Gtk.Align
+        | None = None,
+        v_align: Literal["fill", "start", "end", "center", "baseline"]
+        | Gtk.Align
+        | None = None,
+        h_expand: bool = False,
+        v_expand: bool = False,
+        size: Iterable[int] | int | None = None,
+        **kwargs,
+    ): ...
+    @overload
+    def __init__(
+        self,
+        url: None = None,
+        html: str | None = None,
+        open_bridge: bool = True,
+        open_inspector: bool = False,
+        name: str | None = None,
+        visible: bool = True,
+        all_visible: bool = False,
+        style: str | None = None,
+        style_classes: Iterable[str] | str | None = None,
+        tooltip_text: str | None = None,
+        tooltip_markup: str | None = None,
+        h_align: Literal["fill", "start", "end", "center", "baseline"]
+        | Gtk.Align
+        | None = None,
+        v_align: Literal["fill", "start", "end", "center", "baseline"]
+        | Gtk.Align
+        | None = None,
+        h_expand: bool = False,
+        v_expand: bool = False,
+        size: Iterable[int] | int | None = None,
+        **kwargs,
+    ): ...
+
+    def __init__(
+        self,
+        url: str | None = None,
+        html: str | None = None,
+        open_bridge: bool = True,
+        open_inspector: bool = False,
+        name: str | None = None,
+        visible: bool = True,
+        all_visible: bool = False,
+        style: str | None = None,
+        style_classes: Iterable[str] | str | None = None,
+        tooltip_text: str | None = None,
+        tooltip_markup: str | None = None,
+        h_align: Literal["fill", "start", "end", "center", "baseline"]
+        | Gtk.Align
+        | None = None,
+        v_align: Literal["fill", "start", "end", "center", "baseline"]
+        | Gtk.Align
+        | None = None,
+        h_expand: bool = False,
+        v_expand: bool = False,
+        size: Iterable[int] | int | None = None,
         **kwargs,
     ):
-        """
-        :param url: the url to load, defaults to None
-        :type url: str, optional
-        :param open_inspector: whether the inspector window should be opened or not, defaults to False
-        :type open_inspector: bool, optional
-        :param open_bridge: whether the python to javascript bridge should be opened or not (useful for security reasons), defaults to True
-        :type open_bridge: bool, optional
-        :param visible: whether the widget is initially visible, defaults to True
-        :type visible: bool, optional
-        :param all_visible: whether all child widgets are initially visible, defaults to False
-        :type all_visible: bool, optional
-        :param style: inline css style string, defaults to None
-        :type style: str | None, optional
-        :param style_compiled: whether the passed css should get compiled before applying, defaults to True
-        :type style_compiled: bool, optional
-        :param style_append: whether the passed css should be appended to the existing css, defaults to False
-        :type style_append: bool, optional
-        :param style_add_brackets: whether the passed css should be wrapped in brackets if they were missing, defaults to True
-        :type style_add_brackets: bool, optional
-        :param tooltip_text: the text added to the tooltip, defaults to None
-        :type tooltip_text: str | None, optional
-        :param tooltip_markup: the markup added to the tooltip, defaults to None
-        :type tooltip_markup: str | None, optional
-        :param h_align: the horizontal alignment, defaults to None
-        :type h_align: Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None, optional
-        :param v_align: the vertical alignment, defaults to None
-        :type v_align: Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None, optional
-        :param h_expand: the horizontal expansion, defaults to False
-        :type h_expand: bool, optional
-        :param v_expand: the vertical expansion, defaults to False
-        :type v_expand: bool, optional
-        :param name: the name of the widget it can be used to style the widget, defaults to None
-        :type name: str | None, optional
-        :param size: the size of the widget, defaults to None
-        :type size: tuple[int] | int | None, optional
-        """
-        self.content_manager = WebKit2.UserContentManager()
         WebKit2.WebView.__init__(
-            self,
-            user_content_manager=self.content_manager,
-            **self.do_get_filtered_kwargs(kwargs),
+            self,  # type: ignore
+            user_content_manager=WebKit2.UserContentManager(),
         )
         Widget.__init__(
             self,
+            name,
             visible,
             all_visible,
             style,
-            style_compiled,
-            style_append,
-            style_add_brackets,
+            style_classes,
             tooltip_text,
             tooltip_markup,
             h_align,
             v_align,
             h_expand,
             v_expand,
-            name,
             size,
+            **kwargs,
         )
+        if url is not None and html is not None:
+            raise ValueError("you can't pass both url and html")
+
         self.bridge = (
-            JavaScriptBridge(self, self.content_manager)
+            JavaScriptBridge(self, self.get_user_content_manager())
             if open_bridge is True
             else None
         )
-        self.load_uri(url) if url is not None else None
+
+        if url is not None:
+            if self.bridge is not None and url.startswith(("http://", "https://")):
+                logger.warning(
+                    "[WebView] it's not generally a good idea to expose a javascript interface for the world wide web, consider closing the javacript bridge"
+                )
+            self.load_uri(url)
+        elif html is not None:
+            self.load_html(html, None)
+
+        self.get_settings().set_enable_developer_extras(True)
         if open_inspector is True:
-            self.get_settings().set_enable_developer_extras(True)
-            self.get_inspector().show()
-        self.do_connect_signals_for_kwargs(kwargs)
+            self.open_inspector()
+
+    def open_inspector(self):
+        self.get_inspector().show()

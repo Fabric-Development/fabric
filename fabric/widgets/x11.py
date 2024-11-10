@@ -1,22 +1,121 @@
 import gi
-from typing import Literal
+from enum import Enum
+from loguru import logger
+from collections.abc import Iterable
+from typing import no_type_check, Literal
+from fabric.core.service import Property
 from fabric.widgets.window import Window
-from fabric.utils import extract_css_values
+from fabric.utils import get_enum_member, extract_css_values, idle_add
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, Gdk, GLib
+from gi.repository import Gtk, Gdk
+
+try:
+    from Xlib import X as XServer
+    from Xlib.display import Display as XDisplay
+    from Xlib.xobject.drawable import Window as XWindow
+except Exception:
+    logger.warning(
+        "using Fabric under X11 might require extra dependencies for extra features, consider installing the python package Xlib"
+    )
 
 
-class Window(Window):
+class X11WindowLayer(Enum):
+    TOP = 1
+    BOTTOM = 2
+
+
+class X11WindowGeometry(Enum):
+    CENTER = 1
+    CENTER_AUTO = 2
+    TOP = 3
+    TOP_LEFT = 4
+    TOP_RIGHT = 5
+    BOTTOM = 6
+    BOTTOM_LEFT = 7
+    BOTTOM_RIGHT = 8
+    LEFT = 9
+    RIGHT = 10
+
+
+class X11Window(Window):
+    # it's nothing fancy, but we have to work with what we have (so far)
     """
-    a surface window made specifically for X11/Xorg
+    a dockable window for X11/Xorg
 
-    this will NOT work under any other display server/environment.
+    ### NOTE
+    none of the properties this window takes is guaranteed to work
+    since EMWH is not a standard protocol across all window managers
     """
+
+    @Property(X11WindowLayer, "read-write")
+    def layer(self) -> X11WindowLayer:
+        return self._layer
+
+    @layer.setter
+    def layer(self, value: Literal["top", "bottom"] | X11WindowLayer):
+        self._layer = get_enum_member(X11WindowLayer, value, default=X11WindowLayer.TOP)
+        self.do_dispatch_layer()
+        return
+
+    @Property(tuple, "read-write")
+    def margin(self) -> tuple[int, int, int, int]:
+        return self._margin
+
+    @margin.setter
+    def margin(self, value: str | Iterable[int]):
+        # (top, right, bottom, left)
+        self._margin = (
+            extract_css_values(value)
+            if isinstance(value, str)
+            else value
+            if isinstance(value, (tuple, list)) and len(value) == 4
+            else (0, 0, 0, 0)
+        )  # type: ignore
+        self.do_dispatch_geometry()
+        return
+
+    @Property(X11WindowGeometry, "read-write")
+    def geometry(self) -> X11WindowGeometry:
+        return self._geometry
+
+    @geometry.setter
+    def geometry(
+        self,
+        value: Literal[
+            "center",
+            "center-auto",
+            "top-left",
+            "top",
+            "top-right",
+            "left",
+            "right",
+            "bottom-left",
+            "bottom",
+            "bottom-right",
+        ]
+        | X11WindowGeometry,
+    ):
+        self._geometry = get_enum_member(
+            X11WindowGeometry, value, default=X11WindowGeometry.TOP
+        )
+        if self._geometry in (X11WindowGeometry.CENTER, X11WindowGeometry.CENTER_AUTO):
+            # don't use our way to handle window centering, gdk can do that for us
+            self.handler_disconnect(
+                self._size_allocate_hook
+            ) if self._size_allocate_hook is not None else None
+            self.set_position(Gtk.WindowPosition.CENTER_ALWAYS)
+        else:
+            self.do_dispatch_geometry()
+            if not self._size_allocate_hook:
+                self._size_allocate_hook = self.connect(
+                    "size-allocate", lambda _, __: self.do_dispatch_geometry()
+                )  # type: ignore
+        return
 
     def __init__(
         self,
-        layer: Literal[
+        type_hint: Literal[
             "normal",
             "dialog",
             "menu",
@@ -32,7 +131,7 @@ class Window(Window):
             "combo",
             "dnd",
         ]
-        | Gdk.WindowTypeHint = "dock",
+        | Gdk.WindowTypeHint = Gdk.WindowTypeHint.DOCK,
         geometry: Literal[
             "center",
             "center-auto",
@@ -45,26 +144,23 @@ class Window(Window):
             "bottom",
             "bottom-right",
         ]
-        | Gdk.Gravity = "center",
-        margin: str | tuple | list | None = "0px 0px 0px 0px",
-        above: bool = True,
-        below: bool = False,
+        | X11WindowGeometry = X11WindowGeometry.TOP,
+        margin: str | Iterable[int] = "0px 0px 0px 0px",
+        layer: Literal["top", "bottom"] | X11WindowLayer = X11WindowLayer.TOP,
+        sticky: bool = True,
+        focusable: bool = True,
+        resizable: bool = False,
+        decorated: bool = False,
         taskbar_hint: bool = False,
         pager_hint: bool = False,
-        can_resize: bool = False,
-        can_focus: bool = False,
-        decorated: bool = False,
-        children: Gtk.Widget | None = None,
-        type: Literal["top-level", "popup"] | Gtk.WindowType = "top-level",
-        main_window: bool = True,
-        open_inspector: bool = False,
+        title: str = "fabric",
+        type: Literal["top-level", "popup"] | Gtk.WindowType = Gtk.WindowType.TOPLEVEL,
+        child: Gtk.Widget | None = None,
+        name: str | None = None,
         visible: bool = True,
         all_visible: bool = False,
         style: str | None = None,
-        style_compiled: bool = True,
-        style_append: bool = False,
-        style_add_brackets: bool = True,
-        title: str | None = "fabric",
+        style_classes: Iterable[str] | str | None = None,
         tooltip_text: str | None = None,
         tooltip_markup: str | None = None,
         h_align: Literal["fill", "start", "end", "center", "baseline"]
@@ -75,294 +171,179 @@ class Window(Window):
         | None = None,
         h_expand: bool = False,
         v_expand: bool = False,
-        name: str | None = None,
-        default_size: tuple[int] | int | None = None,
-        ignore_empty_check: bool = False,
+        size: Iterable[int] | int | None = None,
         **kwargs,
     ):
-        """
-
-        :param layer: the layer of the window, defaults to "dock"
-        :type layer: Literal["normal", "dialog", "menu", "toolbar", "splashscreen", "utility", "dock", "desktop", "dropdown"], optional
-        :param geometry: the geometry of the window AKA position, defaults to "center"
-        :type geometry: Literal["north-west", "north", "north-east", "west", "center", "east", "south-west", "south", "south-east"], optional
-        :param margin: the margin of the window, defaults to "0px 0px 0px 0px"
-        :type margin: str | tuple | list | None, optional
-        :param above: whether the window should be above other windows, defaults to True
-        :type above: bool, optional
-        :param below: whether the window should be below other windows, defaults to False
-        :type below: bool, optional
-        :param taskbar_hint: whether the window should be on the taskbar, defaults to False
-        :type taskbar_hint: bool, optional
-        :param pager_hint: whether the window should be on the pager, defaults to False
-        :type pager_hint: bool, optional
-        :param decorated: whether the window should be decorated (have a title bar and borders or any other server side decorations), defaults to False
-        :type decorated: bool, optional
-        :param can_resize: whether the window can be resized (somehow), defaults to False
-        :type can_resize: bool, optional
-        :param children: the child widget (single widget), defaults to None
-        :type children: Gtk.Widget | None, optional
-        :param type: the type of this window, "top-level" means a normal window, defaults to "top-level"
-        :type type: Literal["top-level", "popup"] | Gtk.WindowType, optional
-        :param main_window: whether this window is the main window (exit on close), defaults to True
-        :type main_window: bool, optional
-        :param open_inspector: whether to open the inspector for this window, useful for debugging, defaults to False
-        :type open_inspector: bool, optional
-        :param visible: whether the widget is initially visible, defaults to True
-        :type visible: bool, optional
-        :param all_visible: whether all child widgets are initially visible, defaults to False
-        :type all_visible: bool, optional
-        :param style: inline css style string, defaults to None
-        :type style: str | None, optional
-        :param style_compiled: whether the passed css should get compiled before applying, defaults to True
-        :type style_compiled: bool, optional
-        :param style_append: whether the passed css should be appended to the existing css, defaults to False
-        :type style_append: bool, optional
-        :param style_add_brackets: whether the passed css should be wrapped in brackets if they were missing, defaults to True
-        :type style_add_brackets: bool, optional
-        :param tooltip_text: the text added to the tooltip, defaults to None
-        :type tooltip_text: str | None, optional
-        :param tooltip_markup: the markup added to the tooltip, defaults to None
-        :type tooltip_markup: str | None, optional
-        :param h_align: the horizontal alignment, defaults to None
-        :type h_align: Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None, optional
-        :param v_align: the vertical alignment, defaults to None
-        :type v_align: Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None, optional
-        :param h_expand: the horizontal expansion, defaults to False
-        :type h_expand: bool, optional
-        :param v_expand: the vertical expansion, defaults to False
-        :type v_expand: bool, optional
-        :param name: the name of the widget it can be used to style the widget, defaults to None
-        :type name: str | None, optional
-        :param default_size: the default size of the window, defaults to None
-        :type default_size: tuple[int] | int | None, optional
-        """
-        # TODO: reflect the changes on the docstring
-        # FIXME: improve me
-        super().__init__(
+        Window.__init__(
+            self,
             title,
-            children,
             type,
-            main_window,
-            open_inspector,
-            visible,
-            all_visible,
+            child,
+            name,
+            False,
+            False,
             style,
-            style_compiled,
-            style_append,
-            style_add_brackets,
+            style_classes,
             tooltip_text,
             tooltip_markup,
             h_align,
             v_align,
             h_expand,
             v_expand,
-            name,
-            default_size,
-            **(self.do_get_filtered_kwargs(kwargs)),
-        )
-        self.ignore_empty_check = ignore_empty_check
-        self.margin = margin
-        self.above = above
-        self.below = below
-        layer = (
-            layer
-            if isinstance(layer, Gdk.WindowTypeHint)
-            else {
-                "normal": Gdk.WindowTypeHint.NORMAL,
-                "dialog": Gdk.WindowTypeHint.DIALOG,
-                "menu": Gdk.WindowTypeHint.MENU,
-                "toolbar": Gdk.WindowTypeHint.TOOLBAR,
-                "splashscreen": Gdk.WindowTypeHint.SPLASHSCREEN,
-                "utility": Gdk.WindowTypeHint.UTILITY,
-                "dock": Gdk.WindowTypeHint.DOCK,
-                "desktop": Gdk.WindowTypeHint.DESKTOP,
-                "dropdown-menu": Gdk.WindowTypeHint.DROPDOWN_MENU,
-                "popup-menu": Gdk.WindowTypeHint.POPUP_MENU,
-                "tooltip": Gdk.WindowTypeHint.TOOLTIP,
-                "notification": Gdk.WindowTypeHint.NOTIFICATION,
-                "combo": Gdk.WindowTypeHint.COMBO,
-                "dnd": Gdk.WindowTypeHint.DND,
-            }.get(layer.lower(), Gdk.WindowTypeHint.DOCK)
-            if layer is not None
-            else None
-        )
-        geometry = (
-            geometry
-            if isinstance(geometry, Gdk.Gravity)
-            else {
-                "center-auto": "center-auto",
-                "center": Gdk.Gravity.CENTER,
-                "top-left": Gdk.Gravity.NORTH_WEST,
-                "top": Gdk.Gravity.NORTH,
-                "top-right": Gdk.Gravity.NORTH_EAST,
-                "left": Gdk.Gravity.WEST,
-                "right": Gdk.Gravity.EAST,
-                "bottom-left": Gdk.Gravity.SOUTH_WEST,
-                "bottom": Gdk.Gravity.SOUTH,
-                "bottom-right": Gdk.Gravity.SOUTH_EAST,
-            }.get(geometry.lower(), Gdk.Gravity.CENTER)
-            if isinstance(geometry, str)
-            else None
+            size,
+            **kwargs,
         )
 
-        self.display: Gdk.Display = None
-        self.rectangle: Gdk.Rectangle = None
-        self.scale_factor: int = None
+        self._margin: tuple[int, int, int, int] = (0, 0, 0, 0)
+        self._layer = X11WindowLayer.TOP
+        self._geometry = X11WindowGeometry.TOP
+        self._size_allocate_hook: int | None = None
 
-        self.set_type_hint(layer) if layer is not None else None
-        self.set_default_size(*default_size) if default_size is not None else None
-        self.set_accept_focus(can_focus) if can_focus is not None else None
+        self._display: Gdk.Display
+        self._rectangle: Gdk.Rectangle
+        self._scale_factor: int
 
-        # setting some window props with EXTREME type checking
-        self.set_skip_taskbar_hint(not taskbar_hint) if taskbar_hint == True else None
-        self.set_skip_pager_hint(not pager_hint) if pager_hint == True else None
-        self.set_decorated(decorated)
-        self.set_resizable(can_resize) if can_resize is not None else None
-        self.init_window()
+        # for extra functionality
+        self._xdisplay: "XDisplay | None" = None
+        self._xwindow: "XWindow | None" = None
+        self._xid: int = 0
 
-        if isinstance(geometry, Gdk.Gravity) and geometry == Gdk.Gravity.CENTER:
-            # not using our way to handle window centering beacuse gdk already had one
-            self.set_position(Gtk.WindowPosition.CENTER)
-        elif geometry is not None:
-            # auto remap window to it's proper position (when window size changes)
-            self.set_geometry(geometry, margin)
-            self.connect(
-                "size-allocate",
-                lambda _, __: self.set_geometry(geometry),
+        self.set_type_hint(
+            get_enum_member(
+                Gdk.WindowTypeHint, type_hint, default=Gdk.WindowTypeHint.DOCK
             )
-        self.do_connect_signals_for_kwargs(kwargs)
+        )
+        self.set_accept_focus(focusable)
+        self.set_skip_taskbar_hint(not taskbar_hint)
+        self.set_skip_pager_hint(not pager_hint)
+        self.set_decorated(decorated)
+        self.set_resizable(resizable)
+        self.stick() if sticky else self.unstick()
+        # all aboard...
+        self.do_initialize()
+        self.do_initialize_x_backend()
 
-    def init_window(
-        self,
-    ):
-        if self.display is None:
-            self.display, self.rectangle, self.scale_factor = self.get_display_props()
+        self.layer = layer
+        self.margin = margin
+        self.geometry = geometry
+
+        self.show_all() if all_visible is True else self.show() if visible is True else None
+
+    def do_initialize(self):
+        self._display, self._rectangle, self._scale_factor = self.do_get_display_props()
+        visual = self._display.get_default_screen().get_rgba_visual()
+        self.set_visual(visual)  # to get alpha w/o a X11 compositor
         self.set_app_paintable(True)
-        self.set_visual(self.display.get_default_screen().get_rgba_visual())
         return
 
-    def set_z_axis(self):
-        self.set_keep_above(self.above) if self.above is not None else None
-        self.set_keep_below(self.above) if self.below is not None else None
-        return
+    def do_initialize_x_backend(self):
+        try:
+            self._xdisplay = XDisplay()
+        except Exception:
 
-    def get_display_props(self) -> tuple[Gdk.Display, Gdk.Rectangle, int]:
+            def requires_xlib(*_):
+                raise RuntimeError(
+                    "this method requires the python package `Xlib` to be installed"
+                )
+
+            self.steal_input_soft = requires_xlib  # type: ignore
+            return
+
+        def on_draw(*_):
+            # as of my test's results, the draw signal is
+            # the only signal emitted when the window is fully realized
+            # and that's needed so we don't face a unexpected behavior later
+            self._xid = self.get_window().get_xid()  # type: ignore
+            self._xwindow = self._xdisplay.create_resource_object("window", self._xid)  # type: ignore
+            # thank you, goodbye!
+            self.disconnect_by_func(on_draw)
+
+        self.connect("draw", on_draw)
+
+    def steal_input(self) -> bool:
+        if not (win := self.get_window()):
+            return False
+        idle_add(lambda *_: Gdk.keyboard_grab(win, False, Gdk.CURRENT_TIME))
+        return True
+
+    def unsteal_input(self):
+        return idle_add(lambda *_: Gdk.keyboard_ungrab(Gdk.CURRENT_TIME))
+
+    def steal_input_soft(self, can_release: bool = False) -> bool:
+        if (
+            not (self.get_realized() and self.is_visible())
+            or not self._xdisplay
+            or not self._xwindow
+        ):
+            return False
+        self._xdisplay.set_input_focus(
+            self._xwindow,  # type: ignore
+            XServer.RevertToPointerRoot if can_release else XServer.RevertToNone,
+            XServer.CurrentTime,
+        )
+        self._xdisplay.sync()
+        self._xdisplay.flush()
+
+        return True
+
+    def do_get_display_props(self) -> tuple[Gdk.Display, Gdk.Rectangle, int]:
         display = Gdk.Display.get_default()
         rectangle = display.get_primary_monitor().get_geometry()
         scale_factor = display.get_primary_monitor().get_scale_factor()
-        return display, rectangle, scale_factor
+        return display, rectangle, scale_factor  # type: ignore
 
-    def set_geometry(
-        self, geometry: Gdk.Gravity, margin: str | tuple[int] | list[int] | None = None
-    ):
-        if self.rectangle is None:
-            self.display, self.rectangle, self.scale_factor = self.get_display_props()
+    def do_dispatch_layer(self):
+        self.set_keep_above(self._layer == X11WindowLayer.TOP)
+        self.set_keep_below(self._layer == X11WindowLayer.BOTTOM)
+        return
+
+    @no_type_check
+    def do_dispatch_geometry(self):
+        # move the window to match the asked geometry
+        # this requires us knowing the geometry and the margin
+        if self._rectangle is None:
+            self._display, self._rectangle, self._scale_factor = (
+                self.do_get_display_props()
+            )
         aloc_size, natural_size = self.get_allocated_size()
         aloc_width, aloc_height = aloc_size.width, aloc_size.height
-        margin = (
-            margin
-            if margin is not None
-            else self.margin
-            if self.margin is not None
-            else (0, 0, 0, 0)
-        )
-        margin = (
-            extract_css_values(margin)
-            if isinstance(margin, str)
-            else margin
-            if isinstance(margin, (tuple, list)) and len(margin) == 4
-            else [0, 0, 0, 0]
-            # top right bottom left
-        )
+
         x = y = 0
-        x_margin = y_margin = 0
-        match geometry:
-            case "center-auto":
-                x = self.rectangle.width // 2 - aloc_width // 2
-                y = self.rectangle.height // 2 - aloc_height // 2
-            case Gdk.Gravity.NORTH_WEST:
+        match self._geometry:
+            # case X11WindowGeometry.CENTER_AUTO:
+            #     x = self._rectangle.width // 2 - aloc_width // 2
+            #     y = self._rectangle.height // 2 - aloc_height // 2
+            case X11WindowGeometry.TOP:
+                y = 0
+                x = self._rectangle.width // 2 - aloc_width // 2
+            case X11WindowGeometry.TOP_LEFT:
                 x, y = 0, 0
-            case Gdk.Gravity.NORTH:
+            case X11WindowGeometry.TOP_RIGHT:
                 y = 0
-                x = self.rectangle.width // 2 - aloc_width // 2
-            case Gdk.Gravity.NORTH_EAST:
-                y = 0
-                x = self.rectangle.width - aloc_width
-            case Gdk.Gravity.WEST:
+                x = self._rectangle.width - aloc_width
+            case X11WindowGeometry.BOTTOM:
+                x = self._rectangle.width // 2 - aloc_width // 2
+                y = self._rectangle.height - aloc_height
+            case X11WindowGeometry.BOTTOM_LEFT:
                 x = 0
-                y = self.rectangle.height // 2 - aloc_height // 2
-            case Gdk.Gravity.EAST:
-                x = self.rectangle.width - aloc_width
-                y = self.rectangle.height // 2 - aloc_height // 2
-            case Gdk.Gravity.SOUTH_WEST:
+                y = self._rectangle.height - aloc_height
+            case X11WindowGeometry.BOTTOM_RIGHT:
+                x = self._rectangle.width - aloc_width
+                y = self._rectangle.height - aloc_height
+            case X11WindowGeometry.LEFT:
                 x = 0
-                y = self.rectangle.height - aloc_height
-            case Gdk.Gravity.SOUTH:
-                x = self.rectangle.width // 2 - aloc_width // 2
-                y = self.rectangle.height - aloc_height
-            case Gdk.Gravity.SOUTH_EAST:
-                x = self.rectangle.width - aloc_width
-                y = self.rectangle.height - aloc_height
-            case _:  # Gravity.STATIC or default
+                y = self._rectangle.height // 2 - aloc_height // 2
+            case X11WindowGeometry.RIGHT:
+                x = self._rectangle.width - aloc_width
+                y = self._rectangle.height // 2 - aloc_height // 2
+            case _:
                 return False
 
-        x_margin = margin[1] - margin[3]
-        y_margin = margin[0] - margin[2]
-        x += self.rectangle.x
-        y += self.rectangle.y
+        x_margin = self._margin[1] - self._margin[3]
+        y_margin = self._margin[0] - self._margin[2]
+        x += self._rectangle.x
+        y += self._rectangle.y
         x = x + x_margin
         y = y + y_margin
 
         return self.move(x, y)
-
-    def show(self):
-        # showing an empty window will result a glitched window
-        if self.ignore_empty_check is False and len(self.get_children()) >= 1:
-            super().show()
-            self.set_z_axis()
-            return
-        return False
-
-    def show_all(self):
-        if self.ignore_empty_check is False and len(self.get_children()) >= 1:
-            self.style_provider
-            super().show_all()
-            self.set_z_axis()
-        return False
-
-
-if __name__ == "__main__":
-    from fabric.widgets.revealer import Revealer
-    from fabric.widgets.button import Button
-    from fabric.widgets.box import Box
-    from fabric import start
-
-    reveal = Revealer(
-        transition_type="slide-right",
-        transition_duration=1500,
-        children=Button(label="|------------>", visible=True),
-    )
-
-    is_rev = False
-
-    def toggle_reveal():
-        global is_rev
-        reveal.set_reveal_child(not is_rev)
-        is_rev = not is_rev
-        return True
-
-    GLib.timeout_add(1000, toggle_reveal)
-
-    window = Window(
-        children=Box(
-            children=[
-                Button(
-                    label="X11 Window Test",
-                ),
-                reveal,
-            ],
-        ),
-        all_visible=True,
-    )
-    start()

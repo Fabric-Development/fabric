@@ -3,236 +3,453 @@ import re
 import os
 import time
 import shlex
+import string
+import random
 import inspect
 from enum import Enum
-from typing import Callable, Literal, Iterable, Generator, Union, Any
+from loguru import logger
+from functools import wraps
+from dataclasses import dataclass
+from collections.abc import Callable, Iterable, Generator
+from typing import (
+    cast,
+    Literal,
+    NamedTuple,
+    Union,
+    TypeAlias,
+    Generic,
+    TypeVar,
+    ParamSpec,
+    Any,
+)
 
 gi.require_version("Gtk", "3.0")
-gi.require_version("GtkLayerShell", "0.1")
-from gi.repository import Gtk, Gdk, GObject, Gio, GLib, GtkLayerShell
+from gi.repository import Gtk, Gdk, GdkPixbuf, GObject, Gio, GLib
+
+P = ParamSpec("P")
+T = TypeVar("T")
+E = TypeVar("E", bound=Enum)
+MISSING = TypeVar("MISSING")
+Number: TypeAlias = int | float
 
 
-class ValueEnum(Enum):
-    @classmethod
-    def get_member(cls, name):
-        return cls[name].value
+class __DeprecationHook__:
+    def __init__(self, deprecated_to_replacement: dict[str, str]):
+        self.lookup_table = deprecated_to_replacement
 
-
-class Validator:
-    def __init__(
-        self,
-        func: Callable,
-        exception_to_raise: Exception = None,
-        assertion: bool = False,
-        **kwargs,
-    ):
-        if not callable(func):
-            raise ValueError("func must be a callable (a function, method or a lambda)")
-        if exception_to_raise is not None and not isinstance(
-            exception_to_raise, Exception
+    def __call__(self, addional_message: str | None = None):
+        if replacement := self.lookup_table.get(
+            (caller := inspect.currentframe().f_back.f_code.co_name),  # type: ignore
+            None,
         ):
-            raise ValueError("exception_to_raise must be an Exception")
-        if assertion and not isinstance(assertion, bool):
-            raise ValueError("assertion must be a bool")
-        self.func = func
-        self.func_data = kwargs
-        self.exception_to_raise = exception_to_raise
-        self.assertion = assertion
+            return logger.warning(
+                f"the function `{caller}` is deprecated and will removed in later versions of Fabric, consider using `{replacement}` instead"
+            )
+        return
 
-    def __call__(self, value: object, exception_to_raise: Exception = None, *args):
-        if exception_to_raise is None or not isinstance(exception_to_raise, Exception):
-            exception_to_raise = self.exception_to_raise
-        if self.assertion is True:
+
+__deprecation_table = __DeprecationHook__(
+    {
+        "idlify": "idle_add",
+        "set_stylesheet_from_string": "Application.add_stylesheet_from_string",
+        "set_stylesheet_from_file": "Application.add_stylesheet_from_file",
+        "get_gdk_rgba": "Gdk.RGBA.parse OR parse_color",
+    }
+)
+
+
+class FormattedString:
+    """simple string fomatter made to be baked mid-runtime"""
+
+    class FormatDict(dict):
+        def __init__(self, *args, **kwargs):
+            super(FormattedString.FormatDict, self).__init__(*args, **kwargs)
+
+        def __missing__(self, key):
             try:
-                assert self.func(value, *args, **self.func_data)
-            except AssertionError as e:
-                if self.exception_to_raise is not None:
-                    raise Exception(self.exception_to_raise) or e
-                return False
-        elif self.func(value, *args, **self.func_data) is False:
-            if self.exception_to_raise is not None:
-                raise self.exception_to_raise
-            return False
-        return True
+                rkey = eval(key, globals(), self)
+            except Exception as e:
+                logger.warning(
+                    f"[FormattedString] couldn't format string expression ({key}), raised exception is\n {str(e)}"
+                )
+                rkey = key.join("{}")
+            return rkey
+
+    def __init__(self, string: str, **kwargs) -> None:
+        self.__string__ = string
+        self.__format_map__ = kwargs
+
+    def __call__(self, **kwargs) -> str:
+        return self.format(**kwargs)
+
+    def format(self, **kwargs) -> str:
+        return self.__string__.format_map(
+            FormattedString.FormatDict(self.__format_map__ | kwargs)
+        )
 
 
-def get_gdk_rgba(color: str | Iterable) -> Gdk.RGBA:
+@dataclass(init=False)
+class DesktopApp:
+    name: str
+    generic_name: str | None
+    display_name: str | None
+    description: str | None
+    window_class: str | None
+    executable: str | None
+    command_line: str | None
+    icon: (
+        Gio.Icon
+        | Gio.ThemedIcon
+        | Gio.FileIcon
+        | Gio.LoadableIcon
+        | Gio.EmblemedIcon
+        | None
+    )
+    icon_name: str | None
+    hidden: bool
+
+    def __init__(
+        self, app: Gio.DesktopAppInfo, icon_theme: Gtk.IconTheme | None = None
+    ):
+        self._app: Gio.DesktopAppInfo = app
+        self._icon_theme = icon_theme or Gtk.IconTheme.get_default()
+        self._pixbuf: GdkPixbuf.Pixbuf | None = None
+        self.name = app.get_name()  # type: ignore
+        self.generic_name = app.get_generic_name()  # type: ignore
+        self.display_name = app.get_display_name()  # type: ignore
+        self.description = app.get_description()  # type: ignore
+        self.window_class = app.get_startup_wm_class()  # type: ignore
+        self.executable = app.get_executable()  # type: ignore
+        self.command_line = app.get_commandline()  # type: ignore
+        self.icon = app.get_icon()  # type: ignore
+        self.icon_name = self.icon.to_string() if self.icon is not None else None  # type: ignore
+        self.hidden = app.get_is_hidden()
+
+    def launch(self):
+        return self._app.launch()  # type: ignore
+
+    def get_icon_pixbuf(
+        self,
+        size: int = 48,
+        default_icon: str | None = "image-missing",
+        flags: Gtk.IconLookupFlags = Gtk.IconLookupFlags.FORCE_REGULAR
+        | Gtk.IconLookupFlags.FORCE_SIZE,  # type: ignore
+    ) -> GdkPixbuf.Pixbuf | None:
+        """
+        get a pixbuf from the icon (if any)
+
+        :param size: the size of the icon, defaults to 48
+        :type size: int, optional
+        :param default_icon: the name of the default icon. pass None if you want to receive None upon failing, defaults to "image-missing"
+        :type default_icon: str | None, optional
+        :param flags: the Gtk.IconLookupFlags to use when fetching the icon
+        :type flags: Gtk.IconLookupFlags, defaults to (Gtk.IconLookupFlags.FORCE_REGULAR | Gtk.IconLookupFlags.FORCE_SIZE), optional
+        :return: the pixbuf
+        :rtype: GdkPixbuf.Pixbuf | None
+        """
+        if self._pixbuf:
+            return self._pixbuf  # already loaded
+        try:
+            if not self.icon_name:
+                raise
+            self.icon
+            self._pixbuf = self._icon_theme.load_icon(
+                self.icon_name,
+                size,
+                flags,
+            )
+        except Exception:
+            self._pixbuf = (
+                self._icon_theme.load_icon(default_icon, size, flags)
+                if default_icon is not None
+                else None
+            )
+
+        return self._pixbuf
+
+
+def get_desktop_applications(include_hidden: bool = False) -> list[DesktopApp]:
     """
-    get a Gdk.RGBA from a hexdecimal color string or an iterable of RGBA/RGB values
+    get a list of all desktop applications
+    this might be useful for writing application launchers
 
-    :param color: the input color/data
-    :type color: str | Iterable
-    :raises ValueError: Invalid color format
-    :return: the Gdk.RGBA generated
+    :param include_hidden: whether to include applications unintended to be visible to normal users, defaults to false
+    :type include_hidden: bool, optional
+    :return: a list of all desktop applications
+    :rtype: list[DesktopApp]
+    """
+    icon_theme = Gtk.IconTheme.get_default()
+    return [
+        DesktopApp(app, icon_theme)
+        for app in Gio.DesktopAppInfo.get_all()
+        if include_hidden or app.should_show()
+    ]
+
+
+def parse_color(color: str | Iterable[Number]) -> Gdk.RGBA:
+    """parse a serialized color data over to a `Gdk.RGBA` object
+
+    :param color: the color data, example of an iterable color; `(255, 255, 255) / (255, 255, 255, 255)`, for a list of parseable string formats head over to https://docs.gtk.org/gdk3/method.RGBA.parse.html
+    :type color: str | Iterable[Number]
+    :raises ValueError: if the passed in color data is unparseable
+    :return: the newly created `Gdk.RGBA` (alpha is set to opaque if the passed in color data is RGB only)
     :rtype: Gdk.RGBA
     """
-    if isinstance(color, Iterable) and (len(color) == 3 or len(color) == 4):
-        return Gdk.RGBA(*[c / 255.0 for c in color])
-    if isinstance(color, str) and (
-        len(color.lstrip("#")) == 6 or len(color.lstrip("#")) == 8
+    if (
+        isinstance(color, (tuple, list))
+        and (color_len := len(color)) >= 3
+        and color_len <= 4
     ):
-        color = color.lstrip("#")
-        return Gdk.RGBA(
-            *[int(color[i : i + 2], 16) / 255.0 for i in range(0, len(color), 2)]
-        )
-    raise ValueError("Invalid color format")
+        return Gdk.RGBA(*[c / 255.0 for c in color])
+    elif isinstance(color, str):
+        rgba = Gdk.RGBA()
+        if rgba.parse(color):
+            return rgba
+    raise ValueError(f"{color} is an invalid color format")
 
 
-def compile_css(css_string: str) -> str:
+def get_gdk_rgba(color: str | Iterable[Number]) -> Gdk.RGBA:
+    __deprecation_table()
+    return parse_color(color)
+
+
+def compile_css(
+    css_string: str,
+    base_path: str = ".",
+    exposed_functions: dict[str, Callable] | Iterable[Callable] | None = None,
+) -> str:
     """
-    compile a CSS string to GTK's CSS syntax
-    issues might happen, this thing uses a chain of regex
+    preprocess and transpile a CSS string to GTK's CSS syntax.
 
-    :param css_string: the CSS string
+    supports transpiling web-css like variables over to GTK's `@define-color` syntax.
+
+    also supports having CSS macros. syntax example:
+    .. code-block:: css
+        /* define a macro */
+        @define my-macro(--arg-1, --arg-2) {
+            /* CSS body goes here. example body.. */
+            color: --arg-1;
+            background-color: --arg-2;
+        }
+
+        #my-widget {
+            @apply my-macro(red, blue);
+            /* compiles to
+                color: --arg-1;
+                background-color: --arg-2;
+            */
+        }
+
+    **Note:** this function relies on a series of regular expressions for its processing, which may lead to potential issues in certain edge cases.
+
+    :param css_string: the input CSS as a string.
     :type css_string: str
-    :return: the compiled CSS string
+    :param base_path: for `@import` statements, used for relative imports.
+    :type base_path: str, optional
+    :param exposed_functions: a dictionary of macro functions or an iterable of callable functions to use as extra macros. if a dictionary is provided, the keys are macro names, and the values are the corresponding functions.
+    :type exposed_functions: dict[str, Callable] | Iterable[Callable] | None, optional
+    :return: the compiled CSS string converted to GTK's CSS syntax.
     :rtype: str
     """
+
+    import_pattern = re.compile(r'@import\s+(?:url\()?["\']?([^"\')]+)["\']?\)?\s*;')
+
     vars_selector_pattern = re.compile(r":vars\s*{\s*([^}]+)\s*}")
     vars_declaration_pattern = re.compile(r"--([\w-]+)\s*:\s*([^;]+)\s*;")
     vars_reference_pattern = re.compile(r"var\(--([\w-]+)\)")
 
-    # special selector for variables
-    match = vars_selector_pattern.search(css_string)
-    if match is not None:
-        css = f"{match.group(1)}\n\n{css_string.replace(match.group(0), '')}"
-    else:
-        css = css_string
+    constant_pattern = re.compile(r"@define\s+([\w-]+)\s+([^;]+);")
+    constant_apply_pattern = re.compile(r"apply\(([\w-]+)\)")
 
-    # variable declarations
-    css = vars_declaration_pattern.sub(
-        lambda m: f"@define-color {m.group(1)} {m.group(2)};", css
+    macro_pattern = re.compile(r"@define\s+([\w-]+)\(([^)]*)\)\s*{\s*([^}]+)\s*}")
+    macro_apply_pattern = re.compile(r"@apply\s+([\w-]+)\(([^)]*)\)\s*;?")
+
+    functions_map: dict[str, Callable] = (
+        {}
+        if not exposed_functions
+        else (
+            {
+                snake_case_to_kebab_case(func.__name__): func
+                for func in (
+                    exposed_functions
+                    if not isinstance(exposed_functions, Callable)
+                    else (exposed_functions,)
+                )
+            }
+            if isinstance(exposed_functions, (list, tuple, Callable))
+            else exposed_functions
+        )
+    )  # type: ignore
+
+    def resolve_imports(css_content: str) -> str:
+        def import_replacement(match: re.Match) -> str:
+            file_path = match.group(1)
+            full_path = os.path.join(base_path, file_path)
+
+            try:
+                with open(full_path, "r") as imported_file:
+                    imported_content = imported_file.read()
+                return resolve_imports(imported_content)
+            except Exception as e:
+                logger.warning(
+                    f"[FASS] couldn't find the imported file: {full_path}, Error: {e}"
+                )
+                return f"/* couldn't import file: {file_path} */"
+
+        return import_pattern.sub(import_replacement, css_content)
+
+    # resolve @import statements before passing over to the preprocessor
+    css_output = resolve_imports(css_string)
+
+    # color variables
+    match = vars_selector_pattern.search(css_output)
+    css_output = (
+        f"{match.group(1)}\n\n{css_output.replace(match.group(0), '')}"
+        if match
+        else css_output
     )
 
-    # variable references
-    css = vars_reference_pattern.sub(r"@\1", css)
-    return css
+    # this could be preprocessed as the original value not (a translation to Gtk's syntax)
+    css_output = vars_declaration_pattern.sub(
+        lambda m: f"@define-color {m.group(1)} {m.group(2)};", css_output
+    )
+    css_output = vars_reference_pattern.sub(r"@\1", css_output)
 
+    # preprocessing
+    constants: dict[str, str] = {
+        m.group(1): m.group(2) for m in constant_pattern.finditer(css_output)
+    }
+    css_output = constant_pattern.sub("", css_output)
+    css_output = constant_apply_pattern.sub(
+        lambda m: constants.get(m.group(1), m.group(0)), css_output
+    )
 
-def set_stylesheet_from_file(file_path: str, compiled: bool = True) -> None:
-    """
-    set the global stylesheet for the application from a file
+    # keys are macro names.
+    # tuple's first item is a list of arguments
+    # and last item is the macro's body
+    macros: dict[str, tuple[tuple[str, ...], str]] = {
+        cast(str, m.group(1)): (
+            tuple(args_group.split(",")) if (args_group := m.group(2)) else (),
+            m.group(3).strip(),
+        )
+        for m in macro_pattern.finditer(css_output)
+    }
+    css_output = macro_pattern.sub("", css_output)
 
-    :param file_path: the path to the CSS file
-    :type file_path: str
-    :return: None
-    """
-    provider = Gtk.CssProvider()
-    with open(file_path, "r") as f:
-        file = f.read()
-    if compiled:
-        provider.load_from_data(bytearray(compile_css(file), "utf-8"))
-    else:
-        provider.load_from_path(file)
-    screen = Gdk.Screen.get_default()
-    context = Gtk.StyleContext()
-    context.add_provider_for_screen(screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_USER)
-    return
+    def apply_macro_replacement(match: re.Match) -> str:
+        macro_name = match.group(1)
+        macro_func = functions_map.get(macro_name, None)
+        macro_args, macro_body = macros.get(macro_name, (None, ""))
+        if not macro_args and not macro_body and not macro_func:
+            logger.warning(f"[FASS] couldn't find a macro with name {macro_name}")
+            return match.group(0)  # like nothing has happened
 
+        logger.info(f"[FASS] applying a macro with name {macro_name}")
 
-def set_stylesheet_from_string(css_string: str, compiled: bool = True) -> None:
-    """
-    same as set_stylesheet_from_file but sets the global stylesheet from a string
+        # passed in parameters
+        passed_params: list[str] = (
+            [arg_name.strip() for arg_name in args_group.split(",")]
+            if (args_group := match.group(2))
+            else []
+        )
 
-    :param css_string: the CSS string
-    :type css_string: str
-    :return: None
-    """
-    provider = Gtk.CssProvider()
-    if compiled:
-        provider.load_from_data(bytearray(compile_css(css_string), "utf-8"))
-    else:
-        provider.load_from_data(bytearray(css_string, "utf-8"))
-    screen = Gdk.Screen.get_default()
-    context = Gtk.StyleContext()
-    context.add_provider_for_screen(screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_USER)
-    return
+        if macro_func:
+            return macro_func(*passed_params)
+
+        for param, arg in zip(cast(tuple[str, ...], macro_args), passed_params):
+            macro_body = macro_body.replace(param.strip(), arg)
+
+        return macro_body
+
+    css_output = macro_apply_pattern.sub(apply_macro_replacement, css_output)
+
+    # clean up
+    css_output = re.sub(r"\n\s*\n", "\n", css_output).strip()
+
+    return css_output
 
 
 def bulk_replace(
-    input_str: str, texts: list[str], replacements: list[str], regex: bool = False
+    string: str,
+    patterns: Iterable[str],
+    replacements: Iterable[str],
+    regex: bool = False,
 ) -> str:
     """
-    Replaces occurrences of multiple texts in a string with corresponding replacements.
+    Replaces occurrences of multiple patterns in a string with corresponding replacements.
 
-    :param input_str: the input string in which replacements will be made.
-    :type input_str: str
-    :param texts: the texts to be replaced, this can be a list of strings or a list of regular expressions.
-    :type texts: list[str]
+    :param string: the input string in which replacements will be made.
+    :type string: str
+    :param patterns: the patterns to be replaced, this can be a list of strings or a list of regular expressions.
+    :type patterns: Iterable[str]
     :param replacements: the replacements for each text.
-    :type replacements: list[str]
-    :param regex: Whether to interpret the texts as regular expressions. Defaults to False.
+    :type replacements: Iterable[str]
+    :param regex: Whether to interpret the patterns as regular expressions. Defaults to False.
     :type regex: bool, optional
 
     :return: the string with replacements made.
     :rtype: str
 
-    :raises ValueError: If the lengths of texts and replacements are not the same.
+    :raises ValueError: If the lengths of patterns and replacements are not the same.
     """
-    if len(texts) != len(replacements):
-        raise ValueError("texts and replacements must be the same length.")
+    if not (
+        isinstance(patterns, (tuple, list)) and isinstance(replacements, (tuple, list))
+    ):
+        return ""
 
-    for text, replacement in zip(texts, replacements):
+    if len(patterns) != len(replacements):
+        raise ValueError("patterns and replacements must be the same length.")
+
+    for text, replacement in zip(patterns, replacements):
         if regex:
-            input_str = re.sub(text, replacement, input_str)
+            string = re.sub(text, replacement, string)
         else:
-            input_str = input_str.replace(text, replacement)
+            string = string.replace(text, replacement)
 
-    return input_str
+    return string
 
 
 def bulk_connect(
-    connectable: GObject.Object | object, mapping: dict[str:Callable], *args
-) -> list[Union[object, int]]:
+    connectable: GObject.Object, mapping: dict[str, Callable]
+) -> tuple[int, ...]:
     """connects a list of signals to a list of callbacks to an object
 
     :param connectable: the object to connect the signals to
-    :type connectable: GObject.Object | object
+    :type connectable: GObject.Object
     :param mapping: the mapping of signals to callbacks, example: `{"signal-name": lambda *args: ...}`
-    :type mapping: dict[str: Callable]
-    :rtype: list[Union[object, int]]
+    :type mapping: dict[str, Callable]
+    :rtype: tuple[int, ...]
     """
-    rlist = []
-    rlist.extend(
-        [
-            connectable.connect(signal, callback)
-            for signal, callback in zip(mapping.keys(), mapping.values())
-        ]
+
+    return tuple(
+        connectable.connect(signal, callback)  # type: ignore
+        for signal, callback in mapping.items()
     )
-    if len(args) > 1 and len(args) % 2:
-        raise ValueError(
-            f"extra passed arguments must follow this syntax (connectable, mapping, connectable, mapping, ...) but got {args}"
-        )
-    for index, item in enumerate(args):
-        if isinstance(item, GObject.Object):
-            rlist.extend(bulk_connect(item, args[index + 1]))
-    return rlist
 
 
 def bulk_disconnect(
-    disconnectable: GObject.Object | object,
-    signals_or_funcs: list[Union[str, Callable]],
-) -> list[int]:
+    disconnectable: GObject.Object,
+    signals_or_funcs: Iterable[Union[str, Callable]],
+) -> tuple[int, ...]:
     """does the opposite of bulk_connect
 
     :param disconnectable: the object to disconnect the signals from
     :type disconnectable: GObject.Object | object
-    :param signals_or_funcs: the list of signals/callbacks to disconnect
-    :type signals: list[Union[str, Callable]]
+    :param signals_or_funcs: iterable of signals/callbacks to disconnect
+    :type signals: Iterable[Union[str, Callable]]
     :return: a list of return values from the `disconnect` function
-    :rtype: list[int]
+    :rtype: tuple[int]
     """
-    return [
-        (
-            disconnectable.disconnect(x)
-            if callable(x) is False
-            else disconnectable.disconnect_by_func(x)
-        )
-        for x in signals_or_funcs
-    ]
+
+    def disconnect(signal_or_func) -> int:
+        if callable(signal_or_func):
+            return disconnectable.disconnect_by_func(signal_or_func)  # type: ignore
+        return disconnectable.disconnect(signal_or_func)  # type: ignore
+
+    return tuple(disconnect(x) for x in signals_or_funcs)
 
 
-def clamp(value, min_value, max_value):
+def clamp(value: Number, min_value: Number, max_value: Number) -> Number:
     """
     clamp a value between a minimum and maximum value
 
@@ -248,11 +465,11 @@ def clamp(value, min_value, max_value):
     return max(min(value, max_value), min_value)
 
 
-def extract_css_values(css_string: str) -> tuple[int]:
+def extract_css_values(css_string: str) -> tuple[int, int, int, int]:
     """
-    extracts and returns a tuple of four CSS values from a given CSS string.
+    extracs and return a tuple of four CSS values from a given CSS string.
 
-    :param css_string: the CSS string from which to extract the values.
+    :param css_string: the CSS string to extract the values from.
     :type css_string: str
     :return: a tuple of four integers representing the extracted CSS values. If the CSS string
         does not contain enough values, the missing values are filled with zeros.
@@ -266,46 +483,9 @@ def extract_css_values(css_string: str) -> tuple[int]:
     if matches:
         values = [int(val) if val else 0 for val in matches.groups()]
         values.extend([values[-1]] * (4 - len(values)))
-        return tuple(values)
+        return tuple(values)  # type: ignore
     else:
         return default_values
-
-
-def extract_anchor_values(string: str) -> list[str]:
-    """
-    extracts the geometry values from a given geometry string.
-
-    :param string: the string containing the geometry values.
-    :type string: str
-    :return: a list of unique directions extracted from the geometry string.
-    :rtype: list
-    """
-    direction_map = {"l": "left", "t": "top", "r": "right", "b": "bottom"}
-    pattern = re.compile(r"\b(left|right|top|bottom)\b", re.IGNORECASE)
-    matches = pattern.findall(string)
-    directions = [direction_map[match.lower()[0]] for match in matches]
-    unique_directions = list(set(directions))
-    return unique_directions
-
-
-def extract_edges_from_string(string: str) -> dict[GtkLayerShell.Edge, bool]:
-    anchor_values = extract_anchor_values(string.lower())
-    return {
-        GtkLayerShell.Edge.TOP: "top" in anchor_values,
-        GtkLayerShell.Edge.RIGHT: "right" in anchor_values,
-        GtkLayerShell.Edge.BOTTOM: "bottom" in anchor_values,
-        GtkLayerShell.Edge.LEFT: "left" in anchor_values,
-    }
-
-
-def extract_margin_from_string(string: str) -> dict[GtkLayerShell.Edge, int]:
-    margins = extract_css_values(string)
-    return {
-        GtkLayerShell.Edge.TOP: margins[0],
-        GtkLayerShell.Edge.RIGHT: margins[1],
-        GtkLayerShell.Edge.BOTTOM: margins[2],
-        GtkLayerShell.Edge.LEFT: margins[3],
-    }
 
 
 def monitor_file(
@@ -317,7 +497,7 @@ def monitor_file(
         "watch-hard-links",
         "watch-moves",
     ]
-    | Gio.FileMonitorFlags = None,
+    | Gio.FileMonitorFlags = Gio.FileMonitorFlags.NONE,
 ) -> Gio.FileMonitor:
     """
     creates a file monitor for the specified file path
@@ -329,25 +509,17 @@ def monitor_file(
     :return: the file monitor for the specified file
     :rtype: Gio.FileMonitor
     """
-    file_path = (
-        "file://" + file_path if not file_path.startswith("file://") else file_path
+    file = Gio.File.new_for_uri(  # type: ignore
+        ("file://" + file_path) if "://" not in file_path else file_path
     )
-    file = Gio.File.new_for_uri(file_path)
-    monitor = file.monitor_file(
-        flags
-        if isinstance(flags, Gio.FileMonitorFlags)
-        else {
-            "none": Gio.FileMonitorFlags.NONE,
-            "watch-mounts": Gio.FileMonitorFlags.WATCH_MOUNTS,
-            "send-moved": Gio.FileMonitorFlags.SEND_MOVED,
-            "watch-hard-links": Gio.FileMonitorFlags.WATCH_HARD_LINKS,
-            "watch-moves": Gio.FileMonitorFlags.WATCH_MOVES,
-        }.get(flags, Gio.FileMonitorFlags.NONE)
+    return file.monitor_file(
+        get_enum_member(Gio.FileMonitorFlags, flags, default=Gio.FileMonitorFlags.NONE)
     )
-    return monitor
 
 
-def cooldown(cooldown_time: int, error: Callable = None, return_error: bool = False):
+def cooldown(
+    cooldown_time: int, error: Callable | None = None, return_error: bool = False
+):
     """
     Decorator function that adds a cooldown period to a given function
 
@@ -359,15 +531,16 @@ def cooldown(cooldown_time: int, error: Callable = None, return_error: bool = Fa
     """
 
     def decorator(func):
-        last_call_time = 0
+        last_call_delay = 0
 
+        @wraps(func)
         def wrapper(*args, **kwargs):
-            nonlocal last_call_time
+            nonlocal last_call_delay
             current_time = time.time()
-            elapsed_time = current_time - last_call_time
+            elapsed_time = current_time - last_call_delay
             if elapsed_time >= cooldown_time:
                 result = func(*args, **kwargs)
-                last_call_time = current_time
+                last_call_delay = current_time
                 return result
             else:
                 if return_error is True and error is not None:
@@ -380,25 +553,26 @@ def cooldown(cooldown_time: int, error: Callable = None, return_error: bool = Fa
     return decorator
 
 
-def exec_shell_command(cmd: str) -> str | bool:
+def exec_shell_command(cmd: str) -> str | Literal[False]:
     """
     executes a shell command and returns the output
 
     :param cmd: the shell command to execute
     :type cmd: str
-    :return: the output of the command
-    :rtype: str | bool
+    :return: the output of the command or False if an error has occurred
+    :rtype: str | Literal[False]
     """
-    if isinstance(cmd, str) is True:
-        try:
-            result, output, error, status = GLib.spawn_command_line_sync(cmd)
-            if status != 0:
-                return error.decode()
-            return output.decode()
-        except:
-            return False
-    else:
-        return False
+    if not isinstance(cmd, str):
+        raise ValueError  # FIXME: add error message
+
+    try:
+        result, output, error, status = GLib.spawn_command_line_sync(cmd)  # type: ignore
+        if status != 0:
+            return error.decode()
+        return output.decode()
+    except Exception:
+        pass
+    return False  # *unreachable*
 
 
 def exec_shell_command_async(
@@ -416,16 +590,17 @@ def exec_shell_command_async(
     :rtype: tuple[Gio.Subprocess | None, Gio.DataInputStream]
     """
     process = Gio.Subprocess.new(
-        shlex.split(cmd) if isinstance(cmd, str) else cmd,
-        Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
+        shlex.split(cmd) if isinstance(cmd, str) else cmd,  # type: ignore
+        Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,  # type: ignore
     )
+
     stdout = Gio.DataInputStream(
-        base_stream=process.get_stdout_pipe(),
+        base_stream=process.get_stdout_pipe(),  # type: ignore
         close_base_stream=True,
     )
 
     def reader_loop(stdout: Gio.DataInputStream):
-        def _callback(stream: Gio.DataInputStream, res):
+        def _callback(stream: Gio.DataInputStream, res: Gio.AsyncResult):
             output, _ = stream.read_line_finish_utf8(res)
             if isinstance(output, str):
                 callback(output)
@@ -438,7 +613,9 @@ def exec_shell_command_async(
     return process, stdout
 
 
-def invoke_repeater(interval: int, func: Callable, *args) -> int | list[int]:
+def invoke_repeater(
+    interval: int, func: Callable, *args, initial_call: bool = True
+) -> int:
     """
     invokes a function repeatedly with a given interval
 
@@ -446,33 +623,17 @@ def invoke_repeater(interval: int, func: Callable, *args) -> int | list[int]:
     :type interval: int
     :param func: the function to invoke
     :type func: Callable
-    :param args: extra pairs of (interval, func, ...) to get registered as well
-
-    :return: the result of the function
-    :rtype: int | list[int]
     """
-    rlist = []
-    o = GLib.timeout_add(interval, func)
-    if len(args) > 1 and len(args) % 2:
-        raise ValueError(
-            f"extra passed arguments must follow this syntax (interval, func, interval, func, ...) but got {args}"
-        )
-    elif len(args) > 1:
-        rlist.append(o)
-    for index, item in enumerate(args):
-        if isinstance(item, (int, float)):
-            # item is a interval, get the callback
-            callback = args[index + 1]
-            rlist.append(GLib.timeout_add(item, callback))
-    return rlist if len(rlist) > 1 else o
+    if initial_call:
+        func(*args)
+    return GLib.timeout_add(interval, func, *args)
 
 
 def get_relative_path(path: str, level: int = 1) -> str:
     """
-    converts a path to a relative path according to callers `__file__` variable
-    NOTE: This function only works if the caller `__file__` variable is set
-    means only if you're running a python FILE (not using IDLE)
-    else it will fallback to the current working directory as `__file__`
+    converts a path to a relative path according to caller's `__file__` variable
+
+    NOTE: This function only works if the caller `__file__` variable is set. means this will work only if you're calling from a python file (not a IDLE / REPL), else it will fallback to the current working directory as `__file__`
 
     :param path: the path to convert
     :type path: str
@@ -491,19 +652,11 @@ def get_relative_path(path: str, level: int = 1) -> str:
     return path
 
 
-def get_ixml(path_to_xml: str, interface_name: str):
+def load_dbus_xml(path_to_xml: str):
     path_to_xml = get_relative_path(path_to_xml, level=2)
     with open(path_to_xml, "r") as f:
         file = f.read()
-    return interface_name, Gio.DBusNodeInfo.new_for_xml(file)
-
-
-def kebab_case_to_snake_case(string: str) -> str:
-    return string.replace("-", "_").lower()
-
-
-def snake_case_to_kebab_case(string: str) -> str:
-    return string.replace("_", "-").lower()
+    return Gio.DBusNodeInfo.new_for_xml(file)
 
 
 def snake_case_to_pascal_case(string: str) -> str:
@@ -519,7 +672,16 @@ def pascal_case_to_snake_case(string: str) -> str:
     )
 
 
-def get_connectable_names_from_kwargs(kwargs: dict[str, Callable]) -> Generator:
+def snake_case_to_kebab_case(string: str) -> str:
+    return string.strip().lower().replace("_", "-")
+
+
+def kebab_case_to_snake_case(string: str) -> str:
+    return string.replace("-", "_").lower()
+
+
+def get_connectables_for_kwargs(kwargs: dict[str, Callable]) -> Generator:
+    __deprecation_table()
     for key, value in zip(kwargs.keys(), kwargs.values()):
         if key.startswith("on_"):
             yield [snake_case_to_kebab_case(key[3:]), value]
@@ -529,74 +691,162 @@ def get_connectable_names_from_kwargs(kwargs: dict[str, Callable]) -> Generator:
 
 
 def get_enum_member(
-    cls, name: str | Any, custom_mapping: dict[str, str] = {}
-) -> Any | None:
-    """
-    get an enum member from a enum class (usually for GEnums)
+    enum: type[E], member: str | E, mapping: dict[str, str] = {}, default: Any = MISSING
+) -> E:
+    if isinstance(member, enum):
+        return member
 
-    :param name: the name of the enum member (if the value was passed instead it will be returned)
-    :type name: str
-    :param custom_mapping: a mapping of name to name replacement, defaults to {}
-    :type custom_mapping: dict[str, str], optional
-    :return: the enum member or None
-    :rtype: Any | None
-    """
-    if isinstance(name, cls):
-        return name
+    if not isinstance(member, str):
+        raise ValueError  # FIXME: add exception message
 
-    if not isinstance(name, str):
-        return None
-
-    for n, r in custom_mapping.items():
-        if name == n:
-            name = r
+    for name, replacement in mapping.items():
+        if member.casefold() == name.casefold():
+            member = replacement
             break
 
-    return getattr(cls, kebab_case_to_snake_case(name).upper())
+    try:
+        return getattr(enum, kebab_case_to_snake_case(member).upper())
+    except Exception:
+        if default is MISSING:
+            raise ValueError
+        return default
 
 
-def bridge_signals(
+def get_enum_member_name(
+    member: Enum | Any, mapping: dict[str, str] = {}, default: Any = MISSING
+) -> str:
+    if isinstance(member, str):
+        return member
+
+    if isinstance(member, Enum):
+        return member.name
+
+    # GIR type enum...
+    member_name: str | None = None
+    if _name := getattr(member, "first_value_nick", None):
+        member_name = _name
+    elif _name := getattr(member, "value_nick", None):
+        member_name = _name
+
+    if not member_name and default is MISSING:
+        raise ValueError
+    elif not member_name:
+        return default
+
+    member_name = member_name.upper()
+    return mapping.get(member_name, member_name)
+
+
+def bridge_signal(
     source: GObject.Object,
+    source_signal: str,
     target: GObject.Object,
-    exclude: list[str] = [],
-    custom_mapping: dict[str, str] = {},
-) -> None:
-    """
-    bridges signals from one object to another
+    target_signal: str,
+    notify: bool = False,
+) -> int:
+    def signal_handler(*args, **kwargs):
+        return target.emit(target_signal, *args, **kwargs)  # type: ignore
 
-    :param source: the source object to bridge from
-    :type source: GObject.Object
-    :param target: the target object to bridge to
-    :type target: GObject.Object
-    :param exclude: a list of signal names to exclude connecting from, defaults to []
-    :type exclude: list[str], optional
-    :param custom_mapping: a mapping of name to name replacement, defaults to {}
-    :type custom_mapping: dict[str, str], optional
-    :return: None
-    """
+    def notify_handler(*args, **kwargs):
+        return target.notify(target_signal)  # type: ignore
 
-    def do_emit_bridge_signal(signal_name, *args):
-        rv = []
-        for arg in args:
-            rv.append(arg) if not arg is source else None
-        return target.emit(signal_name, *rv)
+    return source.connect(  # type: ignore
+        source_signal if not notify else f"notify::{source_signal}",
+        signal_handler if not notify else notify_handler,
+    )
 
-    for signal_name in GObject.signal_list_names(source):
-        if signal_name in exclude:
-            continue
-        source.connect(
-            signal_name,
-            lambda *args, signal_name=signal_name: do_emit_bridge_signal(
-                custom_mapping.get(signal_name, signal_name), *args
-            ),
+
+def generate_random_string(length: int = 8) -> str:
+    return "".join(random.choices(string.ascii_uppercase + string.digits, k=length))
+
+
+class FunctionAnnotations(NamedTuple, Generic[T]):
+    arguments: dict[str, type]
+    return_type: T | None
+
+
+def get_function_annotations(
+    func: Callable[P, T],
+) -> FunctionAnnotations[T]:
+    args: dict[str, Any] = {}
+    signature = inspect.signature(func)
+    return_type: T | None = (
+        signature.return_annotation
+        if signature.return_annotation is not signature.empty
+        else None
+    )
+    for arg_name, arg_pspec in signature.parameters.items():
+        args[arg_name] = (
+            arg_pspec.annotation if arg_pspec.annotation is not arg_pspec.empty else Any
         )
+    return FunctionAnnotations(args, return_type)
 
 
-def idlify(func: Callable, *args) -> int:
-    """add a function to be invoked in the main thread, useful for multi-threaded code
+def truncate(string: str, max_length: int, suffix: str = "...") -> str:
+    return (
+        string
+        if len(string) <= max_length
+        else string[: max_length - len(suffix)] + suffix
+    )
+
+
+def idle_add(func: Callable, *args, pin: bool = False) -> int:
+    """
+    add a function to be invoked in a lazy manner in the main thread, useful for multi-threaded code
 
     :param func: the function to be queued
     :type func: Callable
     :param args: arguments will be passed to the given function
+    :param pin: whether the function should be invoked as long as it's return value is `True`, when the function returns `False` it won't be called again
+    :type pin: bool, optional
     """
-    return GLib.idle_add(func, *args)
+    if pin:
+        return GLib.idle_add(func, *args)
+
+    def idle_executor(*largs):
+        func(*largs)
+        return False
+
+    return GLib.idle_add(
+        idle_executor, *args
+    )  # a hack to safely pass a pointer to user's data
+
+
+def remove_handler(handler_id: int):
+    return GLib.source_remove(handler_id)
+
+
+# FIXME: deprecated (please don't use, there's a replacement of each function)
+def set_stylesheet_from_file(file_path: str, compiled: bool = True) -> None:
+    __deprecation_table()
+
+    provider = Gtk.CssProvider()
+    if compiled:
+        with open(file_path, "r") as f:
+            file = f.read()
+        provider.load_from_data(bytearray(compile_css(file), "utf-8"))  # type: ignore
+    else:
+        provider.load_from_path(file_path)
+    screen = Gdk.Screen.get_default()
+    context = Gtk.StyleContext()
+    context.add_provider_for_screen(screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_USER)
+    return
+
+
+def set_stylesheet_from_string(css_string: str, compiled: bool = True) -> None:
+    __deprecation_table()
+
+    provider = Gtk.CssProvider()
+    if compiled:
+        provider.load_from_data(bytearray(compile_css(css_string), "utf-8"))
+    else:
+        provider.load_from_data(bytearray(css_string, "utf-8"))
+    screen = Gdk.Screen.get_default()
+    context = Gtk.StyleContext()
+    context.add_provider_for_screen(screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_USER)
+    return
+
+
+def idlify(func: Callable, *args) -> int:
+    __deprecation_table()
+    return idle_add(func, *args)

@@ -1,39 +1,42 @@
 import gi
-from typing import Literal
+from typing import Literal, overload
+from collections.abc import Iterable
 from fabric.widgets.widget import Widget
+from fabric.utils.helpers import get_enum_member
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Pango
 
 
 class Label(Gtk.Label, Widget):
+    @overload
     def __init__(
         self,
         label: str | None = None,
-        markup: bool = False,
+        markup: None = None,
         justification: Literal[
             "left",
             "right",
             "center",
             "fill",
         ]
-        | Gtk.Justification
-        | None = None,
+        | Gtk.Justification = Gtk.Justification.LEFT,
         ellipsization: Literal[
             "none",
             "start",
             "middle",
             "end",
         ]
-        | Pango.EllipsizeMode
-        | None = None,
-        character_max_width: int | None = None,
+        | Pango.EllipsizeMode = Pango.EllipsizeMode.NONE,
+        chars_width: int = -1,
+        max_chars_width: int = -1,
+        line_wrap: Literal["word", "char", "word-char"] | Pango.WrapMode | None = None,
+        angle: float = 0.0,
+        name: str | None = None,
         visible: bool = True,
         all_visible: bool = False,
         style: str | None = None,
-        style_compiled: bool = True,
-        style_append: bool = False,
-        style_add_brackets: bool = True,
+        style_classes: Iterable[str] | str | None = None,
         tooltip_text: str | None = None,
         tooltip_markup: str | None = None,
         h_align: Literal["fill", "start", "end", "center", "baseline"]
@@ -44,94 +47,128 @@ class Label(Gtk.Label, Widget):
         | None = None,
         h_expand: bool = False,
         v_expand: bool = False,
+        size: Iterable[int] | int | None = None,
+        **kwargs,
+    ): ...
+
+    @overload
+    def __init__(
+        self,
+        label: None = None,
+        markup: str | None = None,
+        justification: Literal[
+            "left",
+            "right",
+            "center",
+            "fill",
+        ]
+        | Gtk.Justification = Gtk.Justification.LEFT,
+        ellipsization: Literal[
+            "none",
+            "start",
+            "middle",
+            "end",
+        ]
+        | Pango.EllipsizeMode = Pango.EllipsizeMode.NONE,
+        chars_width: int = -1,
+        max_chars_width: int = -1,
+        line_wrap: Literal["word", "char", "word-char"] | Pango.WrapMode | None = None,
+        angle: float = 0.0,
         name: str | None = None,
-        size: tuple[int] | int | None = None,
+        visible: bool = True,
+        all_visible: bool = False,
+        style: str | None = None,
+        style_classes: Iterable[str] | str | None = None,
+        tooltip_text: str | None = None,
+        tooltip_markup: str | None = None,
+        h_align: Literal["fill", "start", "end", "center", "baseline"]
+        | Gtk.Align
+        | None = None,
+        v_align: Literal["fill", "start", "end", "center", "baseline"]
+        | Gtk.Align
+        | None = None,
+        h_expand: bool = False,
+        v_expand: bool = False,
+        size: Iterable[int] | int | None = None,
+        **kwargs,
+    ): ...
+
+    def __init__(
+        self,
+        label: str | None = None,
+        markup: str | None = None,
+        justification: Literal[
+            "left",
+            "right",
+            "center",
+            "fill",
+        ]
+        | Gtk.Justification = Gtk.Justification.LEFT,
+        ellipsization: Literal[
+            "none",
+            "start",
+            "middle",
+            "end",
+        ]
+        | Pango.EllipsizeMode = Pango.EllipsizeMode.NONE,
+        chars_width: int = -1,
+        max_chars_width: int = -1,
+        line_wrap: Literal["word", "char", "word-char"] | Pango.WrapMode | None = None,
+        angle: float = 0.0,
+        name: str | None = None,
+        visible: bool = True,
+        all_visible: bool = False,
+        style: str | None = None,
+        style_classes: Iterable[str] | str | None = None,
+        tooltip_text: str | None = None,
+        tooltip_markup: str | None = None,
+        h_align: Literal["fill", "start", "end", "center", "baseline"]
+        | Gtk.Align
+        | None = None,
+        v_align: Literal["fill", "start", "end", "center", "baseline"]
+        | Gtk.Align
+        | None = None,
+        h_expand: bool = False,
+        v_expand: bool = False,
+        size: Iterable[int] | int | None = None,
         **kwargs,
     ):
-        """
-        :param label: the actual label text, defaults to None
-        :type label: str | None, optional
-        :param markup: whether to use markup or plain text, defaults to False
-        :type markup: bool, optional
-        :param justification: justification mode, defaults to None
-        :type justification: Literal["left", "right", "center", "fill",] | Gtk.Justification | None, optional
-        :param ellipsization: ellipsization mode, defaults to None
-        :type ellipsization: Literal["none", "start", "middle", "end",] | Pango.EllipsizeMode | None, optional
-        :param character_max_width: the maximum width of the label, defaults to None
-        :type character_max_width: int | None, optional
-        :param visible: whether the widget is initially visible, defaults to True
-        :type visible: bool, optional
-        :param all_visible: whether all child widgets are initially visible, defaults to False
-        :type all_visible: bool, optional
-        :param style: inline css style string, defaults to None
-        :type style: str | None, optional
-        :param style_compiled: whether the passed css should get compiled before applying, defaults to True
-        :type style_compiled: bool, optional
-        :param style_append: whether the passed css should be appended to the existing css, defaults to False
-        :type style_append: bool, optional
-        :param style_add_brackets: whether the passed css should be wrapped in brackets if they were missing, defaults to True
-        :type style_add_brackets: bool, optional
-        :param tooltip_text: the text added to the tooltip, defaults to None
-        :type tooltip_text: str | None, optional
-        :param tooltip_markup: the markup added to the tooltip, defaults to None
-        :type tooltip_markup: str | None, optional
-        :param h_align: the horizontal alignment, defaults to None
-        :type h_align: Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None, optional
-        :param v_align: the vertical alignment, defaults to None
-        :type v_align: Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None, optional
-        :param h_expand: the horizontal expansion, defaults to False
-        :type h_expand: bool, optional
-        :param v_expand: the vertical expansion, defaults to False
-        :type v_expand: bool, optional
-        :param name: the name of the widget it can be used to style the widget, defaults to None
-        :type name: str | None, optional
-        :param size: the size of the widget, defaults to None
-        :type size: tuple[int] | int | None, optional
-        """
-        Gtk.Label.__init__(
-            self,
-            **(self.do_get_filtered_kwargs(kwargs)),
-        )
+        Gtk.Label.__init__(self)  # type: ignore
         Widget.__init__(
             self,
+            name,
             visible,
             all_visible,
             style,
-            style_compiled,
-            style_append,
-            style_add_brackets,
+            style_classes,
             tooltip_text,
             tooltip_markup,
             h_align,
             v_align,
             h_expand,
             v_expand,
-            name,
             size,
+            **kwargs,
         )
-
-        if label is not None and markup is True:
-            self.set_markup(label)
-        elif label is not None:
-            self.set_label(label)
+        self.set_label(label) if label is not None else None
+        self.set_markup(markup) if markup is not None else None
 
         self.set_justify(
-            {
-                "left": Gtk.Justification.LEFT,
-                "right": Gtk.Justification.RIGHT,
-                "center": Gtk.Justification.CENTER,
-                "fill": Gtk.Justification.FILL,
-            }.get(justification.lower(), Gtk.Justification.LEFT)
-        ) if justification is not None else None
+            get_enum_member(
+                Gtk.Justification, justification, default=Gtk.Justification.LEFT
+            )
+        )
         self.set_ellipsize(
-            {
-                "none": Pango.EllipsizeMode.NONE,
-                "start": Pango.EllipsizeMode.START,
-                "middle": Pango.EllipsizeMode.MIDDLE,
-                "end": Pango.EllipsizeMode.END,
-            }.get(ellipsization.lower(), Pango.EllipsizeMode.NONE)
-        ) if ellipsization is not None else None
-        self.set_max_width_chars(
-            character_max_width
-        ) if character_max_width is not None else None
-        self.do_connect_signals_for_kwargs(kwargs)
+            get_enum_member(
+                Pango.EllipsizeMode, ellipsization, default=Pango.EllipsizeMode.NONE
+            )
+        )
+
+        self.set_width_chars(chars_width)
+        self.set_max_width_chars(max_chars_width)
+        if line_wrap is not None:
+            self.set_line_wrap(True)
+            self.set_line_wrap_mode(
+                get_enum_member(Pango.WrapMode, line_wrap, default=Pango.WrapMode.WORD)
+            )
+        self.set_angle(angle)

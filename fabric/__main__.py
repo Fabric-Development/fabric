@@ -114,7 +114,7 @@ def list_all(json: bool = False):
         # print(dbus_name)
         proxy = get_instance_proxy(dbus_name)
         click.echo(
-            f"{config_name}: {str(proxy.get_cached_property("File").unpack())}"
+            f"{config_name}: {str(proxy.get_cached_property('File').unpack())}"
         ) if proxy is not None else None
     return
 

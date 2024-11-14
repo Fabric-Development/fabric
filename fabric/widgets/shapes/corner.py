@@ -24,7 +24,7 @@ class Corner(Gtk.DrawingArea, Widget):
         return self._orientation
 
     @orientation.setter
-    def oriorientation(
+    def orientation(
         self,
         value: Literal["top-left", "top-right", "bottom-left", "bottom-right"]
         | CornerOrientation,

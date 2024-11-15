@@ -2,7 +2,7 @@
 
 Ricing, Made <b>Easy</b> 🍚⚡
 
-[<kbd> <br> Wiki Pages <br> </kbd>](https://its-darsh.github.io/fabric-wiki/) [<kbd> <br> Discord Server <br> </kbd>](https://discord.gg/3sDbYc9SZP)
+[<kbd> <br> Wiki Pages <br> </kbd>](https://wiki.ffpy.org) [<kbd> <br> Discord Server <br> </kbd>](https://discord.gg/3sDbYc9SZP)
 
 </div>
 

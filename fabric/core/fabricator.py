@@ -49,6 +49,17 @@ class Fabricator(Service, Generic[T]):
     @overload
     def __init__(
         self,
+        poll_from: Callable[P, T],
+        stream: bool = True,
+        default_value: T | Any = None,
+        initial_poll: bool = True,
+        *data,
+        **kwargs,
+    ): ...
+
+    @overload
+    def __init__(
+        self,
         poll_from: str,
         interval: int,
         stream: bool = False,
@@ -58,10 +69,21 @@ class Fabricator(Service, Generic[T]):
         **kwargs,
     ): ...
 
+    @overload
+    def __init__(
+        self,
+        poll_from: str,
+        stream: bool = True,
+        default_value: str | Any = None,
+        initial_poll: bool = True,
+        *args,
+        **kwargs,
+    ): ...
+
     def __init__(
         self,
         poll_from: Callable[..., T] | str,
-        interval: int,
+        interval: int | None = None,
         stream: bool = False,
         default_value: T | str | Any = None,
         initial_poll: bool = True,

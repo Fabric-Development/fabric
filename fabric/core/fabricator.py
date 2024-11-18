@@ -83,7 +83,7 @@ class Fabricator(Service, Generic[T]):
     def __init__(
         self,
         poll_from: Callable[..., T] | str,
-        interval: int | None,
+        interval: int | None = None,
         stream: bool = False,
         default_value: T | str | Any = None,
         initial_poll: bool = True,

@@ -28,7 +28,7 @@ Our goal is to provide a high-level, signal-based workflow—no polling or bash 
 
 ## Visual Tour
 
-A Collection of Desktop rices that muscle-show what are you able to do using Fabric!
+A Collection of Desktop rices that muscle-show what you are able to do using Fabric!
 
 - Example files (combined)
   ![config can be found under the examples/bar and examples/side-panel directory](assets/example-files-bar-showcase.png)

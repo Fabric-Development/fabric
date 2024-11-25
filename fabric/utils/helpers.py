@@ -577,15 +577,15 @@ def exec_shell_command(cmd: str) -> str | Literal[False]:
 
 def exec_shell_command_async(
     cmd: str | list[str],
-    callback: Callable[[str], None],
+    callback: Callable[[str], Any] | None = None,
 ) -> tuple[Gio.Subprocess | None, Gio.DataInputStream]:
     """
     executes a shell command and returns the output asynchronously
 
     :param cmd: the shell command to execute
     :type cmd: str
-    :param callback: a function to retrieve the result at
-    :type cmd: Callable[[str], None]
+    :param callback: a function to retrieve the result at or `None` to ignore the result
+    :type callback: Callable[[str], Any] | None, optional
     :return: a Gio.Subprocess object which holds a referance to your process and a Gio.DataInputStream object for stdout
     :rtype: tuple[Gio.Subprocess | None, Gio.DataInputStream]
     """
@@ -600,13 +600,13 @@ def exec_shell_command_async(
     )
 
     def reader_loop(stdout: Gio.DataInputStream):
-        def _callback(stream: Gio.DataInputStream, res: Gio.AsyncResult):
-            output, _ = stream.read_line_finish_utf8(res)
+        def read_line(stream: Gio.DataInputStream, res: Gio.AsyncResult):
+            output, *_ = stream.read_line_finish_utf8(res)
             if isinstance(output, str):
-                callback(output)
+                callback(output) if callback else None
                 reader_loop(stream)
 
-        stdout.read_line_async(GLib.PRIORITY_DEFAULT, None, _callback)
+        stdout.read_line_async(GLib.PRIORITY_DEFAULT, None, read_line)
 
     reader_loop(stdout)
 

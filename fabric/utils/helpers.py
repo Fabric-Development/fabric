@@ -2,6 +2,8 @@ import gi
 import re
 import os
 import time
+import math
+import cairo
 import shlex
 import string
 import random
@@ -56,6 +58,62 @@ __deprecation_table = __DeprecationHook__(
         "get_gdk_rgba": "Gdk.RGBA.parse OR parse_color",
     }
 )
+
+
+class PixbufUtils:
+    @staticmethod
+    def from_cairo_surface(
+        surface: cairo.ImageSurface,
+        x_offset: int = 0,
+        y_offset: int = 0,
+        target_width: int | None = None,
+        target_height: int | None = None,
+    ) -> GdkPixbuf.Pixbuf:
+        return Gdk.pixbuf_get_from_surface(
+            surface,  # type: ignore
+            x_offset,
+            y_offset,
+            target_width or surface.get_width(),
+            target_height or surface.get_height(),
+        )
+
+    @staticmethod
+    def set_cairo_source(
+        pixbuf: GdkPixbuf.Pixbuf,
+        cr: cairo.Context,
+        x_offset: int = 0,
+        y_offset: int = 0,
+    ):
+        return Gdk.cairo_set_source_pixbuf(cr, pixbuf, x_offset, y_offset)  # type: ignore
+
+    @staticmethod
+    def rotate(pixbuf: GdkPixbuf.Pixbuf, angle: float) -> GdkPixbuf.Pixbuf:
+        """return a rotated version of the given `GdkPixbuf.Pixbuf` to a given angle
+
+        :param pixbuf: the input pixbuf
+        :type pixbuf: GdkPixbuf.Pixbuf
+        :param angle: the desired rotation angle in degrees
+        :type angle: float
+        :return: the newly rotated pixbuf
+        :rtype: GdkPixbuf.Pixbuf
+        """
+        r = math.radians(angle)
+        w, h = pixbuf.get_width(), pixbuf.get_height()
+
+        nw = round(abs(w * math.cos(r)) + abs(h * math.sin(r)))
+        nh = round(abs(w * math.sin(r)) + abs(h * math.cos(r)))
+
+        surface = cairo.ImageSurface(cairo.Format.ARGB32, nw, nh)
+        cr = cairo.Context(surface)
+
+        cr.translate(nw / 2, nh / 2)
+        cr.rotate(r)
+        PixbufUtils.set_cairo_source(pixbuf, cr, round(-w / 2), round(-h / 2))
+        cr.paint()
+
+        return PixbufUtils.from_cairo_surface(
+            surface, target_width=nw, target_height=nh
+        )
 
 
 class FormattedString:

@@ -558,19 +558,19 @@ def monitor_file(
     | Gio.FileMonitorFlags = Gio.FileMonitorFlags.NONE,
 ) -> Gio.FileMonitor:
     """
-    creates a file monitor for the specified file path
+    creates a monitor for a specified file or directory path
 
-    :param file_path: the path of the file to be monitored
+    :param file_path: the path of the file or directory to be monitored
     :type file_path: str
     :param flags: the flags to configure the file monitor. Defaults to None.
     :type flags: Literal["none", "watch-mounts", "send-moved", "watch-hard-links", "watch-moves"], optional
-    :return: the file monitor for the specified file
+    :return: the monitor for the specified path
     :rtype: Gio.FileMonitor
     """
-    file = Gio.File.new_for_uri(  # type: ignore
+    file: Gio.File = Gio.File.new_for_uri(  # type: ignore
         ("file://" + file_path) if "://" not in file_path else file_path
     )
-    return file.monitor_file(
+    return file.monitor(
         get_enum_member(Gio.FileMonitorFlags, flags, default=Gio.FileMonitorFlags.NONE)
     )
 

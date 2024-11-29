@@ -41,7 +41,6 @@ class AppLauncher(Window):
             placeholder="Search Applications...",
             h_expand=True,
             notify_text=lambda entry, *_: self.arrange_viewport(entry.get_text()),
-            on_button_press_event=print,
         )
         self.scrolled_window = ScrolledWindow(
             min_content_size=(280, 320),

@@ -169,6 +169,6 @@ class SidePanel(Window):
 if __name__ == "__main__":
     side_panel = SidePanel()
     app = Application("side-panel", side_panel)
-    app.set_stylesheet_from_file(get_relative_path("side_panel.css"))
+    app.set_stylesheet_from_file(get_relative_path("./style.css"))
 
     app.run()

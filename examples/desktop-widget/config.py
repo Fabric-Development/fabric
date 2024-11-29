@@ -21,6 +21,6 @@ if __name__ == "__main__":
     )
 
     app = Application("desktop-widget", desktop_widget)
-    app.set_stylesheet_from_file(get_relative_path("desktop_widget.css"))
+    app.set_stylesheet_from_file(get_relative_path("./style.css"))
 
     app.run()

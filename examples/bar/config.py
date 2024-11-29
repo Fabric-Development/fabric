@@ -165,6 +165,6 @@ class StatusBar(Window):
 if __name__ == "__main__":
     bar = StatusBar()
     app = Application("bar", bar)
-    app.set_stylesheet_from_file(get_relative_path("bar.css"))
+    app.set_stylesheet_from_file(get_relative_path("./style.css"))
 
     app.run()

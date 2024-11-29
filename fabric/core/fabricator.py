@@ -3,9 +3,11 @@ from collections.abc import Callable
 from typing import (
     cast,
     overload,
+    Concatenate,
+    ParamSpec,
     Generic,
     TypeVar,
-    ParamSpec,
+    Self,
     Any,
 )
 from fabric.core.service import Service, Signal, Property
@@ -37,8 +39,8 @@ class Fabricator(Service, Generic[T]):
     @overload
     def __init__(
         self,
-        poll_from: Callable[P, T],
-        interval: int,
+        poll_from: Callable[Concatenate[Self, P], T],
+        interval: int = 1000,
         stream: bool = False,
         default_value: T | Any = None,
         initial_poll: bool = True,
@@ -49,7 +51,8 @@ class Fabricator(Service, Generic[T]):
     @overload
     def __init__(
         self,
-        poll_from: Callable[P, T],
+        poll_from: Callable[Concatenate[Self, P], T],
+        interval: int = 1000,
         stream: bool = True,
         default_value: T | Any = None,
         initial_poll: bool = True,
@@ -61,7 +64,7 @@ class Fabricator(Service, Generic[T]):
     def __init__(
         self,
         poll_from: str,
-        interval: int,
+        interval: int = 1000,
         stream: bool = False,
         default_value: str | Any = None,
         initial_poll: bool = True,
@@ -73,6 +76,7 @@ class Fabricator(Service, Generic[T]):
     def __init__(
         self,
         poll_from: str,
+        interval: int = 1000,
         stream: bool = True,
         default_value: str | Any = None,
         initial_poll: bool = True,
@@ -82,8 +86,8 @@ class Fabricator(Service, Generic[T]):
 
     def __init__(
         self,
-        poll_from: Callable[..., T] | str,
-        interval: int | None = None,
+        poll_from: Callable[Concatenate[Self, P], T] | str,
+        interval: int = 1000,
         stream: bool = False,
         default_value: T | str | Any = None,
         initial_poll: bool = True,
@@ -105,28 +109,23 @@ class Fabricator(Service, Generic[T]):
 
     def start(self):
         self._poll = True
-        is_callable = isinstance(self._poll_from, Callable)
+        is_callable = callable(self._poll_from)
         if is_callable and not self._stream:
-            invoke_repeater(
-                self._interval,
-                lambda *_: self.do_invoke_function(),
-            )
-            self.do_invoke_function() if self._initial_poll is True else None
+            invoke_repeater(self._interval, self.do_invoke_function)
+
         elif is_callable and self._stream:
             self._stream_thread = GLib.Thread.new(
                 f"fabricator-thread-{self.__str__()}",
                 self.do_read_function_stream,
                 *self._data,
             )
+
         elif not is_callable and not self._stream:
-            invoke_repeater(
-                self._interval,
-                lambda *_: self.do_read_shell_command_io(),
-            )
-            self.do_read_shell_command_io() if self._initial_poll is True else None
+            invoke_repeater(self._interval, self.do_read_shell_command_io)
 
         elif not is_callable and self._stream:
             self.do_read_shell_command_io()
+
         else:
             self.emit("polling-done", None)
             logger.warning(
@@ -158,7 +157,7 @@ class Fabricator(Service, Generic[T]):
             cast(str, self._poll_from), result_handler
         )
         process.wait_async(
-            None, lambda *args: self.emit("polling-done", data)
+            None, lambda *_: self.emit("polling-done", data)
         ) if process and self._stream else None
         return True
 
@@ -166,20 +165,16 @@ class Fabricator(Service, Generic[T]):
         if self._poll is not True:
             self.emit("polling-done", None)
             return False
-        value = cast(Callable, self._poll_from)(*self._data)
+        value = cast(Callable, self._poll_from)(self, *self._data)
         self.value = value
         return True
 
     def do_read_function_stream(self, *func_data):
         # this should get called in a new thread, else the main thread will be blocked
         data = None
-        for data in cast(Callable, self._poll_from)(*func_data):
+        for data in cast(Callable, self._poll_from)(self, *func_data):
             if not self._poll:
                 break
-            idle_add(self.do_set_value_for_stream_thread, data)
+            idle_add(self.set_value, data)
         idle_add(self.emit, "polling-done", data)
         return False
-
-    def do_set_value_for_stream_thread(self, value) -> None:
-        self.value = value
-        return

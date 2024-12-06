@@ -1,6 +1,6 @@
 {
   lib,
-  python311Packages,
+  python3Packages,
   gtk3,
   gtk-layer-shell,
   cairo,
@@ -10,8 +10,7 @@
   cinnamon,
   gnome,
 }:
-
-python311Packages.buildPythonPackage {
+python3Packages.buildPythonPackage {
   pname = "python-fabric";
   version = "0.0.1";
   pyproject = true;
@@ -29,7 +28,7 @@ python311Packages.buildPythonPackage {
     gnome.gnome-bluetooth
   ];
 
-  dependencies = with python311Packages; [
+  dependencies = with python3Packages; [
     setuptools
     click
     pycairo
@@ -46,6 +45,6 @@ python311Packages.buildPythonPackage {
     '';
     homepage = "https://github.com/Fabric-Development/fabric";
     license = lib.licenses.mit;
-    maintainers = with lib.maintainers; [ ];
+    maintainers = with lib.maintainers; [];
   };
 }

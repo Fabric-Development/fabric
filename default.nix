@@ -1,6 +1,6 @@
 {
   lib,
-  python3Packages,
+  python312Packages,
   gtk3,
   gtk-layer-shell,
   cairo,
@@ -10,7 +10,7 @@
   cinnamon-desktop,
   gnome-bluetooth,
 }:
-python3Packages.buildPythonPackage {
+python312Packages.buildPythonPackage {
   pname = "python-fabric";
   version = "0.0.1";
   pyproject = true;
@@ -28,7 +28,7 @@ python3Packages.buildPythonPackage {
     gnome-bluetooth
   ];
 
-  dependencies = with python3Packages; [
+  dependencies = with python312Packages; [
     setuptools
     click
     pycairo

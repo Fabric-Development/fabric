@@ -7,8 +7,8 @@
   gobject-introspection,
   libdbusmenu-gtk3,
   gdk-pixbuf,
-  cinnamon,
-  gnome,
+  cinnamon-desktop,
+  gnome-bluetooth,
 }:
 python3Packages.buildPythonPackage {
   pname = "python-fabric";
@@ -24,8 +24,8 @@ python3Packages.buildPythonPackage {
     gobject-introspection
     libdbusmenu-gtk3
     gdk-pixbuf
-    cinnamon.cinnamon-desktop
-    gnome.gnome-bluetooth
+    cinnamon-desktop
+    gnome-bluetooth
   ];
 
   dependencies = with python3Packages; [

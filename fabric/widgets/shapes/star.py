@@ -11,6 +11,31 @@ from gi.repository import Gtk, Gdk
 
 
 class Star(Gtk.DrawingArea, Widget):
+    @staticmethod
+    def render_shape(
+        cr: cairo.Context,
+        width: float,
+        height: float,
+        points: int = 5,
+        ratio: float = 0.5,
+    ):
+        a = 2 * math.pi / points
+        s = min(width, height) / 2
+        rs = s * ratio
+
+        cr.save()
+
+        cr.translate(width / 2, height / 2)
+        cr.rotate(-math.pi / 2)
+
+        for i in range(points):
+            cr.line_to(s * math.cos(i * a), s * math.sin(i * a))
+            cr.line_to(rs * math.cos((i + 0.5) * a), rs * math.sin((i + 0.5) * a))
+
+        cr.close_path()
+        cr.restore()
+        return
+
     @Property(int, "read-write")
     def points(self) -> int:
         return self._points
@@ -73,24 +98,6 @@ class Star(Gtk.DrawingArea, Widget):
 
         self.connect("draw", self.on_draw)
 
-    def do_render_shape(self, cr: cairo.Context, width: float, height: float):
-        a = 2 * math.pi / self._points
-        s = min(width, height) / 2
-        rs = s * self._ratio
-
-        cr.save()
-
-        cr.translate(width / 2, height / 2)
-        cr.rotate(-math.pi / 2)
-
-        for i in range(self._points):
-            cr.line_to(s * math.cos(i * a), s * math.sin(i * a))
-            cr.line_to(rs * math.cos((i + 0.5) * a), rs * math.sin((i + 0.5) * a))
-
-        cr.close_path()
-        cr.restore()
-        return
-
     def on_draw(self, _, cr: cairo.Context):
         aloc: cairo.Rectangle = self.get_allocation()  # type: ignore
         width, height = aloc.width, aloc.height
@@ -109,15 +116,16 @@ class Star(Gtk.DrawingArea, Widget):
         cr.save()
 
         # render the background
-        self.do_render_shape(cr, width, height)
+        self.render_shape(cr, width, height, self._points, self._ratio)
         cr.clip()
         Gtk.render_background(context, cr, 0, 0, width, height)
 
-        # put the border
-        Gdk.cairo_set_source_rgba(cr, border_color)  # type: ignore
-        cr.set_line_width(border_width)
-        self.do_render_shape(cr, width, height)
-        cr.stroke()
+        if border_width:
+            # put the border
+            Gdk.cairo_set_source_rgba(cr, border_color)  # type: ignore
+            cr.set_line_width(border_width)
+            self.render_shape(cr, width, height, self._points, self._ratio)
+            cr.stroke()
 
         cr.restore()
         return

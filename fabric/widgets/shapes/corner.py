@@ -19,6 +19,40 @@ class CornerOrientation(Enum):
 
 
 class Corner(Gtk.DrawingArea, Widget):
+    @staticmethod
+    def render_shape(
+        cr: cairo.Context,
+        width: float,
+        height: float,
+        orientation: CornerOrientation = CornerOrientation.TOP_LEFT,
+    ):
+        # _this is fine_
+        cr.save()
+        match orientation:
+            case CornerOrientation.TOP_LEFT:
+                cr.move_to(0, height)
+                cr.line_to(0, 0)
+                cr.line_to(width, 0)
+                cr.curve_to(0, 0, 0, height, 0, height)
+            case CornerOrientation.TOP_RIGHT:
+                cr.move_to(width, height)
+                cr.line_to(width, 0)
+                cr.line_to(0, 0)
+                cr.curve_to(width, 0, width, height, width, height)
+            case CornerOrientation.BOTTOM_LEFT:
+                cr.move_to(0, 0)
+                cr.line_to(0, height)
+                cr.line_to(width, height)
+                cr.curve_to(0, height, 0, 0, 0, 0)
+            case CornerOrientation.BOTTOM_RIGHT:
+                cr.move_to(width, 0)
+                cr.line_to(width, height)
+                cr.line_to(0, height)
+                cr.curve_to(width, height, width, 0, width, 0)
+        cr.close_path()
+        cr.restore()
+        return
+
     @Property(CornerOrientation, "read-write")
     def orientation(self) -> CornerOrientation:
         return self._orientation
@@ -74,31 +108,6 @@ class Corner(Gtk.DrawingArea, Widget):
         self._orientation = get_enum_member(CornerOrientation, orientation)
         self.connect("draw", self.on_draw)
 
-    def do_render_shape(self, cr: cairo.Context, width: float, height: float):
-        # _this is fine_
-        match self.orientation:
-            case CornerOrientation.TOP_LEFT:
-                cr.move_to(0, height)
-                cr.line_to(0, 0)
-                cr.line_to(width, 0)
-                cr.curve_to(0, 0, 0, height, 0, height)
-            case CornerOrientation.TOP_RIGHT:
-                cr.move_to(width, height)
-                cr.line_to(width, 0)
-                cr.line_to(0, 0)
-                cr.curve_to(width, 0, width, height, width, height)
-            case CornerOrientation.BOTTOM_LEFT:
-                cr.move_to(0, 0)
-                cr.line_to(0, height)
-                cr.line_to(width, height)
-                cr.curve_to(0, height, 0, 0, 0, 0)
-            case CornerOrientation.BOTTOM_RIGHT:
-                cr.move_to(width, 0)
-                cr.line_to(width, height)
-                cr.line_to(0, height)
-                cr.curve_to(width, height, width, 0, width, 0)
-        return
-
     def on_draw(self, _, cr: cairo.Context):
         aloc: cairo.Rectangle = self.get_allocation()  # type: ignore
         # ^ hear me out, Gtk.Allocation == Gdk.Rectangle == cairo.Rectangle
@@ -117,16 +126,15 @@ class Corner(Gtk.DrawingArea, Widget):
 
         cr.save()
 
-        self.do_render_shape(cr, width, height)
-        cr.close_path()
-
+        self.render_shape(cr, width, height, self._orientation)
         cr.clip()
         Gtk.render_background(context, cr, 0, 0, width, height)
 
-        Gdk.cairo_set_source_rgba(cr, border_color)  # type: ignore
-        cr.set_line_width(border_width)
-        self.do_render_shape(cr, width, height)
-        cr.stroke()
+        if border_width:
+            Gdk.cairo_set_source_rgba(cr, border_color)  # type: ignore
+            cr.set_line_width(border_width)
+            self.render_shape(cr, width, height, self._orientation)
+            cr.stroke()
 
         cr.restore()
         return

@@ -19,6 +19,8 @@ NOTIFICATIONS_BUS_IFACE_NODE = load_dbus_xml(
 
 
 class NotificationCloseReason(Enum):
+    """A reason for which a notification was closed"""
+
     EXPIRED = 1
     DISMISSED_BY_USER = 2
     CLOSED_BY_APPLICATION = 3
@@ -26,8 +28,19 @@ class NotificationCloseReason(Enum):
 
 
 class NotificationImagePixmap:
+    """A class for storing image data associated with a notification"""
+
     @classmethod
-    def deserialize(cls, data: tuple[int, int, int, bool, int, int, str]):
+    def deserialize(
+        cls, data: tuple[int, int, int, bool, int, int, str]
+    ) -> "NotificationImagePixmap":
+        """Load image data from a serialized data tuple (using the `serialize` method) and return the newly created Pixmap object
+
+        :param data: the tuple which is holding the image's data
+        :type data: tuple[int, int, int, bool, int, int, str]
+        :return: the newly loaded image pixmap
+        :rtype: NotificationImagePixmap
+        """
         self = cls.__new__(cls)
 
         (
@@ -60,6 +73,11 @@ class NotificationImagePixmap:
         self._pixbuf: GdkPixbuf.Pixbuf | None = None
 
     def as_pixbuf(self) -> GdkPixbuf.Pixbuf:
+        """Load a `Pixbuf` variant of this pixmap
+
+        :return: the newly created pixbuf in which it has the contents of this pixmap
+        :rtype: GdkPixbuf.Pixbuf
+        """
         if self._pixbuf is not None:
             return self._pixbuf
 
@@ -75,6 +93,11 @@ class NotificationImagePixmap:
         return self._pixbuf
 
     def serialize(self) -> tuple[int, int, int, bool, int, int, str]:
+        """Serialize this pixmap image into a tuple for ease of carrying and saving
+
+        :return: the serialized pixmap image data
+        :rtype: tuple[int, int, int, bool, int, int, str]
+        """
         return (
             self.width,
             self.height,
@@ -90,12 +113,15 @@ class NotificationImagePixmap:
 
 @dataclass
 class NotificationAction:
+    """A notification action that can be invoked"""
+
     identifier: str
     label: str
 
     parent: "Notification"
 
     def invoke(self):
+        "Invoke this action"
         return self.parent.invoke_action(self.identifier)
 
 
@@ -118,6 +144,8 @@ NotificationSerializedData = TypedDict(
 
 
 class Notification(Service):
+    """The notification class holds all the data of a specific notification (such as actions, images and sender's info)"""
+
     @Signal
     def closed(self, reason: object) -> None: ...
 
@@ -126,10 +154,20 @@ class Notification(Service):
 
     @Property(str, "readable")
     def app_name(self) -> str:
+        """The display name of the application sent this notification
+
+        :return: sender's display name
+        :rtype: str
+        """
         return self._app_name
 
     @Property(str, "readable")
     def app_icon(self) -> str:
+        """An optional application icon name
+
+        :return: sender's named icon (or None)
+        :rtype: str
+        """
         return self._app_icon
 
     @Property(str, "readable")
@@ -138,38 +176,85 @@ class Notification(Service):
 
     @Property(str, "readable")
     def body(self) -> str:
+        """A multi-line body of text given by the sender (might contain markup)
+
+        :return: this notification's body text
+        :rtype: str
+        """
         return self._body
 
     @Property(int, "readable")
     def id(self) -> int:
+        """The uniuqe identifier of this notification
+
+        :return: this notification's id
+        :rtype: int
+        """
         return self._id
 
     @Property(int, "readable")
     def replaces_id(self) -> int:
+        """An optional ID of an existing notification that this notification is intended to replace
+
+        :return: the id of the targetted notification (or None)
+        :rtype: int
+        """
         return self._replaces_id
 
     @Property(int, "readable")
     def timeout(self) -> int:
+        """
+        Expiration timeout (in milliseconds) since the display of the notification
+        at which the notification should automatically get closed
+
+        :return: timeout in milliseconds, -1 means whatever the user decides, 0 means the notification is supposed to never get closed
+        :rtype: int
+        """
         return self._timeout
 
     @Property(int, "readable")
     def urgency(self) -> int:
+        """Urgency level of this notification
+
+        :return: the urgency level as an integer, 0 for low, 1 for normal, 2 for critical
+        :rtype: int
+        """
         return self._urgency
 
     @Property(list[NotificationAction], "readable")
     def actions(self) -> list[NotificationAction]:
+        """A list of all the action this notification has
+
+        :return: a list of notification actions
+        :rtype: list[NotificationAction]
+        """
         return self._actions
 
     @Property(NotificationImagePixmap, "readable")
     def image_pixmap(self) -> NotificationImagePixmap:
+        """Raw image data supplied by the sender (if any)
+
+        :return: raw image data stored in a pixmap object
+        :rtype: NotificationImagePixmap
+        """
         return self._image_pixmap  # type: ignore
 
     @Property(str, "readable")
     def image_file(self) -> str:
+        """The image file path provided by the sender for this notification (if any)
+
+        :return: the image file path
+        :rtype: str
+        """
         return self._image_file  # type: ignore
 
     @Property(GdkPixbuf.Pixbuf, "readable")
     def image_pixbuf(self) -> GdkPixbuf.Pixbuf:
+        """A `Pixbuf` loaded from either `image-pixmap` or the `image-file` property
+
+        :return: the newly loaded image pixbuf
+        :rtype: GdkPixbuf.Pixbuf
+        """
         if self.image_pixmap:
             return self.image_pixmap.as_pixbuf()
         if self.image_file:
@@ -177,7 +262,14 @@ class Notification(Service):
         return None  # type: ignore
 
     @classmethod
-    def deserialize(cls, data: NotificationSerializedData, **kwargs):
+    def deserialize(cls, data: NotificationSerializedData, **kwargs) -> "Notification":
+        """Deserialize a given serialized notification data into a newly created notification object
+
+        :param data: the serialized data to consume and covert to an object
+        :type data: NotificationSerializedData
+        :return: the newly created notification objet
+        :rtype: Notification
+        """
         self = cls.__new__(cls)
         Service.__init__(self, **kwargs)
 
@@ -247,6 +339,11 @@ class Notification(Service):
         return variant.unpack()  # type: ignore
 
     def serialize(self) -> NotificationSerializedData:
+        """Serialize this notification into a dictionary that can easily get converted into JSON
+
+        :return: the serialized notification data (dict)
+        :rtype: NotificationSerializedData
+        """
         return {
             "id": self._id,
             "replaces-id": self._replaces_id,
@@ -264,6 +361,7 @@ class Notification(Service):
         }
 
     def invoke_action(self, action: str):
+        """Invoke an action via its name"""
         return self.action_invoked(action)
 
     def close(
@@ -273,10 +371,17 @@ class Notification(Service):
         ]
         | NotificationCloseReason = NotificationCloseReason.DISMISSED_BY_USER,
     ):
+        """Close this notification and notify the sender with a reason
+
+        :param reason: the reason behind the close of this notification, defaults to NotificationCloseReason.DISMISSED_BY_USER
+        :type reason: Literal["expired", "dismissed-by-user", "closed-by-application", "unknown"] | NotificationCloseReason, optional
+        """
         return self.closed(get_enum_member(NotificationCloseReason, reason))
 
 
 class Notifications(Service):
+    """A server for watching in-coming notifications from running applications, in order for it to work, other notification daemons must be NOT running on the system"""
+
     @Signal
     def changed(self) -> None: ...
 
@@ -306,6 +411,11 @@ class Notifications(Service):
 
     @Property(dict[int, Notification], "readable")
     def notifications(self) -> dict[int, Notification]:
+        """A list of all the notifications received by this server
+
+        :return: the list of notifications
+        :rtype: dict[int, Notification]
+        """
         return self._notifications
 
     def __init__(self, **kwargs):
@@ -426,6 +536,11 @@ class Notifications(Service):
         return
 
     def new_notification_id(self) -> int:
+        """Get the next notification id and increase the internal counter
+
+        :return: the next id
+        :rtype: int
+        """
         self._counter += 1
         return self._counter
 
@@ -441,14 +556,33 @@ class Notifications(Service):
         return self.close_notification(notification.id, reason)
 
     def get_notification_from_id(self, notification_id: int) -> Notification | None:
+        """Lookup a notification via its identifier
+
+        :param notification_id: the notification's id (gotten from the `notification-added` signal)
+        :type notification_id: int
+        :return: the desired notification object (if found)
+        :rtype: Notification | None
+        """
         return self._notifications.get(notification_id)
 
     def invoke_notification_action(self, notification_id: int, action: str):
+        """Invoke a named action on a notification
+
+        :param notification_id: the notification id of in which the action should be triggered
+        :type notification_id: int
+        :param action: the name of the action
+        :type action: str
+        """
         return self.do_emit_bus_signal(
             "ActionInvoked", GLib.Variant("(us)", (notification_id, action))
         )
 
     def remove_notification(self, notification_id: int):
+        """Remove a notification (without closing it) from the server
+
+        :param notification_id: the id of the notification
+        :type notification_id: int
+        """
         return self.notification_removed(notification_id)
 
     def close_notification(
@@ -456,12 +590,32 @@ class Notifications(Service):
         notification_id: int,
         reason: NotificationCloseReason = NotificationCloseReason.DISMISSED_BY_USER,
     ):
+        """Close a notification and remove it from the server
+
+        .. note::
+            Consider using `Notification.close` instead of this, this method is intended for internal usage and it is a subject to change.
+
+        :param notification_id: the id of the notification
+        :type notification_id: int
+        :param reason: the reason behind this notification begin closed, defaults to NotificationCloseReason.DISMISSED_BY_USER
+        :type reason: NotificationCloseReason, optional
+        """
         return self.notification_closed(notification_id, reason)
 
     def serialize(self) -> list[NotificationSerializedData]:
+        """Similar to `Notification.serialize` but it serializes all the notifications in the server instead
+
+        :return: a list with all the serialized notifications in this server
+        :rtype: list[NotificationSerializedData]
+        """
         return [notif.serialize() for notif in self._notifications.values()]
 
     def deserialize(self, data: list[NotificationSerializedData]):
+        """Load a list of serialized notifications data
+
+        :param data: the list with serialized notifications
+        :type data: list[NotificationSerializedData]
+        """
         for notif_data in data:
             self._notifications[notif_data["id"]] = Notification.deserialize(
                 data=notif_data,

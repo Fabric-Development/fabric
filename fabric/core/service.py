@@ -1,33 +1,32 @@
 # GObject must be imported first so the overrides can be imported
-from collections.abc import Callable
-from dataclasses import dataclass
-from typing import (
-    Any,
-    Concatenate,
-    Generator,
-    Generic,
-    Literal,
-    Optional,
-    ParamSpec,
-    Self,
-    TypeVar,
-    Union,
-    overload,
-)
-
-import gi._propertyhelper
-import gi._signalhelper
+from gi.repository import GObject
 
 # all aboard...
 import gi.overrides
+import gi._signalhelper
+import gi._propertyhelper
 import gi.overrides.GObject
-from gi.repository import GObject
 
+from dataclasses import dataclass
+from collections.abc import Callable
+from typing import (
+    overload,
+    Concatenate,
+    ParamSpec,
+    Generator,
+    Optional,
+    Generic,
+    TypeVar,
+    Literal,
+    Union,
+    Self,
+    Any,
+)
 from fabric.utils.helpers import (
     get_enum_member,
-    get_function_annotations,
-    kebab_case_to_snake_case,
     snake_case_to_kebab_case,
+    kebab_case_to_snake_case,
+    get_function_annotations,
 )
 
 OldSignal = gi._signalhelper.Signal
@@ -437,10 +436,8 @@ class Service(OldGObject, Generic[P, T]):
         target_object: GObject.Object,
         transform_to: Callable[[GObject.Binding, Any], Any] | None = None,
         transform_from: Callable[[GObject.Binding, Any], Any] | None = None,
-        flags: (
-            Literal["default", "bidirectional", "sync-create", "invert-boolean"]
-            | GObject.BindingFlags
-        ) = GObject.BindingFlags.DEFAULT,
+        flags: Literal["default", "bidirectional", "sync-create", "invert-boolean"]
+        | GObject.BindingFlags = GObject.BindingFlags.DEFAULT,
     ):
         return self.bind_property(
             source_property,

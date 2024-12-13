@@ -429,7 +429,7 @@ class Language(Button):
                 or not (language := kb.get("active_keymap"))
             ):
                 continue
-
+            self.emit("language-ready",language)
             self.set_label(self.formatter.format(language=language))
             logger.debug(
                 f"[Language] found language: {language} for keyboard {kb_name}"

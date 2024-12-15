@@ -1,13 +1,15 @@
 import gi
 from typing import Literal
 from collections.abc import Iterable
-from fabric.widgets.container import Container
+
+# from fabric.widgets.container import Container
+from fabric.widgets.button import Button
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
 
-class CheckButton(Gtk.CheckButton, Container):
+class CheckButton(Gtk.CheckButton, Button):
     def __init__(
         self,
         label: str | None = None,
@@ -31,10 +33,12 @@ class CheckButton(Gtk.CheckButton, Container):
         **kwargs,
     ):
         Gtk.CheckButton.__init__(self)  # type: ignore
-        Container.__init__(
+        Button.__init__(
             self,
             None,
             name,
+            None,
+            None,
             visible,
             all_visible,
             style,

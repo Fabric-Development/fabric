@@ -200,7 +200,7 @@ class Workspaces(EventBox):
         if len(event.data) < 1:
             return
 
-        active_workspace = int(event.data[0])
+        active_workspace = self.get_workspace_id(event.data[0])
         if active_workspace == self._active_workspace:
             return
 
@@ -223,7 +223,7 @@ class Workspaces(EventBox):
     def on_createworkspace(self, _, event: HyprlandEvent):
         if len(event.data) < 1:
             return
-        new_workspace = int(event.data[0])
+        new_workspace = self.get_workspace_id(event.data[0])
 
         if not (btn := self.lookup_or_bake_button(new_workspace)):
             return
@@ -237,7 +237,7 @@ class Workspaces(EventBox):
         if len(event.data) < 1:
             return
 
-        destroyed_workspace = int(event.data[0])
+        destroyed_workspace = self.get_workspace_id(event.data[0])
         if not (btn := self._buttons.get(destroyed_workspace)):
             return  # doens't exist, skip
 
@@ -308,6 +308,12 @@ class Workspaces(EventBox):
     def do_handle_button_press(self, button: WorkspaceButton):
         self.connection.send_command(f"batch/dispatch workspace {button.id}")
         return logger.info(f"[Workspaces] Moved to workspace {button.id}")
+
+    def get_workspace_id(self, data: str) -> int:
+        if data == "special:special":
+            return -99
+        else:
+            return int(data)
 
 
 class ActiveWindow(Button):

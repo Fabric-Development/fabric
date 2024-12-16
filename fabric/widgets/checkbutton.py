@@ -35,10 +35,10 @@ class CheckButton(Gtk.CheckButton, Button):
         Gtk.CheckButton.__init__(self)  # type: ignore
         Button.__init__(
             self,
-            None,
+            label,
             name,
             None,
-            None,
+            child,
             visible,
             all_visible,
             style,
@@ -52,5 +52,3 @@ class CheckButton(Gtk.CheckButton, Button):
             size,
             **kwargs,
         )
-        self.set_label(label) if label is not None else None
-        self.add(child) if child is not None else None

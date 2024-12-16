@@ -310,10 +310,9 @@ class Workspaces(EventBox):
         return logger.info(f"[Workspaces] Moved to workspace {button.id}")
 
     def do_get_workspace_id(self, event: HyprlandEvent) -> int:
-        if event.data[0] == "special:special":
+        if "special" in (ws := event.data[0]):
             return -99
-        else:
-            return int(event.data[0])
+        return int(ws)
 
 
 class ActiveWindow(Button):

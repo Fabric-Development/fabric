@@ -1,17 +1,16 @@
 {
   lib,
-  python311Packages,
+  python312Packages,
   gtk3,
   gtk-layer-shell,
   cairo,
   gobject-introspection,
   libdbusmenu-gtk3,
   gdk-pixbuf,
-  cinnamon,
-  gnome,
+  cinnamon-desktop,
+  gnome-bluetooth,
 }:
-
-python311Packages.buildPythonPackage {
+python312Packages.buildPythonPackage {
   pname = "python-fabric";
   version = "0.0.1";
   pyproject = true;
@@ -25,11 +24,11 @@ python311Packages.buildPythonPackage {
     gobject-introspection
     libdbusmenu-gtk3
     gdk-pixbuf
-    cinnamon.cinnamon-desktop
-    gnome.gnome-bluetooth
+    cinnamon-desktop
+    gnome-bluetooth
   ];
 
-  dependencies = with python311Packages; [
+  dependencies = with python312Packages; [
     setuptools
     click
     pycairo
@@ -46,6 +45,6 @@ python311Packages.buildPythonPackage {
     '';
     homepage = "https://github.com/Fabric-Development/fabric";
     license = lib.licenses.mit;
-    maintainers = with lib.maintainers; [ ];
+    maintainers = with lib.maintainers; [];
   };
 }

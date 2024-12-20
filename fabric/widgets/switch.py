@@ -29,7 +29,7 @@ class Switch(Gtk.Switch, Widget):
         style_classes: Iterable[str] | str | None = None,
         **kwargs,
     ):
-        Gtk.Scale.__init__(self)  # type: ignore
+        Gtk.Switch.__init__(self)  # type: ignore
         Widget.__init__(
             self,
             name,

@@ -7,7 +7,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
 
-class Switch(Gtk.Switch, Gtk.CheckButton, Widget):
+class Switch(Gtk.Switch, Widget):
     """A switch widget."""
 
     def __init__(

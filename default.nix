@@ -12,7 +12,7 @@
 }:
 python312Packages.buildPythonPackage {
   pname = "python-fabric";
-  version = "0.0.1";
+  version = "0.0.2";
   pyproject = true;
 
   src = ./.;
@@ -44,7 +44,7 @@ python312Packages.buildPythonPackage {
       next-gen framework for building desktop widgets using Python (check the rewrite branch for progress)
     '';
     homepage = "https://github.com/Fabric-Development/fabric";
-    license = lib.licenses.mit;
+    license = lib.licenses.agpl3Plus;
     maintainers = with lib.maintainers; [];
   };
 }

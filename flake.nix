@@ -5,34 +5,37 @@
   '';
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/24.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
     utils.url = "github:numtide/flake-utils";
   };
 
-  outputs =
-    { nixpkgs, utils, ... }:
+  outputs = {
+    nixpkgs,
+    utils,
+    ...
+  }:
     utils.lib.eachDefaultSystem (
-      system:
-      let
+      system: let
         overlay = final: prev: {
-          pythonPackagesExtensions = prev.pythonPackagesExtensions ++ [
-            (python-final: python-prev: {
-              python-fabric = prev.callPackage ./default.nix { };
-            })
-          ];
+          pythonPackagesExtensions =
+            prev.pythonPackagesExtensions
+            ++ [
+              (python-final: python-prev: {
+                python-fabric = prev.callPackage ./default.nix {};
+              })
+            ];
         };
 
         pkgs = nixpkgs.legacyPackages.${system}.extend overlay;
-      in
-      {
+      in {
         overlays.default = overlay;
         formatter = pkgs.nixfmt-rfc-style;
         packages = {
-          default = pkgs.python3Packages.python-fabric ;
-          run-widget =
-            let
-              python = pkgs.python3.withPackages (
-                ps: with ps; [
+          default = pkgs.python3Packages.python-fabric;
+          run-widget = let
+            python = pkgs.python3.withPackages (
+              ps:
+                with ps; [
                   click
                   pycairo
                   pygobject3
@@ -41,8 +44,8 @@
                   python-fabric
                   pygobject-stubs
                 ]
-              );
-            in
+            );
+          in
             pkgs.stdenv.mkDerivation {
               name = "run-widget";
               propagatedBuildInputs = with pkgs; [
@@ -52,10 +55,10 @@
                 gobject-introspection
                 libdbusmenu-gtk3
                 gdk-pixbuf
-                gnome.gnome-bluetooth
-                cinnamon.cinnamon-desktop
+                gnome-bluetooth
+                cinnamon-desktop
               ];
-              phases = [ "installPhase" ];
+              phases = ["installPhase"];
               installPhase = ''
                 mkdir -p $out/bin
                 cat > $out/bin/run-widget << EOF
@@ -79,21 +82,22 @@
               gobject-introspection
               libdbusmenu-gtk3
               gdk-pixbuf
-              gnome.gnome-bluetooth
-              cinnamon.cinnamon-desktop
+              gnome-bluetooth
+              cinnamon-desktop
               (python3.withPackages (
-                ps: with ps; [
-                  setuptools
-                  wheel
-                  build
-                  click
-                  pycairo
-                  pygobject3
-                  pygobject-stubs
-                  loguru
-                  psutil
-                  python-fabric
-                ]
+                ps:
+                  with ps; [
+                    setuptools
+                    wheel
+                    build
+                    click
+                    pycairo
+                    pygobject3
+                    pygobject-stubs
+                    loguru
+                    psutil
+                    python-fabric
+                  ]
               ))
             ];
           };

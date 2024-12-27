@@ -3,13 +3,13 @@ from typing import Iterable, Literal
 
 import cairo
 import gi
+from gi.repository import Gdk, Gtk
 
 from fabric.core.service import Property
 from fabric.utils.helpers import clamp, get_enum_member
 from fabric.widgets.widget import Widget
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gdk, Gtk
 
 
 class CircularProgressBar(Gtk.Bin, Widget):

@@ -36,4 +36,4 @@ A Collection of Desktop rices that muscle-show what you are able to do using Fab
 
 ## Hacking and Contributing
 
-Interested in contributing? Check out the full guide in [our wiki pages](https://wiki.ffpy.org/guide/hacking-guide/).
+Interested in contributing? Check out the full guide in [our wiki pages](https://wiki.ffpy.org/contributing/hacking-guide/).

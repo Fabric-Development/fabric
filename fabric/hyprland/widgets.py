@@ -76,12 +76,12 @@ class WorkspaceButton(Button):
         style_classes: Iterable[str] | str | None = None,
         tooltip_text: str | None = None,
         tooltip_markup: str | None = None,
-        h_align: Literal["fill", "start", "end", "center", "baseline"]
-        | Gtk.Align
-        | None = None,
-        v_align: Literal["fill", "start", "end", "center", "baseline"]
-        | Gtk.Align
-        | None = None,
+        h_align: (
+            Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None
+        ) = None,
+        v_align: (
+            Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None
+        ) = None,
         h_expand: bool = False,
         v_expand: bool = False,
         size: Iterable[int] | int | None = None,
@@ -131,8 +131,9 @@ class Workspaces(EventBox):
     def __init__(
         self,
         buttons: Iterable[WorkspaceButton] | None = None,
-        buttons_factory: Callable[[int], WorkspaceButton | None]
-        | None = default_buttons_factory,
+        buttons_factory: (
+            Callable[[int], WorkspaceButton | None] | None
+        ) = default_buttons_factory,
         invert_scroll: bool = False,
         empty_scroll: bool = False,
         **kwargs,
@@ -154,9 +155,9 @@ class Workspaces(EventBox):
         bulk_connect(
             self.connection,
             {
-                "event::workspace": self.on_workspace,
-                "event::createworkspace": self.on_createworkspace,
-                "event::destroyworkspace": self.on_destroyworkspace,
+                "event::workspacev2": self.on_workspace,
+                "event::createworkspacev2": self.on_createworkspace,
+                "event::destroyworkspacev2": self.on_destroyworkspace,
                 "event::urgent": self.on_urgent,
             },
         )
@@ -197,10 +198,10 @@ class Workspaces(EventBox):
         return
 
     def on_workspace(self, _, event: HyprlandEvent):
-        if len(event.data) < 1:
+        if len(event.data) != 2:
             return
 
-        active_workspace = self.do_get_workspace_id(event)
+        active_workspace = int(event.data[0])
         if active_workspace == self._active_workspace:
             return
 
@@ -221,9 +222,9 @@ class Workspaces(EventBox):
         return self.insert_button(btn)
 
     def on_createworkspace(self, _, event: HyprlandEvent):
-        if len(event.data) < 1:
+        if len(event.data) != 2:
             return
-        new_workspace = self.do_get_workspace_id(event)
+        new_workspace = int(event.data[0])
 
         if not (btn := self.lookup_or_bake_button(new_workspace)):
             return
@@ -234,10 +235,10 @@ class Workspaces(EventBox):
         return self.insert_button(btn)
 
     def on_destroyworkspace(self, _, event: HyprlandEvent):
-        if len(event.data) < 1:
+        if len(event.data) != 2:
             return
 
-        destroyed_workspace = self.do_get_workspace_id(event)
+        destroyed_workspace = int(event.data[0])
         if not (btn := self._buttons.get(destroyed_workspace)):
             return  # doens't exist, skip
 
@@ -250,7 +251,7 @@ class Workspaces(EventBox):
         return self.remove_button(btn)
 
     def on_urgent(self, _, event: HyprlandEvent):
-        if len(event.data) < 1:
+        if len(event.data) != 1:
             return
 
         clients = json.loads(self.connection.send_command("j/clients").reply.decode())
@@ -308,11 +309,6 @@ class Workspaces(EventBox):
     def do_handle_button_press(self, button: WorkspaceButton):
         self.connection.send_command(f"batch/dispatch workspace {button.id}")
         return logger.info(f"[Workspaces] Moved to workspace {button.id}")
-
-    def do_get_workspace_id(self, event: HyprlandEvent) -> int:
-        if "special" in (ws := event.data[0]):
-            return -99
-        return int(ws)
 
 
 class ActiveWindow(Button):

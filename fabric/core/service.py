@@ -116,13 +116,9 @@ class Property(OldProperty, Generic[T]):
                 "_setter_middle_gate",
                 lambda instance, value: self.fset(instance, value),  # type: ignore
             )
-        try:
-            _type = type if issubclass(type, (bool, int, float, str)) else object
-        except TypeError:
-            _type = object
 
         super().__init__(
-            type=_type,
+            type=type if issubclass(type, (bool, int, float, str)) else object,
             default=default_value,
             nick=nickname or "",
             blurb=description,
@@ -137,27 +133,27 @@ class Property(OldProperty, Generic[T]):
     def _default_getter(self, instance) -> T:
         return getattr(instance, ("_property_helper_" + self.name), self.default)
 
-    def _default_setter(self, instance, value: T):
+    def _default_setter(self, instance, value: T) -> None:
         return setattr(instance, ("_property_helper_" + self.name), value)
 
-    def getter(self, fget: Callable[..., T]):
+    def getter(self, fget: Callable[..., T]) -> Self:
         return super().getter(fget)
 
-    def setter(self, fset: Callable):
+    def setter(self, fset: Callable) -> Self:
         return super().setter(fset)
 
-    def __call__(self, fget: Callable[..., T]):
+    def __call__(self, fget: Callable[..., T]) -> Self:
         return self.getter(fget)
 
     def __get__(self, instance, klass=None) -> T:
         # Property -> get current value of self
         return super().__get__(instance, klass)  # type: ignore
 
-    def __set__(self, instance, value):
+    def __set__(self, instance, value) -> None:
         # Propery = X -> set X as the current value of the property
         return self._setter_middle_gate(instance, value)
 
-    def _setter_middle_gate(self, instance, value):
+    def _setter_middle_gate(self, instance, value) -> None:
         return super().__set__(instance, value)
 
     @staticmethod
@@ -390,12 +386,22 @@ class Builder(Generic[G]):
 
 @override(GObject, "Object")
 @override(gi.overrides.GObject, "Object")
-class Service(OldGObject, Generic[P, T]):
+class Service(GObject.Object, Generic[P, T]):
+    """
+    Base service class
+
+    Handles constructor connections, bindings and builders
+    """
+
     __gsignals__ = {}
     __gproperties__ = {}
     props: list[Any]
 
     def __init__(self, **kwargs):
+        """Default service constructor (base constructor)
+
+        :param **kwargs: mapped to signal connections (e.g. `on_clicked=lambda *_: ...` connects the given function to the signal "clicked", `notify_my_property=my_func` connects the given function to the signal "notify::my-property")
+        """
         super().__init__(**self.filter_kwargs(kwargs))
         self._builder: Optional[Builder] = None
         self.do_connect_kwargs(kwargs)
@@ -422,6 +428,43 @@ class Service(OldGObject, Generic[P, T]):
         *args: P.args,
         **kwargs: P.kwargs,
     ) -> Union[Builder[Self], Self]:
+        """Get an instance of a `Builder` that holds a reference to this service
+
+        Builders enable you of doing extra configuration after the initialization
+        of a service with ease, it makes you able to either have a callback function
+        that does all the extra setup or chain all your setup calls at once
+
+        **Examples:**
+
+        .. code-block:: python
+
+            my_service = (
+                MyService()
+                .build()
+                # beginning of method chaining
+                .useful_method()
+                .other_useful_method()
+                .set_something("something")
+                .unwrap() # unwrap self (the service) and get a refernce to it
+            )
+
+            # when passing a setup function it returns self by default
+            my_service = MyService().build(lambda self, builder: self.do_something())
+            my_service = MyService().build(
+                lambda self, builder: (
+                    builder.useful_method()
+                    .other_useful_method()
+                    .set_something("something")
+                    # no need to do `.unwrap()` since we don't really need the value of self
+                )
+            )
+
+
+        :param callback: an optional callback to use instead of chaining method calls, defaults to None
+        :type callback: Optional[Callable[Concatenate[Self, Builder[Self], P], Any]], optional
+        :return: a newly created builder (or a cached one if found)
+        :rtype: Union[Builder[Self], Self]
+        """
         if not self._builder:
             self._builder = Builder(self)
         if callable and callable(callback):

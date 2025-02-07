@@ -88,7 +88,7 @@ class Svg(Gtk.DrawingArea, Widget):
             name,
             visible,
             all_visible,
-            style,
+            None,
             style_classes,
             tooltip_text,
             tooltip_markup,
@@ -96,7 +96,7 @@ class Svg(Gtk.DrawingArea, Widget):
             v_align,
             h_expand,
             v_expand,
-            None,
+            size,
             **kwargs,
         )
         if svg_string and svg_file:
@@ -116,61 +116,60 @@ class Svg(Gtk.DrawingArea, Widget):
         if style:
             self.set_style(style)
 
-        svg_size = self.do_get_svg_size()
-        if size is not None:
-            self.set_size_request(
-                *self.do_calculate_size(
-                    *(size if isinstance(size, (tuple, list)) else (size, size)),
-                    (svg_size[0] / svg_size[1]),  # type: ignore
-                )
-            )
-        else:
-            self.set_size_request(*svg_size)
-
-    def do_get_svg_size(self) -> tuple[int, int]:
-        return self._handle.props.width, self._handle.props.height  # type: ignore
-
-    def do_get_viewport_rectangle(self) -> Rsvg.Rectangle:
-        alloc = self.get_allocation()
-        rect = Rsvg.Rectangle()
-        rect.x, rect.y, rect.width, rect.height = 0, 0, alloc.width, alloc.height  # type: ignore
-        return rect
-
-    def do_calculate_size(
-        self, width: int, height: int, aspect_ratio: float
-    ) -> tuple[int, int]:
-        cur_aspect = width / height
-        new_width, new_height = width, height
-        if cur_aspect > aspect_ratio:
-            new_width = height * aspect_ratio
-        else:
-            new_height = width / aspect_ratio
-        return round(new_width), round(new_height)
-
     def do_draw(self, cr: cairo.Context):
         if not self._handle:
             return
-        cr.save()
 
-        cr.set_antialias(cairo.Antialias.BEST)
+        alloc = self.get_allocation()
+        width: int = alloc.width  # type: ignore
+        height: int = alloc.height  # type: ignore
+
+        rect = Rsvg.Rectangle()
+        rect.x = rect.y = 0  # type: ignore
+        rect.width = width  # type: ignore
+        rect.height = height  # type: ignore
 
         if self._style_compiled is not None and self._handle.set_stylesheet(
             self._style_compiled.encode()  # type: ignore
         ):
             logger.error("[Svg] failed to apply style, probably invalid style property")
-
         self._handle.set_dpi((self.get_scale_factor() * 160))
-        self._handle.render_document(cr, self.do_get_viewport_rectangle())  # type: ignore
 
+        cr.save()
+        cr.set_antialias(cairo.Antialias.BEST)
+        self._handle.render_document(cr, rect)  # type: ignore
         cr.restore()
 
-    def do_finalize_handle(self):
-        if self._handle:
-            self._handle.free()
-
-            del self._handle
-            self._handle = None
         return
+
+    def do_finalize_handle(self):
+        if not self._handle:
+            return
+        self._handle.free()
+        del self._handle
+
+        self._handle = None
+        return
+
+    def get_svg_size(self) -> tuple[int, int] | None:
+        """Get the dimensions of the loaded svg buffer (if any)
+
+        :return: a tuple holding (width, height) values, None if couldn't find a loaded svg
+        :rtype: tuple[int, int]
+        """
+        if not self._handle:
+            return None
+        return self._handle.props.width, self._handle.props.height  # type: ignore
+
+    def set_from_file(self, file: str):
+        self.do_finalize_handle()
+        self._handle = Rsvg.Handle.new_from_file(file)
+        return self.queue_draw()
+
+    def set_from_string(self, string: str):
+        self.do_finalize_handle()
+        self._handle = Rsvg.Handle.new_from_data(string.encode())  # type: ignore
+        return self.queue_draw()
 
     # override
     def set_style(
@@ -189,14 +188,4 @@ class Svg(Gtk.DrawingArea, Widget):
         else:
             self._style_compiled = style
 
-        return self.queue_draw()
-
-    def set_from_file(self, file: str):
-        self.do_finalize_handle()
-        self._handle = Rsvg.Handle.new_from_file(file)
-        return self.queue_draw()
-
-    def set_from_string(self, string: str):
-        self.do_finalize_handle()
-        self._handle = Rsvg.Handle.new_from_data(string.encode())  # type: ignore
         return self.queue_draw()

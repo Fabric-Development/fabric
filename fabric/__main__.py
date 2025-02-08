@@ -1,4 +1,5 @@
 import click
+from json import dumps as serialize_json
 from gi.repository import GLib, Gio
 
 FABRIC_DBUS_INTERFACE_NAME = "org.Fabric.fabric"
@@ -79,20 +80,30 @@ def command(
     *extra,
 ):
     def decorator(func) -> click.Command:
-        func = click.command(name=name, help=help)(func)
+        if with_json:
+            command = click.command(name=name, help=help)(
+                lambda *args, json=False, **kwargs: (
+                    rval := func(*args, json=json, **kwargs),
+                    click.echo(serialize_json(rval) if json else rval)
+                    if rval
+                    else None,
+                )
+            )
+        else:
+            command = click.command(name=name, help=help)(func)
+
         if needs_instance:
-            func = click.argument(
-                "instance",  # help="the name of the instance to execute this command on"
-            )(func)
+            command = click.argument("instance")(command)
 
         for ext in extra:
-            func = ext(func)  # type: ignore
+            command = ext(command)  # type: ignore
 
         if with_json:
-            func = click.option(
+            command = click.option(
                 "--json", "-j", is_flag=True, help="to return the output in json format"
-            )(func)
-        return func
+            )(command)
+
+        return command
 
     return decorator
 
@@ -108,10 +119,9 @@ def list_all(json: bool = False):
         get_dbus_names(),  # type: ignore
     )
     if json:
-        return click.echo({"instances-dbus-names": list(filtered_names)})
+        return {"instances-dbus-names": list(filtered_names)}
     for dbus_name in filtered_names:
         config_name: str = dbus_name.removeprefix(FABRIC_DBUS_INTERFACE_NAME + ".")
-        # print(dbus_name)
         proxy = get_instance_proxy(dbus_name)
         click.echo(
             f"{config_name}: {str(proxy.get_cached_property('File').unpack())}"
@@ -120,30 +130,60 @@ def list_all(json: bool = False):
 
 
 @command(
+    name="list-actions",
+    help="list actions in a currently running fabric instance",
+    needs_instance=True,
+)
+def list_actions(instance: str, json: bool = False):
+    bus_object = check_and_get_instance_proxy(instance, json)
+    actions: dict[str, list[str]] = dict(bus_object.get_cached_property("Actions"))  # type: ignore
+
+    if json:
+        return actions
+
+    for name, args in actions.items():
+        click.echo(f"{name} ({', '.join(args)})")
+    return
+
+
+@command(
+    "invoke-action",
+    "list all registered (and callable) actions",
+    True,
+    True,
+    click.argument("action-name"),
+    click.argument("arguments", nargs=-1),
+)
+def invoke_action(
+    instance: str, action_name: str, arguments: tuple[str, ...], json: bool = False
+):
+    bus_object = check_and_get_instance_proxy(instance, json)
+    err, msg = bus_object.InvokeAction("(sas)", action_name, arguments)
+
+    if json:
+        return {"error": err, "message": msg}
+
+    if err:
+        return f"couldn't invoke action\nerror: {msg}"
+
+    return f"action invoked\nreturn message: {msg}"
+
+
+@command(
     "execute",
     "executes a python code within the running fabric instance",
     True,
     True,
-    click.argument(
-        "source",
-        # help="python source code to execute"
-    ),
+    click.argument("source"),
 )
 def execute(instance: str, source: str, json: bool = False):
     bus_object = check_and_get_instance_proxy(instance, json)
     exc = bus_object.Execute("(s)", source)
-    return (
-        click.echo("exception: " + exc)
-        if exc != ""
-        else None
-        if json is False
-        else click.echo(
-            {
-                "source": source,
-                "exception": exc,
-            }
-        )
-    )
+    if json:
+        return {"source": source, "exception": exc}
+    if exc:
+        return f"exception: {exc}"
+    return
 
 
 @command(
@@ -151,27 +191,16 @@ def execute(instance: str, source: str, json: bool = False):
     "evaluate a python code within a running fabric instance and return the result",
     True,
     True,
-    click.argument(
-        "code",
-        # help="python code to execute"
-    ),
+    click.argument("code"),
 )
 def evaluate(instance: str, code: str, json: bool = False):
     bus_object = check_and_get_instance_proxy(instance, json)
     result, exc = bus_object.Evaluate("(s)", code)
-    return (
-        click.echo(
-            "result: " + (result + "\nexception: " + exc if exc != "" else result)
-        )
-        if not json
-        else click.echo(
-            {
-                "code": code,
-                "result": result,
-                "exception": exc,
-            }
-        )
-    )
+
+    if json:
+        return {"code": code, "result": result, "exception": exc}
+
+    return "result: " + (result + "\nexception: " + exc if exc != "" else result)
 
 
 @click.group()
@@ -181,7 +210,9 @@ def main():
 
 if __name__ == "__main__":
     main.add_command(list_all)
+    main.add_command(list_actions)
     main.add_command(execute)
     main.add_command(evaluate)
+    main.add_command(invoke_action)
 
     main()

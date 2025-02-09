@@ -116,9 +116,13 @@ class Property(OldProperty, Generic[T]):
                 "_setter_middle_gate",
                 lambda instance, value: self.fset(instance, value),  # type: ignore
             )
+        try:
+            _type = type if issubclass(type, (bool, int, float, str)) else object
+        except TypeError:
+            _type = object
 
         super().__init__(
-            type=type if issubclass(type, (bool, int, float, str)) else object,
+            type=_type,
             default=default_value,
             nick=nickname or "",
             blurb=description,

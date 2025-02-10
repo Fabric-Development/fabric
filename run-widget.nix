@@ -9,6 +9,7 @@
   gdk-pixbuf,
   gnome-bluetooth,
   cinnamon-desktop,
+  librsvg,
   extraPythonPackages ? [],
   extraBuildInputs ? [],
 }: let
@@ -37,6 +38,7 @@ in
         gobject-introspection
         libdbusmenu-gtk3
         gdk-pixbuf
+        librsvg
         gnome-bluetooth
         cinnamon-desktop
       ]
@@ -47,6 +49,7 @@ in
       cat > $out/bin/run-widget << EOF
       #!/bin/sh
       GI_TYPELIB_PATH=$GI_TYPELIB_PATH \
+      GDK_PIXBUF_MODULE_FILE="$GDK_PIXBUF_MODULE_FILE" \
       ${python.interpreter} "\$@"
       EOF
       chmod +x $out/bin/run-widget

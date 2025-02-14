@@ -1,36 +1,16 @@
-import math
-from typing import Iterable, Literal
-
-import cairo
 import gi
-from gi.repository import Gdk, Gtk
-
+import math
+import cairo
+from typing import Literal, Iterable
 from fabric.core.service import Property
-from fabric.utils.helpers import clamp, get_enum_member
-from fabric.widgets.widget import Widget
+from fabric.widgets.container import Container
+from fabric.utils.helpers import get_enum_member, clamp
 
 gi.require_version("Gtk", "3.0")
+from gi.repository import Gdk, Gtk
 
 
-class CircularProgressBar(Gtk.Bin, Widget):
-    @Property(float, "read-write", default_value=0.0)
-    def start_at(self) -> float:
-        return self._start_at
-
-    @start_at.setter
-    def start_at(self, value: float):
-        self._start_at = clamp(value, 0.0, 1.0)
-        return self.queue_draw()
-
-    @Property(float, "read-write", default_value=0.0)
-    def end_at(self) -> float:
-        return self._end_at
-
-    @end_at.setter
-    def end_at(self, value: float):
-        self._end_at = clamp(value, 0.0, 1.0)
-        return self.queue_draw()
-
+class CircularProgressBar(Gtk.Bin, Container):
     @Property(float, "read-write", default_value=0.0)
     def min_value(self) -> float:
         return self._min_value
@@ -51,13 +31,13 @@ class CircularProgressBar(Gtk.Bin, Widget):
         self._max_value = value
         return self.queue_draw()
 
-    @Property(float, "read-write", default_value=0.0)
+    @Property(float, "read-write", default_value=1.0)
     def value(self) -> float:
         return self._value
 
     @value.setter
     def value(self, value: float):
-        self._value = clamp(value, self.min_value, self.max_value)
+        self._value = value
         return self.queue_draw()
 
     @Property(bool, "read-write", default_value=False)
@@ -85,49 +65,57 @@ class CircularProgressBar(Gtk.Bin, Widget):
     @line_style.setter
     def line_style(
         self,
-        line_style: (
-            Literal[
-                "none",
-                "butt",
-                "round",
-                "square",
-            ]
-            | cairo.LineCap
-        ),
+        line_style: Literal[
+            "none",
+            "butt",
+            "round",
+            "square",
+        ]
+        | cairo.LineCap,
     ):
         self._line_style = get_enum_member(cairo.LineCap, line_style)  # type: ignore
         return self.queue_draw()
 
-    @Property(object, "read-write")
-    def size(self) -> Iterable[int] | int | None:
-        return self._size
+    @Property(float, "read-write", default_value=0.0)
+    def start_angle(self) -> float:
+        return self._start_angle
 
-    @size.setter
-    def size(self, value: Iterable[int] | int | None):
-        self._size = value
+    @start_angle.setter
+    def start_angle(self, value: float):
+        self._start_angle = value
+        return self.queue_draw()
+
+    @Property(float, "read-write", default_value=360.0)
+    def end_angle(self) -> float:
+        return self._end_angle
+
+    @end_angle.setter
+    def end_angle(self, value: float):
+        self._end_angle = value
+        return self.queue_draw()
+
+    @Property(bool, "read-write", default_value=False)
+    def invert(self) -> bool:
+        return self._invert
+
+    @invert.setter
+    def invert(self, value: bool):
+        self._invert = value
         return self.queue_draw()
 
     def __init__(
         self,
-        child: Gtk.Widget | None = None,
-        value: float = 0.0,
-        start_at: float = 0.0,
-        end_at: float = 1.0,
+        value: float = 1.0,
         min_value: float = 0.0,
         max_value: float = 1.0,
-        pie: bool = False,
+        start_angle: float | None = None,
+        end_angle: float | None = None,
         line_width: int = 4,
-        line_style: (
-            Literal[
-                "none",
-                "butt",
-                "round",
-                "square",
-            ]
-            | cairo.LineCap
-        ) = cairo.LineCap.ROUND,
-        inverted: bool = False,
-        size: Iterable[int] | int | None = None,
+        line_style: Literal["none", "butt", "round", "square"]
+        | cairo.LineCap = cairo.LineCap.ROUND,
+        pie: bool = False,
+        invert: bool = False,  # TODO: implement...
+        child: Gtk.Widget | None = None,
         name: str | None = None,
         visible: bool = True,
         all_visible: bool = False,
@@ -135,19 +123,21 @@ class CircularProgressBar(Gtk.Bin, Widget):
         style_classes: Iterable[str] | str | None = None,
         tooltip_text: str | None = None,
         tooltip_markup: str | None = None,
-        h_align: (
-            Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None
-        ) = None,
-        v_align: (
-            Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None
-        ) = None,
+        h_align: Literal["fill", "start", "end", "center", "baseline"]
+        | Gtk.Align
+        | None = None,
+        v_align: Literal["fill", "start", "end", "center", "baseline"]
+        | Gtk.Align
+        | None = None,
         h_expand: bool = False,
         v_expand: bool = False,
+        size: Iterable[int] | int | None = None,
         **kwargs,
     ):
-        Gtk.Bin.__init__(self)  # type: ignore
-        Widget.__init__(
+        Gtk.DrawingArea.__init__(self)  # type: ignore
+        Container.__init__(
             self,
+            child,
             name,
             visible,
             all_visible,
@@ -162,143 +152,46 @@ class CircularProgressBar(Gtk.Bin, Widget):
             size,
             **kwargs,
         )
-        self._start_at: float = 0.0
-        self._end_at: float = 1.0
+        self._value: float = 1.0
         self._min_value: float = 0.0
         self._max_value: float = 1.0
-        self._value: float = 0.0
-        self._pie: bool = False
+        self._line_width: int = 4
         self._line_style: cairo.LineCap = cairo.LineCap.ROUND
-        self._inverted: bool = False
-        self._size: Iterable[int] | int | None = None
+        self._pie: bool = False
+        self._invert: bool = False
+        self._start_angle: float = 0.0
+        self._end_angle: float = 360.0
 
-        self.start_at = start_at
-        self.end_at = end_at
+        self.value = value
         self.min_value = min_value
         self.max_value = max_value
-        self.value = value
         self.line_width = line_width
-        self.pie = pie
         self.line_style = line_style
-        self.inverted = inverted
-        self.size = size
+        self.pie = pie
+        self.invert = invert
+        self.start_angle = start_angle if start_angle is not None else 0.0
+        self.end_angle = end_angle if end_angle is not None else 360.0
 
-        if child:
-            self.add(child)
-
-        self.connect("draw", self.on_draw)
+    def do_calculate_radius(self) -> int:
+        alloc = self.get_allocation()
+        return min(alloc.width, alloc.height) // 2
 
     def do_get_preferred_width(self):
-        if self.size:
-            if isinstance(self.size, int):
-                return self.size, self.size
-            else:
-                return self.size[0], self.size[0]
-        min_width = self.get_style_context().get_property(
-            "min-width", Gtk.StateFlags.NORMAL
-        )
-        if min_width <= 0:
-            min_width = 40
-        return min_width, min_width
+        return (2 * self.do_calculate_radius(),) * 2
 
     def do_get_preferred_height(self):
-        if self.size:
-            if isinstance(self.size, int):
-                return self.size, self.size
-            else:
-                return self.size[1], self.size[1]
-        min_height = self.get_style_context().get_property(
-            "min-height", Gtk.StateFlags.NORMAL
-        )
-        if min_height <= 0:
-            min_height = 40
-        return min_height, min_height
+        return self.do_get_preferred_width()
 
-    def do_convert_to_radian(self, percentage: float) -> float:
-        percentage = math.floor(percentage * 100)
-        return (percentage / 100) * (2 * math.pi)
-
-    def do_check_full_circle(
-        self, start: float, end: float, epsilon: float = 1e-10
-    ) -> bool:
-        start = (start % 1 + 1) % 1
-        end = (end % 1 + 1) % 1
-        return abs(start - end) <= epsilon
-
-    def do_scale_arc_value(self, start: float, end: float, value: float) -> float:
-        start = (start % 1 + 1) % 1
-        end = (end % 1 + 1) % 1
-
-        if abs(end - start) < 1e-10:  # Handles the full circle case
-            return value
-
-        arc_length = end - start
-        if arc_length < 0:
-            arc_length += 1
-
-        scaled = arc_length * value
-        scaled = (scaled % 1 + 1) % 1
-        return start + scaled
-
-    def do_normalize_value(self) -> float:
-        return (self.value - self.min_value) / (self.max_value - self.min_value)
-
-    def do_draw_arc(
-        self,
-        cr: cairo.Context,
-        center_x: float,
-        center_y: float,
-        radius: float,
-        line_width: float,
-        start_at: float,
-        end_at: float,
-        color,
-        pie: bool = False,
-    ):
-        start_radian = self.do_convert_to_radian(start_at)
-        end_radian = self.do_convert_to_radian(end_at)
-
-        # Set color
-        Gdk.cairo_set_source_rgba(cr, color)  # type: ignore
-
-        # Draw the arc
-        cr.set_line_cap(self._line_style)
-        cr.move_to(center_x, center_y) if pie else None
-        cr.arc(center_x, center_y, radius, start_radian, end_radian)
-        cr.set_line_width(line_width)
-        cr.fill() if pie else cr.stroke()
-
-    def on_draw(self, _, cr: cairo.Context):
-        # CSS properties lookup table
-        #  -------------------------------
-        # | border: ... ... SIZE          |
-        # | will result in SIZE begin     |
-        # | used as the line_width value  |
-        #  ------------------------------
-        # | background fill     | background-color
-        # |---------------------|--------
-        # | radius fill         | color
-        # |---------------------|--------
-        # | progress fill       | border-color
-        # |---------------------|--------
-        # | progress line width | border-color
-        #  ------------------------------
-        allocation = self.get_allocation()
+    def do_draw(self, cr: cairo.Context):
         style_context = self.get_style_context()
 
-        # Retrieve colors
-        background_color = style_context.get_background_color(Gtk.StateFlags.NORMAL)
-        radius_color = style_context.get_color(Gtk.StateFlags.NORMAL)
-        progress_color = style_context.get_border_color(Gtk.StateFlags.NORMAL)
-        border = style_context.get_border(Gtk.StateFlags.BACKDROP)
+        border = style_context.get_border(Gtk.StateFlags.NORMAL)  # type: ignore
+        radius_color = style_context.get_color(Gtk.StateFlags.NORMAL)  # type: ignore
+        progress_color = style_context.get_border_color(Gtk.StateFlags.NORMAL)  # type: ignore
+        background_color = style_context.get_background_color(Gtk.StateFlags.NORMAL)  # type: ignore
 
-        # Normalize value
-        value = self.do_normalize_value()
-        width, height = allocation.width, allocation.height
-
-        # Compute dimensions
         line_width = max(
-            self.line_width,
+            self._line_width,
             border.top,  # type: ignore
             border.bottom,  # type: ignore
             border.left,  # type: ignore
@@ -306,51 +199,62 @@ class CircularProgressBar(Gtk.Bin, Widget):
             style_context.get_property("min-width", Gtk.StateFlags.NORMAL),  # type: ignore
             style_context.get_property("min-height", Gtk.StateFlags.NORMAL),  # type: ignore
         )
-        radius = min(width, height) / 2.0 - line_width / 2.0
-        center_x, center_y = width / 2, height / 2
 
-        # Background arc
-        self.do_draw_arc(
-            cr,
-            center_x,
-            center_y,
-            radius,
-            line_width,
-            self.start_at,
-            self.end_at,
-            background_color,
-            self.pie,
-        )
+        delta = 0
+        center_x = self.get_allocated_width() / 2
+        center_y = self.get_allocated_height() / 2
+        radius = self.do_calculate_radius()
 
-        # Progress arc calculation
-        if self.inverted:
-            start_progress = self.do_scale_arc_value(
-                self.start_at, self.end_at, 1 - value
-            )
-            end_progress = self.end_at
+        if (radius - line_width) < 0:
+            line_width = radius
         else:
-            start_progress = self.start_at
-            end_progress = self.do_scale_arc_value(self.start_at, self.end_at, value)
+            delta = radius - line_width / 2
 
-        self.do_draw_arc(
-            cr,
+        cr.save()
+
+        cr.set_line_cap(self._line_style)
+        cr.set_line_width(line_width)
+
+        # background fill
+        Gdk.cairo_set_source_rgba(cr, background_color)  # type: ignore
+        cr.arc(center_x, center_y, delta + (line_width / 2), 0, 2 * math.pi)
+        cr.fill()
+
+        # radius
+        Gdk.cairo_set_source_rgba(cr, radius_color)  # type: ignore
+        cr.move_to(center_x, center_y) if self._pie is True else None
+        cr.arc(
             center_x,
             center_y,
-            radius,
-            line_width,
-            start_progress,
-            end_progress,
-            progress_color,
-            self.pie,
+            delta + (self._line_width / 2) if self._pie is True else delta,
+            math.radians(self._start_angle),
+            math.radians(self._end_angle),
+        )
+        cr.fill() if self._pie is True else cr.stroke()
+
+        # progress
+        normalized_value = clamp(  # normalized & clamped value
+            (self._value - self._min_value) / (self._max_value - self._min_value),
+            0.0,
+            1.0,
         )
 
-        # Draw radius (optional full-circle outline)
-        if not self.pie:
-            Gdk.cairo_set_source_rgba(cr, radius_color)  # type: ignore
-            cr.arc(center_x, center_y, radius, 0, 2 * math.pi)
-            cr.stroke()
+        Gdk.cairo_set_source_rgba(cr, progress_color)  # type: ignore
+        cr.move_to(center_x, center_y) if self._pie is True else None
+        cr.arc(
+            center_x,
+            center_y,
+            delta + (self._line_width / 2) if self._pie is True else delta,
+            math.radians(self._start_angle),
+            math.radians(
+                self._start_angle
+                + normalized_value * (self._end_angle - self._start_angle)
+            ),
+        )
+        cr.fill() if self._pie is True else cr.stroke()
 
-        # Handle child widget (if any)
-        if self.get_child():
-            self.get_child().size_allocate(allocation)
-            self.propagate_draw(self.get_child(), cr)
+        # all aboard, draw child (if any)
+        if child := self.get_child():
+            self.propagate_draw(child, cr)
+
+        return cr.restore()

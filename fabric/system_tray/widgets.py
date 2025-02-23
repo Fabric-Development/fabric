@@ -29,8 +29,10 @@ class SystemTrayItem(Button):
             self._image.set_from_icon_name("image-missing", self._icon_size)
 
         tooltip = self._item.tooltip
+        if self._item.title is None:
+            return
         self.set_tooltip_markup(
-            tooltip.description or tooltip.title or self._item.title.title() if self._item.title else ""
+            tooltip.description or tooltip.title or self._item.title.title()
         )
         return
 

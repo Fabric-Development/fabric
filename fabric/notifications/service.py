@@ -196,7 +196,7 @@ class Notification(Service):
     def replaces_id(self) -> int:
         """An optional ID of an existing notification that this notification is intended to replace
 
-        :return: the id of the targetted notification (or None)
+        :return: the id of the targeted notification (or None)
         :rtype: int
         """
         return self._replaces_id
@@ -267,7 +267,7 @@ class Notification(Service):
 
         :param data: the serialized data to consume and covert to an object
         :type data: NotificationSerializedData
-        :return: the newly created notification objet
+        :return: the newly created notification object
         :rtype: Notification
         """
         self = cls.__new__(cls)

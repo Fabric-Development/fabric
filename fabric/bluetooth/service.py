@@ -289,7 +289,7 @@ class BluetoothClient(Service):
         addr = object_path.split("/")[-1][4:].replace("_", ":")
         if not (device := self._devices.pop(addr, None)):
             return logger.warning(
-                f"[Bluetooth] tried to remove a unknwon device with the address {addr}"
+                f"[Bluetooth] tried to remove a unknown device with the address {addr}"
             )
 
         logger.info(f"[Bluetooth] Removing device: {addr}")

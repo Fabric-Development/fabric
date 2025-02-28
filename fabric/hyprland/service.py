@@ -27,7 +27,7 @@ class HyprlandSocketNotFoundError(Exception): ...
 
 
 # dataclasses with frozen flag
-# to avoid unexpected changess
+# to avoid unexpected changes
 @dataclass(frozen=True)
 class HyprlandEvent:
     name: str
@@ -47,7 +47,7 @@ class HyprlandReply:
     is_ok: bool
     """
     this indicates if the ran command has returned `ok` or not
-    if set to `False` this means either the command executation has failed
+    if set to `False` this means either the command execution has failed
     or the command itself doesn't return a indication on if it failed or not
     (i.e commands that return data from Hyprland)
     """

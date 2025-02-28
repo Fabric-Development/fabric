@@ -239,7 +239,7 @@ class Workspaces(EventBox):
 
         destroyed_workspace = int(event.data[0])
         if not (btn := self._buttons.get(destroyed_workspace)):
-            return  # doens't exist, skip
+            return  # doesn't exist, skip
 
         btn.active = False
         btn.urgent = False
@@ -258,12 +258,12 @@ class Workspaces(EventBox):
         urgent_client: dict = clients_map.get("0x" + event.data[0], {})
         if not (raw_workspace := urgent_client.get("workspace")):
             return logger.warning(
-                f"[Workspaces] received urgent signal, but data received ({event.data[0]}) is uncorrect, skipping..."
+                f"[Workspaces] received urgent signal, but data received ({event.data[0]}) is incorrect, skipping..."
             )
 
         urgent_workspace = int(raw_workspace["id"])
         if not (btn := self._buttons.get(urgent_workspace)):
-            return  # doens't exist, skip
+            return  # doesn't exist, skip
 
         btn.urgent = True
         return logger.info(f"[Workspaces] workspace {urgent_workspace} is now urgent")
@@ -418,7 +418,7 @@ class Language(Button):
         )
         if not devices or not (keyboards := devices.get("keyboards")):
             return logger.warning(
-                f"[Language] cound't get devices from hyprctl, gotten data\n{devices}"
+                f"[Language] coulnd't get devices from hyprctl, gotten data\n{devices}"
             )
 
         language: str | None = None

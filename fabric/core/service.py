@@ -154,7 +154,7 @@ class Property(OldProperty, Generic[T]):
         return super().__get__(instance, klass)  # type: ignore
 
     def __set__(self, instance, value) -> None:
-        # Propery = X -> set X as the current value of the property
+        # Property = X -> set X as the current value of the property
         return self._setter_middle_gate(instance, value)
 
     def _setter_middle_gate(self, instance, value) -> None:
@@ -449,7 +449,7 @@ class Service(GObject.Object, Generic[P, T]):
                 .useful_method()
                 .other_useful_method()
                 .set_something("something")
-                .unwrap() # unwrap self (the service) and get a refernce to it
+                .unwrap() # unwrap self (the service) and get a reference to it
             )
 
             # when passing a setup function it returns self by default

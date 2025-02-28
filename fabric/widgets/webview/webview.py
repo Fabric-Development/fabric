@@ -18,7 +18,7 @@ def get_javascript_bridge_code() -> str:
         return f.read()
 
 
-JAVSCRIPT_BRIDGE_CODE = get_javascript_bridge_code()
+JAVASCRIPT_BRIDGE_CODE = get_javascript_bridge_code()
 
 
 class JavaScriptBridge:
@@ -43,7 +43,7 @@ class JavaScriptBridge:
         # inject javascript bridge as soon as the page is loaded
         if status == WebKit2.LoadEvent.FINISHED:
             self.webview.run_javascript(
-                JAVSCRIPT_BRIDGE_CODE,
+                JAVASCRIPT_BRIDGE_CODE,
                 callback=lambda *args: [
                     self.expose_function(
                         func, func_name
@@ -265,7 +265,7 @@ class WebView(WebKit2.WebView, Widget):
         if url is not None:
             if self.bridge is not None and url.startswith(("http://", "https://")):
                 logger.warning(
-                    "[WebView] it's not generally a good idea to expose a javascript interface for the world wide web, consider closing the javacript bridge"
+                    "[WebView] it's not generally a good idea to expose a javascript interface for the world wide web, consider closing the javascript bridge"
                 )
             self.load_uri(url)
         elif html is not None:

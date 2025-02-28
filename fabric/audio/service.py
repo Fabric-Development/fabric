@@ -335,7 +335,7 @@ class Audio(Service):
         stream: Cvc.MixerStream,
         default=None,
     ) -> str | None:
-        # intented for internal usage only
+        # intended for internal usage only
         return {
             Cvc.MixerSink: "speakers",
             Cvc.MixerSinkInput: "applications",

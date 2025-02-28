@@ -39,7 +39,7 @@ class __DeprecationHook__:
     def __init__(self, deprecated_to_replacement: dict[str, str]):
         self.lookup_table = deprecated_to_replacement
 
-    def __call__(self, addional_message: str | None = None):
+    def __call__(self, additional_message: str | None = None):
         if replacement := self.lookup_table.get(
             (caller := inspect.currentframe().f_back.f_code.co_name),  # type: ignore
             None,
@@ -117,7 +117,7 @@ class PixbufUtils:
 
 
 class FormattedString:
-    """simple string fomatter made to be baked mid-runtime"""
+    """simple string formatter made to be baked mid-runtime"""
 
     class FormatDict(dict):
         def __init__(self, *args, **kwargs):
@@ -249,7 +249,7 @@ def parse_color(color: str | Iterable[Number]) -> Gdk.RGBA:
 
     :param color: the color data, example of an iterable color; `(255, 255, 255) / (255, 255, 255, 255)`, for a list of parseable string formats head over to https://docs.gtk.org/gdk3/method.RGBA.parse.html
     :type color: str | Iterable[Number]
-    :raises ValueError: if the passed in color data is unparseable
+    :raises ValueError: if the passed in color data is unparsable
     :return: the newly created `Gdk.RGBA` (alpha is set to opaque if the passed in color data is RGB only)
     :rtype: Gdk.RGBA
     """
@@ -644,7 +644,7 @@ def exec_shell_command_async(
     :type cmd: str
     :param callback: a function to retrieve the result at or `None` to ignore the result
     :type callback: Callable[[str], Any] | None, optional
-    :return: a Gio.Subprocess object which holds a referance to your process and a Gio.DataInputStream object for stdout
+    :return: a Gio.Subprocess object which holds a reference to your process and a Gio.DataInputStream object for stdout
     :rtype: tuple[Gio.Subprocess | None, Gio.DataInputStream]
     """
     process = Gio.Subprocess.new(

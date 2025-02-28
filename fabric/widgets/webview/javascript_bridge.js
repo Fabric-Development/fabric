@@ -34,7 +34,7 @@ window.fabric = {
     },
 
     /**
-     * create a bridge object for a foregin python function
+     * create a bridge object for a foreign python function
      * @param {Map} func_list
      *     {func: string, args: Array}
      */
@@ -69,7 +69,7 @@ window.fabric = {
     },
 
     /**
-     * check the return value of a foregin function
+     * check the return value of a foreign function
      * @param {string} func_name
      * @param {function} resolve
      * @param {function} reject

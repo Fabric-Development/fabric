@@ -402,16 +402,20 @@ class Language(Button):
             return logger.warning(
                 f"[Language] got invalid event data from hyprland, raw data is\n{event.raw_data}"
             )
-        keyboard, language = event.data
+        logger.debug(event.data)
+        keyboard = event.data[0]
+        language = event.data[1]
+        layout_info = " ".join(event.data[2:]) if len(event.data) > 2 else "none"
+
         matched: bool = False
 
         if re.match(self.keyboard, keyboard) and (matched := True):
             self.set_label(self.formatter.format(language=language))
 
         return logger.debug(
-            f"[Language] Keyboard: {keyboard}, Language: {language}, Match: {matched}"
+            f"[Language] Keyboard: {keyboard}, Language: {language}, Layout info: {layout_info}, Match: {matched}"
         )
-
+        
     def do_initialize(self):
         devices: dict[str, list[dict[str, str]]] = json.loads(
             str(self.connection.send_command("j/devices").reply.decode())

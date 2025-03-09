@@ -155,6 +155,7 @@ class Workspaces(EventBox):
             self.connection,
             {
                 "event::workspacev2": self.on_workspace,
+                "event::focusedmon": self.on_monitor,
                 "event::createworkspacev2": self.on_createworkspace,
                 "event::destroyworkspacev2": self.on_destroyworkspace,
                 "event::urgent": self.on_urgent,
@@ -194,6 +195,25 @@ class Workspaces(EventBox):
                 continue
 
             self.insert_button(btn)
+        return
+        
+    def on_monitor(self, _, event: HyprlandEvent):
+        if len(event.data) != 2:
+            return
+
+        active_workspace = int(event.data[1])
+
+        if self._active_workspace is not None and (
+            old_btn := self._buttons.get(self._active_workspace)
+        ):
+            old_btn.active = False
+
+        self._active_workspace = active_workspace
+        if not (btn := self.lookup_or_bake_button(active_workspace)):
+            return
+
+        btn.urgent = False
+        btn.active = True
         return
 
     def on_workspace(self, _, event: HyprlandEvent):

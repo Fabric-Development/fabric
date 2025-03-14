@@ -8,14 +8,11 @@ Ricing, Made <b>Easy</b> 🍚⚡
 
 ---
 
-## What is Fabric?
+## What's Fabric?
 
 Fabric is a Desktop Widgets System that you can customize using Python. It offers a variety of features to make the often tedious process of creating widgets much easier and more enjoyable!
 
-Our goal is to provide a high-level, signal-based workflow—no polling or bash scripting required for even the most **basic** tasks.
-
-> [!NOTE]
-> Fabric is still a work in progress. this means is that the API is a subject to change.
+Our goal is to provide a high-level, signal-based workflow—no polling or bash scripting required for even the **most basic** tasks.
 
 ## Key Features
 
@@ -30,9 +27,16 @@ Our goal is to provide a high-level, signal-based workflow—no polling or bash 
 
 A Collection of Desktop rices that muscle-show what you are able to do using Fabric!
 
-- Example files (combined)
-  ![config can be found under the examples/bar and examples/side-panel directory](assets/example-files-bar-showcase.png)
-
+- Example files
+  ![configs could be found under the examples/bar and examples/side-panel directories](assets/example-files-bar-showcase.png)
+- [Ax-Shell](https://github.com/axenide/Ax-Shell)
+  ![](https://wiki.ffpy.org/showcase/axenide-ax-shell.webp)
+- [HydePanel](https://github.com/rubiin/HyDePanel)
+  ![](https://wiki.ffpy.org/showcase/rubiin-hydepanel.webp)
+- [Spacerice](https://github.com/rubiin/HyDePanel)
+  ![](https://wiki.ffpy.org/showcase/slumberdemon-spacerice.webp)
+- [Fabrika - فابريكا](https://example.com)
+  ![](https://wiki.ffpy.org/showcase/darsh-fabrika.png)
 
 ## Hacking and Contributing
 

@@ -1,6 +1,6 @@
-click==8.1.7
-loguru==0.7.2
-psutil==5.9.6
-pycairo==1.25.1
-PyGObject==3.46.0
-PyGObject-stubs==2.10.0
+click
+loguru
+psutil
+pycairo
+PyGObject==3.50.0
+pygobject-stubs

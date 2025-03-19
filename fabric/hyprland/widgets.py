@@ -422,7 +422,8 @@ class Language(Button):
             return logger.warning(
                 f"[Language] got invalid event data from hyprland, raw data is\n{event.raw_data}"
             )
-        keyboard, language = event.data
+
+        keyboard, language, *_ = event.data
         matched: bool = False
 
         if re.match(self.keyboard, keyboard) and (matched := True):

@@ -50,12 +50,16 @@ class NotificationImagePixmap:
             self.has_alpha,
             self.bits_per_sample,
             self.channels,
-            self.byte_array,
+            pixmap_data,
         ) = data
 
-        self.byte_array = GLib.Bytes.new(base64.b64decode(self.byte_array))  # type: ignore
+        # if this doesn't work, please report.
+        loader = GdkPixbuf.PixbufLoader.new_with_type("png")
+        loader.write_bytes(base64.b64decode(pixmap_data))  # type: ignore
+        loader.close()
 
-        self._pixbuf = None
+        self._pixbuf = loader.get_pixbuf()  # type: ignore
+        self.byte_array = None
 
         return self
 
@@ -105,9 +109,9 @@ class NotificationImagePixmap:
             self.has_alpha,
             self.bits_per_sample,
             self.channels,
-            base64.b64encode(cast(bytes, self.byte_array.unref_to_array())).decode(
-                "ascii"
-            ),
+            base64.b64encode(
+                cast(bytes, self.as_pixbuf().save_to_bufferv("png", [], [])[1])
+            ).decode(),
         )
 
 

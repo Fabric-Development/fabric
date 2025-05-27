@@ -208,14 +208,21 @@ class DesktopApp:
         if self._pixbuf:
             return self._pixbuf  # already loaded
         try:
-            if not self.icon_name:
-                raise
-            self.icon
-            self._pixbuf = self._icon_theme.load_icon(
-                self.icon_name,
-                size,
-                flags,
-            )
+            if isinstance(self.icon, Gio.ThemedIcon):
+                # Handle ThemedIcon
+                self._pixbuf = self._icon_theme.load_icon(
+                    self.icon_name,
+                    size,
+                    flags,
+                )
+            elif isinstance(self.icon, Gio.FileIcon):
+                # Handle FileIcon
+                file = self.icon.get_file()
+                self._pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+                    file.get_path(), size, size, True
+                )
+            else:
+                raise Exception("No valid icon found")
         except Exception:
             self._pixbuf = (
                 self._icon_theme.load_icon(default_icon, size, flags)
@@ -548,14 +555,16 @@ def extract_css_values(css_string: str) -> tuple[int, int, int, int]:
 
 def monitor_file(
     file_path: str,
-    flags: Literal[
-        "none",
-        "watch-mounts",
-        "send-moved",
-        "watch-hard-links",
-        "watch-moves",
-    ]
-    | Gio.FileMonitorFlags = Gio.FileMonitorFlags.NONE,
+    flags: (
+        Literal[
+            "none",
+            "watch-mounts",
+            "send-moved",
+            "watch-hard-links",
+            "watch-moves",
+        ]
+        | Gio.FileMonitorFlags
+    ) = Gio.FileMonitorFlags.NONE,
 ) -> Gio.FileMonitor:
     """
     creates a monitor for a specified file or directory path

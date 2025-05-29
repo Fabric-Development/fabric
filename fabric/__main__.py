@@ -148,7 +148,7 @@ def list_actions(instance: str, json: bool = False):
 
 @command(
     "invoke-action",
-    "list all registered (and callable) actions",
+    "invoke an action within a running fabric instance",
     True,
     True,
     click.argument("action-name"),

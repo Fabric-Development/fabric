@@ -547,7 +547,8 @@ def extract_css_values(css_string: str) -> tuple[int, int, int, int]:
 
 
 def monitor_file(
-    file_path: str,
+    path: str,
+    *callbacks: Callable,
     flags: Literal[
         "none",
         "watch-mounts",
@@ -556,23 +557,35 @@ def monitor_file(
         "watch-moves",
     ]
     | Gio.FileMonitorFlags = Gio.FileMonitorFlags.NONE,
+    initial_call: bool = False,
 ) -> Gio.FileMonitor:
     """
-    creates a monitor for a specified file or directory path
+    Monitor a specific file or directory for changes...
 
-    :param file_path: the path of the file or directory to be monitored
-    :type file_path: str
-    :param flags: the flags to configure the file monitor. Defaults to None.
+    :param path: path to the desired file or directory
+    :type path: str
+    :param callbacks: list of functions each assigned directly to the `"changed"` signal of the monitor
+    :type callbacks: Callable
+    :param flags: flags to configure the file monitor. Defaults to None.
     :type flags: Literal["none", "watch-mounts", "send-moved", "watch-hard-links", "watch-moves"], optional
+    :param initial_call: whether should the given callbacks get called upon registering. Defaults to False
+    :type initial_call: bool, optional
     :return: the monitor for the specified path
     :rtype: Gio.FileMonitor
     """
     file: Gio.File = Gio.File.new_for_uri(  # type: ignore
-        ("file://" + file_path) if "://" not in file_path else file_path
+        ("file://" + os.path.expanduser(path)) if "://" not in path else path
     )
-    return file.monitor(
+    monitor = file.monitor(
         get_enum_member(Gio.FileMonitorFlags, flags, default=Gio.FileMonitorFlags.NONE)
     )
+
+    for f in callbacks:
+        monitor.connect("changed", f)
+
+    [f() for f in callbacks] if initial_call else None
+
+    return monitor
 
 
 def cooldown(
@@ -681,6 +694,9 @@ def invoke_repeater(
     :type interval: int
     :param func: the function to invoke
     :type func: Callable
+    :param args: list of arguments passed directly to the given function
+    :param initial_call: whether should the given function get called as soon as it is registered. Defaults to False
+    :type initial_call: bool, optional
     """
     if initial_call:
         func(*args)

@@ -56,6 +56,14 @@ class Stack(Gtk.Stack, Container):
     def transition_duration(self, value: int):
         return self.set_transition_duration(value)
 
+    @Property(bool, "read-write", install=False)
+    def interpolate_size(self):
+        return self.get_interpolate_size()
+
+    @interpolate_size.setter
+    def interpolate_size(self, value: bool):
+        return self.set_interpolate_size(value)
+
     def __init__(
         self,
         transition_type: Literal[
@@ -82,6 +90,7 @@ class Stack(Gtk.Stack, Container):
         ]
         | Gtk.StackTransitionType = Gtk.StackTransitionType.NONE,
         transition_duration: int = 400,
+        interpolate_size: bool = False,
         children: Gtk.Widget | Iterable[Gtk.Widget] | None = None,
         name: str | None = None,
         visible: bool = True,
@@ -122,3 +131,4 @@ class Stack(Gtk.Stack, Container):
 
         self.transition_type = transition_type
         self.transition_duration = transition_duration
+        self.interpolate_size = interpolate_size

@@ -1,8 +1,6 @@
 import gi
 import re
-import cairo
 from enum import Enum
-from loguru import logger
 from typing import cast, Literal
 from collections.abc import Iterable
 from fabric.core.service import Property
@@ -86,18 +84,6 @@ class WaylandWindow(Window):
                 return GtkLayerShell.auto_exclusive_zone_enable(self)
             case _:
                 return GtkLayerShell.set_exclusive_zone(self, False)
-
-    @Property(bool, "read-write", default_value=False)
-    def pass_through(self) -> bool:
-        return self._pass_through
-
-    @pass_through.setter
-    def pass_through(self, pass_through: bool = False):
-        self._pass_through = pass_through
-        region = cairo.Region() if pass_through is True else None
-        self.input_shape_combine_region(region)
-        del region
-        return
 
     @Property(
         GtkLayerShell.KeyboardMode,
@@ -237,6 +223,7 @@ class WaylandWindow(Window):
             title,
             type,
             child,
+            pass_through,
             name,
             False,
             False,
@@ -255,7 +242,6 @@ class WaylandWindow(Window):
         self._keyboard_mode = GtkLayerShell.KeyboardMode.NONE
         self._anchor = anchor
         self._exclusivity = WaylandWindowExclusivity.NONE
-        self._pass_through = pass_through
 
         GtkLayerShell.init_for_window(self)
         GtkLayerShell.set_namespace(self, title)
@@ -270,7 +256,6 @@ class WaylandWindow(Window):
         self.margin = margin
         self.keyboard_mode = keyboard_mode
         self.exclusivity = exclusivity
-        self.pass_through = pass_through
         self.show_all() if all_visible is True else self.show() if visible is True else None
 
     def steal_input(self) -> None:
@@ -278,23 +263,6 @@ class WaylandWindow(Window):
 
     def return_input(self) -> None:
         return GtkLayerShell.set_keyboard_interactivity(self, False)
-
-    # custom overrides
-    def show(self) -> None:
-        super().show()
-        return self.do_handle_post_show_request()
-
-    def show_all(self) -> None:
-        super().show_all()
-        return self.do_handle_post_show_request()
-
-    def do_handle_post_show_request(self) -> None:
-        if not self.get_children():
-            logger.warning(
-                "[WaylandWindow] showing an empty window is not recommended, some compositors might freak out."
-            )
-        self.pass_through = self._pass_through
-        return
 
     @staticmethod
     def extract_anchor_values(string: str) -> tuple[str, ...]:

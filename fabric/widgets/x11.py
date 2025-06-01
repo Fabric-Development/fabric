@@ -13,8 +13,6 @@ from gi.repository import Gtk, Gdk
 try:
     from Xlib import X as XServer
     from Xlib.display import Display as XDisplay
-    from Xlib.ext import shape
-    from Xlib.protocol.rq import DictWrapper
     from Xlib.xobject.drawable import Window as XWindow
 except Exception:
     logger.warning(
@@ -114,52 +112,6 @@ class X11Window(Window):
                     "size-allocate", lambda _, __: self.do_dispatch_geometry()
                 )  # type: ignore
         return
-    
-    @Property(X11WindowGeometry, "read-write")
-    def geometry(self) -> X11WindowGeometry:
-        return self._geometry
-
-    @geometry.setter
-    def geometry(
-        self,
-        value: Literal[
-            "center",
-            "center-auto",
-            "top-left",
-            "top",
-            "top-right",
-            "left",
-            "right",
-            "bottom-left",
-            "bottom",
-            "bottom-right",
-        ]
-        | X11WindowGeometry,
-    ):
-        self._geometry = get_enum_member(
-            X11WindowGeometry, value, default=X11WindowGeometry.TOP
-        )
-        if self._geometry in (X11WindowGeometry.CENTER, X11WindowGeometry.CENTER_AUTO):
-            # don't use our way to handle window centering, gdk can do that for us
-            self.handler_disconnect(
-                self._size_allocate_hook
-            ) if self._size_allocate_hook is not None else None
-            self.set_position(Gtk.WindowPosition.CENTER_ALWAYS)
-        else:
-            self.do_dispatch_geometry()
-            if not self._size_allocate_hook:
-                self._size_allocate_hook = self.connect(
-                    "size-allocate", lambda _, __: self.do_dispatch_geometry()
-                )  # type: ignore
-        return
-    
-    @Property(bool, "read-write", default_value=False)
-    def pass_through(self) -> float:
-        return self._pass_through
-
-    @pass_through.setter
-    def pass_through(self, value: bool = False):
-        self._pass_through = value
 
     def __init__(
         self,
@@ -220,7 +172,6 @@ class X11Window(Window):
         h_expand: bool = False,
         v_expand: bool = False,
         size: Iterable[int] | int | None = None,
-        pass_through: bool = False,
         **kwargs,
     ):
         Window.__init__(
@@ -251,13 +202,11 @@ class X11Window(Window):
         self._display: Gdk.Display
         self._rectangle: Gdk.Rectangle
         self._scale_factor: int
-        self._pass_through: bool
 
         # for extra functionality
         self._xdisplay: "XDisplay | None" = None
         self._xwindow: "XWindow | None" = None
         self._xid: int = 0
-        self._xscreen: DictWrapper | None = None
 
         self.set_type_hint(
             get_enum_member(
@@ -277,7 +226,6 @@ class X11Window(Window):
         self.layer = layer
         self.margin = margin
         self.geometry = geometry
-        self._pass_through = pass_through
 
         self.show_all() if all_visible is True else self.show() if visible is True else None
 
@@ -307,9 +255,6 @@ class X11Window(Window):
             # and that's needed so we don't face a unexpected behavior later
             self._xid = self.get_window().get_xid()  # type: ignore
             self._xwindow = self._xdisplay.create_resource_object("window", self._xid)  # type: ignore
-            self._xscreen = self._xdisplay.screen()
-            self.apply_pass_through()
-            self._xdisplay.flush()
             # thank you, goodbye!
             self.disconnect_by_func(on_draw)
 
@@ -402,22 +347,3 @@ class X11Window(Window):
         y = y + y_margin
 
         return self.move(x, y)
-
-    def apply_pass_through(self):
-        if self._pass_through:
-            if not self._xdisplay.has_extension('SHAPE'):
-                logger.error("Failed to apply pass-through: X11 SHAPE extension is not supported by the display server.")
-                return
-
-            # create a pixmap for the input shape
-            geom = self._xwindow.get_geometry()
-            input_pm = self._xscreen.root.create_pixmap(geom.width, geom.height, 1)
-            gc = input_pm.create_gc(foreground=1, background=0)
-            input_pm.fill_rectangle(gc, 0, 0, geom.width, 0)
-            gc.change(foreground=0)
-            input_pm.fill_rectangle(gc, 0, 0, geom.width, geom.height)
-
-            # apply the input shape mask
-            self._xwindow.shape_mask(shape.SO.Set, shape.SK.Input, 0, 0, input_pm)
-            gc.free()
-

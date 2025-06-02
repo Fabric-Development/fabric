@@ -1,6 +1,5 @@
-from collections.abc import Iterable
 from typing import Literal
-
+from collections.abc import Iterable
 from fabric.widgets.widget import Widget
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
@@ -9,13 +8,13 @@ from gi.repository import Gtk
 class Grid(Gtk.Grid, Widget):
     def __init__(
         self,
-        name: str | None = None,
-        visible: bool = True,
-        all_visible: bool = False,
         row_spacing: int = 0,
         column_spacing: int = 0,
         column_homogeneous: bool = False,
         row_homogeneous: bool = False,
+        name: str | None = None,
+        visible: bool = True,
+        all_visible: bool = False,
         style: str | None = None,
         style_classes: Iterable[str] | str | None = None,
         tooltip_text: str | None = None,

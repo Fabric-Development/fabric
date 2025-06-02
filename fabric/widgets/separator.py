@@ -1,8 +1,7 @@
-from collections.abc import Iterable
 from typing import Literal
-
-from fabric.utils.helpers import get_enum_member
+from collections.abc import Iterable
 from fabric.widgets.widget import Widget
+from fabric.utils.helpers import get_enum_member
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
@@ -11,9 +10,6 @@ class Separator(Gtk.Separator, Widget):
 
     def __init__(
         self,
-        name: str | None = None,
-        visible: bool = True,
-        all_visible: bool = False,
         orientation: Literal[
             "horizontal",
             "vertical",
@@ -21,6 +17,9 @@ class Separator(Gtk.Separator, Widget):
             "v",
         ]
         | Gtk.Orientation = Gtk.Orientation.HORIZONTAL,
+        name: str | None = None,
+        visible: bool = True,
+        all_visible: bool = False,
         style: str | None = None,
         style_classes: Iterable[str] | str | None = None,
         tooltip_text: str | None = None,

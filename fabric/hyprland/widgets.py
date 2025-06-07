@@ -173,10 +173,10 @@ class Workspaces(EventBox):
         self.connect("scroll-event", self.scroll_handler)
 
     def on_ready(self, _):
-        open_workspaces: tuple[tuple[int, str], ...] = tuple(
-            (workspace["id"], workspace["name"])
+        open_workspaces: tuple[dict, ...] = tuple(
+            workspace
             for workspace in json.loads(
-                str(self.connection.send_command("j/workspaces").reply.decode())
+                self.connection.send_command("j/workspaces").reply.decode()
             )
         )
         self._active_workspace = json.loads(
@@ -186,7 +186,9 @@ class Workspaces(EventBox):
         for btn in self._buttons_preset:
             self.insert_button(btn)
 
-        for id, name in open_workspaces:
+        for workspace in open_workspaces:
+            id = workspace["id"]
+            name = workspace["name"]
             if not (btn := self.lookup_or_bake_button(id, name)):
                 continue
 

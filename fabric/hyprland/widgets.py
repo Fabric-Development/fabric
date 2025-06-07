@@ -76,12 +76,12 @@ class WorkspaceButton(Button):
         style_classes: Iterable[str] | str | None = None,
         tooltip_text: str | None = None,
         tooltip_markup: str | None = None,
-        h_align: Literal["fill", "start", "end", "center", "baseline"]
-        | Gtk.Align
-        | None = None,
-        v_align: Literal["fill", "start", "end", "center", "baseline"]
-        | Gtk.Align
-        | None = None,
+        h_align: (
+            Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None
+        ) = None,
+        v_align: (
+            Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None
+        ) = None,
         h_expand: bool = False,
         v_expand: bool = False,
         size: Iterable[int] | int | None = None,
@@ -125,14 +125,17 @@ class WorkspaceButton(Button):
 
 class Workspaces(EventBox):
     @staticmethod
-    def default_buttons_factory(workspace_id: int):
+    def default_buttons_factory(workspace_id: int, workspace_name: str = ""):
+        if workspace_name:
+            return WorkspaceButton(id=workspace_id, label=workspace_name)
         return WorkspaceButton(id=workspace_id, label=str(workspace_id))
 
     def __init__(
         self,
         buttons: Iterable[WorkspaceButton] | None = None,
-        buttons_factory: Callable[[int], WorkspaceButton | None]
-        | None = default_buttons_factory,
+        buttons_factory: (
+            Callable[[int, str], WorkspaceButton | None] | None
+        ) = default_buttons_factory,
         invert_scroll: bool = False,
         empty_scroll: bool = False,
         **kwargs,
@@ -170,8 +173,8 @@ class Workspaces(EventBox):
         self.connect("scroll-event", self.scroll_handler)
 
     def on_ready(self, _):
-        open_workspaces: tuple[int, ...] = tuple(
-            workspace["id"]
+        open_workspaces: tuple[tuple[int, str], ...] = tuple(
+            (workspace["id"], workspace["name"])
             for workspace in json.loads(
                 str(self.connection.send_command("j/workspaces").reply.decode())
             )
@@ -183,8 +186,8 @@ class Workspaces(EventBox):
         for btn in self._buttons_preset:
             self.insert_button(btn)
 
-        for id in open_workspaces:
-            if not (btn := self.lookup_or_bake_button(id)):
+        for id, name in open_workspaces:
+            if not (btn := self.lookup_or_bake_button(id, name)):
                 continue
 
             btn.empty = False
@@ -196,7 +199,7 @@ class Workspaces(EventBox):
 
             self.insert_button(btn)
         return
-        
+
     def on_monitor(self, _, event: HyprlandEvent):
         if len(event.data) != 2:
             return
@@ -319,10 +322,13 @@ class Workspaces(EventBox):
             self._container.remove(button)
         return button.destroy()
 
-    def lookup_or_bake_button(self, workspace_id: int) -> WorkspaceButton | None:
+    def lookup_or_bake_button(
+        self, workspace_id: int, workspace_label: str = ""
+    ) -> WorkspaceButton | None:
+        test = "1"
         if not (btn := self._buttons.get(workspace_id)):
             if self._buttons_factory:
-                btn = self._buttons_factory(workspace_id)
+                btn = self._buttons_factory(workspace_id, workspace_label)
         return btn
 
     def do_handle_button_press(self, button: WorkspaceButton):

@@ -76,12 +76,8 @@ class WorkspaceButton(Button):
         style_classes: Iterable[str] | str | None = None,
         tooltip_text: str | None = None,
         tooltip_markup: str | None = None,
-        h_align: (
-            Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None
-        ) = None,
-        v_align: (
-            Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None
-        ) = None,
+        h_align: (Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None) = None,
+        v_align: (Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None) = None,
         h_expand: bool = False,
         v_expand: bool = False,
         size: Iterable[int] | int | None = None,
@@ -133,9 +129,7 @@ class Workspaces(EventBox):
     def __init__(
         self,
         buttons: Iterable[WorkspaceButton] | None = None,
-        buttons_factory: (
-            Callable[[int, str], WorkspaceButton | None] | None
-        ) = default_buttons_factory,
+        buttons_factory: (Callable[[int, str], WorkspaceButton | None] | None) = default_buttons_factory,
         invert_scroll: bool = False,
         empty_scroll: bool = False,
         **kwargs,
@@ -324,13 +318,13 @@ class Workspaces(EventBox):
             self._container.remove(button)
         return button.destroy()
 
-    def lookup_or_bake_button(
-        self, workspace_id: int, workspace_label: str = ""
-    ) -> WorkspaceButton | None:
-        test = "1"
+    def lookup_or_bake_button(self, workspace_id: int, workspace_label: str = "") -> WorkspaceButton | None:
         if not (btn := self._buttons.get(workspace_id)):
             if self._buttons_factory:
-                btn = self._buttons_factory(workspace_id, workspace_label)
+                try:
+                    btn = self._buttons_factory(workspace_id, workspace_label)
+                except TypeError:
+                    btn = self._buttons_factory(workspace_id)
         return btn
 
     def do_handle_button_press(self, button: WorkspaceButton):

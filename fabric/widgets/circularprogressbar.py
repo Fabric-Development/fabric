@@ -183,12 +183,13 @@ class CircularProgressBar(Gtk.Bin, Container):
         return self.do_get_preferred_width()
 
     def do_draw(self, cr: cairo.Context):
+        state = self.get_state_flags()
         style_context = self.get_style_context()
 
-        border = style_context.get_border(Gtk.StateFlags.NORMAL)  # type: ignore
-        radius_color = style_context.get_color(Gtk.StateFlags.NORMAL)  # type: ignore
-        progress_color = style_context.get_border_color(Gtk.StateFlags.NORMAL)  # type: ignore
-        background_color = style_context.get_background_color(Gtk.StateFlags.NORMAL)  # type: ignore
+        border = style_context.get_border(state)  # type: ignore
+        radius_color = style_context.get_color(state)  # type: ignore
+        progress_color = style_context.get_border_color(state)  # type: ignore
+        background_color = style_context.get_background_color(state)  # type: ignore
 
         line_width = max(
             self._line_width,
@@ -196,8 +197,8 @@ class CircularProgressBar(Gtk.Bin, Container):
             border.bottom,  # type: ignore
             border.left,  # type: ignore
             border.right,  # type: ignore
-            style_context.get_property("min-width", Gtk.StateFlags.NORMAL),  # type: ignore
-            style_context.get_property("min-height", Gtk.StateFlags.NORMAL),  # type: ignore
+            style_context.get_property("min-width", state),  # type: ignore
+            style_context.get_property("min-height", state),  # type: ignore
         )
 
         delta = 0

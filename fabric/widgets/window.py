@@ -1,4 +1,6 @@
 import gi
+import cairo
+from loguru import logger
 from typing import Literal, Self, Any
 from collections.abc import Callable, Iterable
 from fabric.core.service import Property
@@ -15,11 +17,26 @@ class Window(Gtk.Window, Container):
     def application(self) -> Application:
         return self.get_application()  # type: ignore
 
+    @Property(bool, "read-write", default_value=False)
+    def pass_through(self) -> bool:
+        return self._pass_through
+
+    @pass_through.setter
+    def pass_through(self, pass_through: bool = False):
+        self._pass_through = pass_through
+
+        self.input_shape_combine_region(
+            cairo.Region(cairo.RectangleInt()) if pass_through is True else None
+        )
+
+        return
+
     def __init__(
         self,
         title: str = "fabric",
         type: Literal["top-level", "popup"] | Gtk.WindowType = Gtk.WindowType.TOPLEVEL,
         child: Gtk.Widget | None = None,
+        pass_through: bool = False,
         name: str | None = None,
         visible: bool = True,
         all_visible: bool = False,
@@ -72,6 +89,9 @@ class Window(Gtk.Window, Container):
             str, list[tuple[Callable[[Self, Any], Any], int]]
         ] = {}
 
+        self._pass_through = pass_through
+        self.pass_through = pass_through
+
     def do_handle_key_press_event(self, _, event):
         if not (
             keybind_entry := self._keybinding_handlers.get(
@@ -119,3 +139,24 @@ class Window(Gtk.Window, Container):
             return self.do_post_kebinding_removal()
         self._keybinding_handlers.pop(reference, None)
         return self.do_post_kebinding_removal()
+
+    # overrides
+    def do_handle_post_show_request(self) -> None:
+        if not self.get_children():
+            logger.warning(
+                "[Window] showing an empty window is not recommended, some compositors might freak out."
+            )
+        return
+
+    def show(self):
+        super().show()
+        return self.do_handle_post_show_request()
+
+    def show_all(self):
+        super().show_all()
+        return self.do_handle_post_show_request()
+
+    def do_size_allocate(self, alloc):
+        Gtk.Window.do_size_allocate(self, alloc)  # type: ignore
+
+        return self.set_pass_through(self._pass_through)

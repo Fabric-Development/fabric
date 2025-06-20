@@ -217,20 +217,29 @@ class Workspaces(EventBox):
             logger.info(f"[Workspaces] workspace {ws_id} is now urgent")
 
     def scroll_handler(self, _, event: Gdk.EventScroll):
-        cmd = "" if self._empty_scroll else "e"
         direction = event.direction
 
         if direction == Gdk.ScrollDirection.UP:
-            cmd += "-1" if self._invert_scroll else "+1"
-            logger.info("[Workspaces] Moving to the next workspace")
+            cmd = {
+                "Action": {
+                    "FocusWorkspaceUp": {},
+                },
+            }
+
+            self.connection.send_command(cmd)
+            logger.info("[Workspaces] Moving to the workspace above")
         elif direction == Gdk.ScrollDirection.DOWN:
-            cmd += "+1" if self._invert_scroll else "-1"
-            logger.info("[Workspaces] Moving to the previous workspace")
+            cmd = {
+                "Action": {
+                    "FocusWorkspaceDown": {},
+                },
+            }
+
+            logger.info("[Workspaces] Moving to the workspace below")
+            self.connection.send_command(cmd)
         else:
             logger.warning(f"[Workspaces] Unknown scroll direction ({direction})")
             return
-
-        self.connection.send_command(f"batch/dispatch workspace {cmd}")
 
     def sync_workspaces(self, fresh_data: list[dict]) -> None:
         """
@@ -455,5 +464,3 @@ class Language(Button):
             return
 
         return ok_data
-
-

@@ -238,7 +238,7 @@ class Workspaces(EventBox):
             logger.info("[Workspaces] Moving to the workspace below")
             self.connection.send_command(cmd)
         else:
-            logger.warning(f"[Workspaces] Unknown scroll direction ({direction})")
+            logger.warning(f"[Workspaces] Unknown sLayoutSwitchTargetcroll direction ({direction})")
             return
 
     def sync_workspaces(self, fresh_data: list[dict]) -> None:
@@ -397,15 +397,15 @@ class ActiveWindow(Button):
 
         return ok_data
 
-class Language(Button):
+class Language(EventBox):
     def __init__(
         self,
-        formatter: FormattedString = FormattedString("{language}"),
         **kwargs,
     ):
-        super().__init__(**kwargs)
+        super().__init__(events="scroll")
         self.connection = get_niri_connection()
-        self.formatter = formatter
+        self.button = Button(**kwargs)
+        self.add(self.button)
         self._keyboard_layouts = []
 
         bulk_connect(
@@ -421,6 +421,11 @@ class Language(Button):
         else:
             self.connection.connect("event::ready", self.on_ready)
 
+        self.connect("scroll-event", self.scroll_handler)
+
+    def set_label(self, text):
+        self.button.set_label(text)
+
     def on_ready(self, _):
         return self.do_initialize(), logger.info(
             "[Language] Connected to the Niri socket"
@@ -433,7 +438,7 @@ class Language(Button):
         current_layout = names[current_idx]
 
         logger.debug(current_layout)
-        return self.set_label(self.formatter.format(language=current_layout))
+        return self.set_label(current_layout)
 
     def on_layout_switched(self, _, event: NiriEvent):
         current_idx = event.data.get("idx", None)
@@ -441,7 +446,7 @@ class Language(Button):
         if current_idx is None:
             return self.do_initialize()
 
-        return self.set_label(self.formatter.format(language=self._keyboard_layouts[current_idx]))
+        return self.set_label(self._keyboard_layouts[current_idx])
 
     def do_initialize(self):
         keyboard_layouts = self.parse_niri_response(self.connection.send_command("KeyboardLayouts").reply)["KeyboardLayouts"]
@@ -451,7 +456,36 @@ class Language(Button):
         self._keyboard_layouts = names
 
         current_layout = names[current_idx]
-        return self.set_label(self.formatter.format(language=current_layout))            
+        return self.set_label(current_layout)
+
+    def scroll_handler(self, _, event: Gdk.EventScroll):
+        direction = event.direction
+
+        if direction == Gdk.ScrollDirection.UP:
+            cmd = {
+                "Action": {
+                    "SwitchLayout": {
+                        "layout": "Next",
+                    },
+                },
+            }
+
+            self.connection.send_command(cmd)
+            logger.info("[Language] Changing to the next language")
+        elif direction == Gdk.ScrollDirection.DOWN:
+            cmd = {
+                "Action": {
+                    "SwitchLayout": {
+                        "layout": "Prev",
+                    },
+                },
+            }
+
+            logger.info("[Language] Changing to the previous language")
+            self.connection.send_command(cmd)
+        else:
+            logger.warning(f"[Language] Unknown scroll direction ({direction})")
+            return
 
     def parse_niri_response(self, json_data: dict) -> dict | None:
         if "Err" in json_data:

@@ -1,3 +1,4 @@
+import gi
 from typing import Literal
 from collections.abc import Iterable
 from fabric.widgets.widget import Widget

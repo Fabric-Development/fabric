@@ -55,7 +55,9 @@ class NotificationImagePixmap:
 
         # if this doesn't work, please report.
         loader = GdkPixbuf.PixbufLoader.new_with_type("png")
-        loader.write_bytes(base64.b64decode(pixmap_data))  # type: ignore
+        decoded_data = base64.b64decode(pixmap_data)
+        bytes_data = GLib.Bytes.new(decoded_data)
+        loader.write_bytes(bytes_data)  # type: ignore
         loader.close()
 
         self._pixbuf = loader.get_pixbuf()  # type: ignore

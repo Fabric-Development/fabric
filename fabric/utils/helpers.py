@@ -589,7 +589,7 @@ def monitor_file(
 
 
 def cooldown(
-    cooldown_time: int, error: Callable | None = None, return_error: bool = False
+    cooldown_time:  int | float , error: Callable | None = None, return_error: bool = False
 ):
     """
     Decorator function that adds a cooldown period to a given function

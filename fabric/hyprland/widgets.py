@@ -76,12 +76,12 @@ class WorkspaceButton(Button):
         style_classes: Iterable[str] | str | None = None,
         tooltip_text: str | None = None,
         tooltip_markup: str | None = None,
-        h_align: Literal["fill", "start", "end", "center", "baseline"]
-        | Gtk.Align
-        | None = None,
-        v_align: Literal["fill", "start", "end", "center", "baseline"]
-        | Gtk.Align
-        | None = None,
+        h_align: (
+            Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None
+        ) = None,
+        v_align: (
+            Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None
+        ) = None,
         h_expand: bool = False,
         v_expand: bool = False,
         size: Iterable[int] | int | None = None,
@@ -131,8 +131,9 @@ class Workspaces(EventBox):
     def __init__(
         self,
         buttons: Iterable[WorkspaceButton] | None = None,
-        buttons_factory: Callable[[int], WorkspaceButton | None]
-        | None = default_buttons_factory,
+        buttons_factory: (
+            Callable[[int], WorkspaceButton | None] | None
+        ) = default_buttons_factory,
         invert_scroll: bool = False,
         empty_scroll: bool = False,
         **kwargs,
@@ -155,7 +156,7 @@ class Workspaces(EventBox):
             self.connection,
             {
                 "event::workspacev2": self.on_workspace,
-                "event::focusedmon": self.on_monitor,
+                "event::focusedmonv2": self.on_monitor,
                 "event::createworkspacev2": self.on_createworkspace,
                 "event::destroyworkspacev2": self.on_destroyworkspace,
                 "event::urgent": self.on_urgent,
@@ -196,7 +197,7 @@ class Workspaces(EventBox):
 
             self.insert_button(btn)
         return
-        
+
     def on_monitor(self, _, event: HyprlandEvent):
         if len(event.data) != 2:
             return

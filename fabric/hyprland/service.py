@@ -8,7 +8,7 @@ from fabric.core.service import Service, Signal, Property
 from fabric.utils.helpers import idle_add
 from gi.repository import (
     Gio,
-    GLib,
+    GLib
 )
 
 P = ParamSpec("P")
@@ -65,16 +65,19 @@ class Hyprland(Service):
     # refs
     # https://wiki.hyprland.org/IPC
 
-    @Property(bool, "readable", "is-ready", default_value=False)
-    def ready(self) -> bool:
-        return self._ready
+    @Property(bool, "readable", default_value=False)
+    def is_ready(self) -> bool:
+        return self._is_ready
 
     @Signal
-    def ready(self):
-        return self.notify("ready")
+    def initialized(self):
+        """Signal emitted when service is ready"""
+        pass
 
     @Signal("event", flags="detailed")
-    def event(self, event: object): ...
+    def event(self, event: object):
+        """Signal emitted on Hyprland events"""
+        pass
 
     def __init__(self, commands_only: bool = False, **kwargs):
         """
@@ -86,17 +89,29 @@ class Hyprland(Service):
         this service is backward compaitible so this is just a friendly note
         """
         super().__init__(**kwargs)
-        self._ready = False
-        self.lookup_socket()  # set the above constants
 
-        # all aboard...
-        if not commands_only:
-            self.event_socket_thread = GLib.Thread.new(
-                "hyprland-socket-service", self.event_socket_task, self.EVENTS_SOCKET
-            )
+        try:
+            self.lookup_socket()  # set the above constants
+            
+            # all aboard...
+            if not commands_only:
+                self.event_socket_thread = GLib.Thread.new(
+                    "hyprland-socket-service", 
+                    self.event_socket_task, 
+                    self.EVENTS_SOCKET
+                )
+            
+            self._is_ready = True
+            self.notify("is-ready")
+        except Exception as e:
+            logger.error(f"Failed to initialize Hyprland service: {e}")
+            raise
 
-        self._ready = True
-        self.ready.emit()
+    def do_get_property(self, prop):
+        if prop.name == 'is-ready':
+            return self._is_ready
+    
+        raise AttributeError(f"Unknown property {prop.name}")
 
     @staticmethod
     def lookup_socket() -> tuple[Gio.UnixSocketAddress, Gio.UnixSocketAddress, str]:

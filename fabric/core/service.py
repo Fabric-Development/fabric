@@ -534,21 +534,7 @@ class Service(GObject.Object, Generic[P, T]):
             self.connect(name, callback)  # type: ignore
         return
 
-    # set/get properties via [] accessor
-    def __getitem__(self, key: str) -> Any:
-        assert isinstance(key, str)
-        return self.get_property(key)
-
-    def __setitem__(self, key: str, value: Any) -> None:
-        assert isinstance(key, str)
-        return self.set_property(key, value)
-
-    def __len__(self) -> int:
-        return len(self.get_properties()) + len(self.get_signal_names())
-
-    def __int__(self) -> int:
-        return self.__len__()
-
+    # overrides
     def set_property(self, property_name: str, value: Any) -> None:
         return super().set_property(property_name, value)  # type: ignore
 
@@ -566,6 +552,32 @@ class Service(GObject.Object, Generic[P, T]):
 
     def get_properties(self) -> list[GObject.ParamSpec]:
         return GObject.list_properties(self)  # type: ignore
+
+    def notify(self, *properties: str):
+        for prop in properties:
+            super().notify(prop)
+        return
+
+    def notify_all(self):
+        for pspec in self.get_properties():
+            self.notify(pspec.get_nick() or pspec.get_name())
+        return
+
+    # set/get properties via [] accessor
+    def __getitem__(self, key: str) -> Any:
+        assert isinstance(key, str)
+        return self.get_property(key)
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        assert isinstance(key, str)
+        return self.set_property(key, value)
+
+    # extras
+    def __len__(self) -> int:
+        return len(self.get_properties()) + len(self.get_signal_names())
+
+    def __int__(self) -> int:
+        return self.__len__()
 
 
 __all__ = ["Signal", "Property", "Builder", "Service"]

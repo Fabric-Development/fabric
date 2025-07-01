@@ -55,6 +55,8 @@ class Window(Gtk.Window, Container):
         size: Iterable[int] | int | None = None,
         **kwargs,
     ):
+        self._pass_through = pass_through
+
         Gtk.Window.__init__(
             self,  # type: ignore
             title=title,
@@ -89,7 +91,6 @@ class Window(Gtk.Window, Container):
             str, list[tuple[Callable[[Self, Any], Any], int]]
         ] = {}
 
-        self._pass_through = pass_through
         self.pass_through = pass_through
 
     def do_handle_key_press_event(self, _, event):

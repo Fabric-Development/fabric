@@ -1,71 +1,55 @@
 {
-  description = ''
-    next-gen framework for building desktop widgets using Python
-    (check the rewrite branch for progress)
-  '';
+  description = "The next-generation framework for building desktop widgets using Python";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
-    utils.url = "github:numtide/flake-utils";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
   };
 
-  outputs = {
-    nixpkgs,
-    utils,
-    ...
-  }:
-    utils.lib.eachDefaultSystem (
-      system: let
-        overlay = final: prev: {
-          pythonPackagesExtensions =
-            prev.pythonPackagesExtensions
-            ++ [
-              (python-final: python-prev: {
-                python-fabric = prev.callPackage ./default.nix {};
-              })
-            ];
-        };
+  outputs =
+    {
+      self,
+      nixpkgs,
+      ...
+    }:
+    let
+      inherit (nixpkgs) lib;
+      systems = lib.genAttrs [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
+      forAllSystems = f: systems (system: f nixpkgs.legacyPackages.${system});
+    in
+    {
+      formatter = forAllSystems (pkgs: pkgs.nixfmt-rfc-style);
 
-        pkgs = nixpkgs.legacyPackages.${system}.extend overlay;
-      in {
-        overlays.default = overlay;
-        formatter = pkgs.nixfmt-rfc-style;
-        packages = {
-          default = pkgs.python3Packages.python-fabric;
-          run-widget = pkgs.callPackage ./run-widget.nix {};
-        };
+      packages = forAllSystems (pkgs: rec {
+        default = pkgs.callPackage ./default.nix { };
+        python-fabric = default;
+        run-widget =
+          lib.warn
+            "`run-widget` is deprecated and is going to be removed in future releases of fabric. refer to the wiki for more information."
+            pkgs.callPackage
+            ./run-widget.nix
+            { inherit python-fabric; };
+      });
 
-        devShells = {
+      devShells = forAllSystems (
+        pkgs:
+        let
+          inherit (self.packages.${pkgs.system}) python-fabric;
+        in
+        {
           default = pkgs.mkShell {
             name = "fabric-shell";
-            packages = with pkgs; [
-              ruff
-              gtk3
-              gtk-layer-shell
-              cairo
-              gobject-introspection
-              libdbusmenu-gtk3
-              gdk-pixbuf
-              gnome-bluetooth
-              cinnamon-desktop
-              (python3.withPackages (
-                ps:
-                  with ps; [
-                    setuptools
-                    wheel
-                    build
-                    click
-                    pycairo
-                    pygobject3
-                    pygobject-stubs
-                    loguru
-                    psutil
-                    python-fabric
-                  ]
-              ))
+            inputsFrom = [ python-fabric ];
+            packages = [
+              python-fabric
+              pkgs.ruff
             ];
           };
-        };
-      }
-    );
+        }
+      );
+
+      overlays.default = final: prev: { inherit (self.packages.${prev.system}) python-fabric; };
+    };
 }

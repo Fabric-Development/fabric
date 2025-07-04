@@ -163,11 +163,10 @@ class Workspaces(EventBox):
         )
 
         # all aboard...
-        if self.connection.ready:
+        if self.connection.get_property('is-ready'):
             self.on_ready(None)
         else:
-            self.connection.connect("event::ready", self.on_ready)
-        self.connect("scroll-event", self.scroll_handler)
+            self.connection.connect('notify::is-ready', lambda *_: self.on_ready(None))
 
     def on_ready(self, _):
         open_workspaces: tuple[int, ...] = tuple(
@@ -353,10 +352,10 @@ class ActiveWindow(Button):
         )
 
         # all aboard...
-        if self.connection.ready:
+        if self.connection.get_property('is-ready'):
             self.on_ready(None)
         else:
-            self.connection.connect("event::ready", self.on_ready)
+            self.connection.connect('notify::is-ready', lambda *_: self.on_ready(None))
 
     def on_ready(self, _):
         return self.do_initialize(), logger.info(
@@ -407,10 +406,10 @@ class Language(Button):
         self.connection.connect("event::activelayout", self.on_activelayout)
 
         # all aboard...
-        if self.connection.ready:
+        if self.connection.get_property('is-ready'):
             self.on_ready(None)
         else:
-            self.connection.connect("event::ready", self.on_ready)
+            self.connection.connect('notify::is-ready', lambda *_: self.on_ready(None))
 
     def on_ready(self, _):
         return self.do_initialize(), logger.info(

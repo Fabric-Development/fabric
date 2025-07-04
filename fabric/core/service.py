@@ -27,6 +27,7 @@ from fabric.utils.helpers import (
     snake_case_to_kebab_case,
     kebab_case_to_snake_case,
     get_function_annotations,
+    make_arguments_ignorable,
 )
 
 OldSignal = gi._signalhelper.Signal
@@ -252,9 +253,18 @@ class SignalWrapper(Generic[G, P, R]):
 
     # TODO: make it hint self's instance for the callback
     def connect(
-        self, callback: Callable[Concatenate[GObject.Object, P], Any], *args, **kwargs
+        self,
+        callback: Callable[Concatenate[G, P], Any] | Callable,
+        *args,
+        ignore_missing: bool = True,
     ) -> int:
-        return self.instance.connect(self.name, callback)  # type: ignore
+        return Service.connect(
+            self.instance,  # type: ignore
+            self.name,
+            callback,
+            *args,
+            ignore_missing=ignore_missing,
+        )
 
 
 class Signal(Generic[G, P, R]):
@@ -372,6 +382,7 @@ class Signal(Generic[G, P, R]):
 
         # all aboard...
         setattr(klass, "__gsignals__", klass_signals)
+        return
 
 
 @dataclass
@@ -503,11 +514,15 @@ class Service(GObject.Object, Generic[P, T]):
     def connect(
         self,
         signal_name: str,
-        callback: Callable[Concatenate[Self, P], Any],
+        callback: Callable[Concatenate[Self, P], Any] | Callable,
         *args,
-        **kwargs,
+        ignore_missing: bool = True,
     ) -> int:
-        return super().connect(signal_name, callback, *args, **kwargs)  # type: ignore
+        return super().connect(
+            signal_name,
+            make_arguments_ignorable(callback) if ignore_missing else callback,
+            *args,
+        )  # type: ignore
 
     @staticmethod
     def filter_kwargs(kwargs: dict[str, Any]) -> dict[str, Any]:

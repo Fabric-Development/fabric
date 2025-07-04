@@ -7,8 +7,8 @@ from fabric.utils.helpers import get_enum_member
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
-class Separator(Gtk.Separator, Widget):
 
+class Separator(Gtk.Separator, Widget):
     def __init__(
         self,
         orientation: Literal[

@@ -589,7 +589,9 @@ def monitor_file(
 
 
 def cooldown(
-    cooldown_time:  int | float , error: Callable | None = None, return_error: bool = False
+    cooldown_time: int | float,
+    error: Callable | None = None,
+    return_error: bool = False,
 ):
     """
     Decorator function that adds a cooldown period to a given function
@@ -854,6 +856,25 @@ def get_function_annotations(
             arg_pspec.annotation if arg_pspec.annotation is not arg_pspec.empty else Any
         )
     return FunctionAnnotations(args, return_type)
+
+
+def make_arguments_ignorable(func: Callable[..., T]) -> Callable[..., T]:
+    params = inspect.signature(func).parameters.values()
+    if any(p.kind == inspect.Parameter.VAR_POSITIONAL for p in params):
+        return func  # no
+
+    args_len = sum(
+        1
+        for p in params
+        if p.kind
+        in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+    )
+
+    @wraps(func)
+    def wrapper(*passed_args):
+        return func(*passed_args[:args_len])
+
+    return wrapper
 
 
 def truncate(string: str, max_length: int, suffix: str = "...") -> str:

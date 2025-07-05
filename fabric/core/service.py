@@ -432,14 +432,20 @@ class Service(GObject.Object, Generic[P, T]):
     @overload
     def build(
         self,
-        callback: Callable[Concatenate[Self, Builder[Self], P], Any],
+        callback: Callable[Concatenate[Self, Builder[Self], P], Any]
+        | Callable[Concatenate[Self, P], Any]
+        | Callable[P, Any],
         *args: P.args,
         **kwargs: P.kwargs,
     ) -> Self: ...
 
     def build(
         self,
-        callback: Optional[Callable[Concatenate[Self, Builder[Self], P], Any]] = None,
+        callback: Optional[
+            Callable[Concatenate[Self, Builder[Self], P], Any]
+            | Callable[Concatenate[Self, P], Any]
+            | Callable[P, Any]
+        ] = None,
         *args: P.args,
         **kwargs: P.kwargs,
     ) -> Union[Builder[Self], Self]:
@@ -476,14 +482,14 @@ class Service(GObject.Object, Generic[P, T]):
 
 
         :param callback: an optional callback to use instead of chaining method calls, defaults to None
-        :type callback: Optional[Callable[Concatenate[Self, Builder[Self], P], Any]], optional
+        :type callback: Optional[Callable[Concatenate[Self, Builder[Self], P], Any] | Callable[Concatenate[Self, P], Any] | Callable[P, Any]], optional
         :return: a newly created builder (or a cached one if found)
         :rtype: Union[Builder[Self], Self]
         """
         if not self._builder:
             self._builder = Builder(self)
-        if callable and callable(callback):
-            callback(self, self._builder, *args, **kwargs)
+        if callable(callback):
+            make_arguments_ignorable(callback)(self, self._builder, *args, **kwargs)
             return self
         return self._builder
 

@@ -2,7 +2,7 @@ import gi
 import re
 import json
 from loguru import logger
-from fabric.core.service import Property
+from fabric.core.service import Signal, Property
 from collections.abc import Iterable, Callable
 from typing import Literal
 from fabric.widgets.box import Box
@@ -127,6 +127,64 @@ class Workspaces(EventBox):
     @staticmethod
     def default_buttons_factory(workspace_id: int):
         return WorkspaceButton(id=workspace_id, label=str(workspace_id))
+
+    @Signal
+    def workspace_activated(self, workspace_id: int):
+        if workspace_id == self._active_workspace:
+            return
+
+        if self._active_workspace is not None and (
+            old_btn := self._buttons.get(self._active_workspace)
+        ):
+            old_btn.active = False
+
+        self._active_workspace = workspace_id
+        if not (btn := self.lookup_or_bake_button(workspace_id)):
+            return
+
+        btn.urgent = False
+        btn.active = True
+
+        if btn in self._container.children:
+            return
+        return self.insert_button(btn)
+
+    @Signal
+    def workspace_created(self, workspace_id: int):
+        if not (btn := self.lookup_or_bake_button(workspace_id)):
+            return
+
+        btn.empty = False
+        if btn in self._buttons_preset:
+            return
+        return self.insert_button(btn)
+
+    @Signal
+    def workspace_destroyed(self, workspace_id: int):
+        if not (btn := self._buttons.get(workspace_id)):
+            return  # doesn't exist, skip
+
+        btn.active = False
+        btn.urgent = False
+        btn.empty = True
+
+        if btn in self._buttons_preset:
+            return
+        return self.remove_button(btn)
+
+    @Signal
+    def urgent(self, workspace_id: int):
+        if not (btn := self._buttons.get(workspace_id)):
+            return  # doesn't exist, skip
+
+        btn.urgent = True
+        return logger.info(f"[Workspaces] workspace {workspace_id} is now urgent")
+
+    @Signal
+    def action_next(self, workspace_id: int): ...
+
+    @Signal
+    def action_previous(self, workspace_id: int): ...
 
     def __init__(
         self,
@@ -288,7 +346,7 @@ class Workspaces(EventBox):
         btn.urgent = True
         return logger.info(f"[Workspaces] workspace {urgent_workspace} is now urgent")
 
-    def scroll_handler(self, _, event: Gdk.EventScroll):
+    def scroll_handler(self, _, event: Gdk.EventScroll):  # TODO: abstract
         cmd = "" if self._empty_scroll else "e"
         match event.direction:  # type: ignore
             case Gdk.ScrollDirection.UP:
@@ -325,7 +383,7 @@ class Workspaces(EventBox):
                 btn = self._buttons_factory(workspace_id)
         return btn
 
-    def do_handle_button_press(self, button: WorkspaceButton):
+    def do_handle_button_press(self, button: WorkspaceButton):  # TODO: abstract
         self.connection.send_command(f"batch/dispatch workspace {button.id}")
         return logger.info(f"[Workspaces] Moved to workspace {button.id}")
 

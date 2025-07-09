@@ -98,7 +98,7 @@ class HyprlandWorkspaces(Workspaces):
             return logger.warning(
                 f"[Workspaces] received urgent signal, but data received ({event.data[0]}) is incorrect, skipping..."
             )
-        return self.workspace_destroyed(int(raw_workspace["id"]))
+        return self.urgent(int(raw_workspace["id"]))
 
     def do_action_next(self):
         return self.connection.send_command(

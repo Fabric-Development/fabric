@@ -36,9 +36,9 @@ class HyprlandWorkspaces(Workspaces):
             self.connection,
             {
                 "event::workspacev2": self.on_workspace,
-                "event::focusedmon": self.on_monitor,
-                "event::createworkspacev2": self.on_createworkspace,
-                "event::destroyworkspacev2": self.on_destroyworkspace,
+                "event::focusedmonv2": self.on_monitor,
+                "event::createworkspacev2": self.on_create_workspace,
+                "event::destroyworkspacev2": self.on_destroy_workspace,
                 "event::urgent": self.on_urgent,
             },
         )
@@ -77,12 +77,12 @@ class HyprlandWorkspaces(Workspaces):
             return
         return self.workspace_activated(int(event.data[0]))
 
-    def on_createworkspace(self, _, event: HyprlandEvent):
+    def on_create_workspace(self, _, event: HyprlandEvent):
         if len(event.data) != 2:
             return
         return self.workspace_created(int(event.data[0]))
 
-    def on_destroyworkspace(self, _, event: HyprlandEvent):
+    def on_destroy_workspace(self, _, event: HyprlandEvent):
         if len(event.data) != 2:
             return
         return self.workspace_destroyed(int(event.data[0]))
@@ -130,8 +130,8 @@ class HyprlandActiveWindow(ActiveWindow):
         bulk_connect(
             self.connection,
             {
-                "event::activewindow": self.on_activewindow,
-                "event::closewindow": self.on_closewindow,
+                "event::activewindow": self.on_active_window,
+                "event::closewindow": self.on_close_window,
             },
         )
 
@@ -146,14 +146,14 @@ class HyprlandActiveWindow(ActiveWindow):
             "[ActiveWindow] Connected to the hyprland socket"
         )
 
-    def on_closewindow(self, _, event: HyprlandEvent):
+    def on_close_window(self, _, event: HyprlandEvent):
         if len(event.data) < 1:
             return
         return self.do_initialize(), logger.info(
             f"[ActiveWindow] Closed window 0x{event.data[0]}"
         )
 
-    def on_activewindow(self, _, event: HyprlandEvent):
+    def on_active_window(self, _, event: HyprlandEvent):
         if len(event.data) < 2:
             return
         return self.window_activated(event.data[0], event.data[1]), logger.info(
@@ -181,7 +181,7 @@ class HyprlandLanguage(Language):
         super().__init__(keyboard, formatter, **kwargs)
 
         self.connection = get_hyprland_connection()
-        self.connection.connect("event::activelayout", self.on_activelayout)
+        self.connection.connect("event::activelayout", self.on_active_layout)
 
         # all aboard...
         if self.connection.ready:
@@ -194,7 +194,7 @@ class HyprlandLanguage(Language):
             "[Language] Connected to the hyprland socket"
         )
 
-    def on_activelayout(self, _, event: HyprlandEvent):
+    def on_active_layout(self, _, event: HyprlandEvent):
         if len(event.data) < 2:
             return logger.warning(
                 f"[Language] got invalid event data from hyprland, raw data is\n{event.raw_data}"

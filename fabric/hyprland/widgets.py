@@ -199,7 +199,7 @@ class HyprlandLanguage(Language):
             return logger.warning(
                 f"[Language] got invalid event data from hyprland, raw data is\n{event.raw_data}"
             )
-        keyboard, language = event.data
+        keyboard, language, *_ = event.data
 
         return self.layout_changed(language, keyboard)
 

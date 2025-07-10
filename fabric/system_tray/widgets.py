@@ -8,6 +8,17 @@ from fabric.system_tray.service import (
 )
 
 
+watcher: SystemTrayService | None = None
+
+
+def get_tray_watcher() -> SystemTrayService:
+    global watcher
+    if not watcher:
+        watcher = SystemTrayService()
+
+    return watcher
+
+
 class SystemTrayItem(Button):
     def __init__(self, item: SystemTrayItemService, icon_size: int, **kwargs):
         super().__init__(**kwargs)
@@ -55,9 +66,10 @@ class SystemTray(Box):
         super().__init__(**kwargs)
         self._icon_size = icon_size
         self._items: dict[str, SystemTrayItem] = {}
-        self._watcher = SystemTrayService(
-            on_item_added=self.on_item_added, on_item_removed=self.on_item_removed
-        )
+
+        self._watcher = get_tray_watcher()
+        self._watcher.connect("item-added", self.on_item_added)
+        self._watcher.connect("item-removed", self.on_item_removed)
 
     def on_item_added(self, _, item_identifier: str):
         item = self._watcher.items.get(item_identifier)
@@ -79,4 +91,4 @@ class SystemTray(Box):
         return
 
 
-__all__ = ["SystemTray", "SystemTrayItem"]
+__all__ = ["SystemTray", "SystemTrayItem", "get_tray_watcher"]

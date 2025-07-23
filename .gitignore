@@ -2,10 +2,6 @@
 .vscode
 *vscode*
 
-# nix
-.direnv/
-result
-
 # ruff formatter
 .ruff*/
 

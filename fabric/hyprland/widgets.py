@@ -196,7 +196,7 @@ class Workspaces(EventBox):
 
             self.insert_button(btn)
         return
-        
+
     def on_monitor(self, _, event: HyprlandEvent):
         if len(event.data) != 2:
             return

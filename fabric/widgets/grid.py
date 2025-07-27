@@ -7,7 +7,6 @@ from gi.repository import Gtk
 
 
 class Grid(Gtk.Grid, Widget):
-
     def __init__(
         self,
         name: str | None = None,

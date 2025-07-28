@@ -39,13 +39,13 @@ class __DeprecationHook__:
     def __init__(self, deprecated_to_replacement: dict[str, str]):
         self.lookup_table = deprecated_to_replacement
 
-    def __call__(self, additional_message: str | None = None):
+    def __call__(self):
         if replacement := self.lookup_table.get(
             (caller := inspect.currentframe().f_back.f_code.co_name),  # type: ignore
             None,
         ):
             return logger.warning(
-                f"the function `{caller}` is deprecated and will removed in later versions of Fabric, consider using `{replacement}` instead"
+                f"the function `{caller}` is deprecated and will be removed in future versions of Fabric, consider using `{replacement}` instead"
             )
         return
 

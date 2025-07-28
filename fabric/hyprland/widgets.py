@@ -1,5 +1,6 @@
 import json
 from loguru import logger
+from typing import TypeVar
 from collections.abc import Iterable, Callable
 
 from fabric.hyprland.service import Hyprland, HyprlandEvent
@@ -237,10 +238,34 @@ class HyprlandLanguage(Language):
         )
 
 
+# TODO: remove in v0.0.3
+T = TypeVar("T")
+
+
+def __bake_deprecation_message(obj: T, old_name: str) -> T:
+    def wrapper():
+        logger.warning(
+            f"[{old_name}][DEPRECATION] `{old_name}` has been renamed to `{obj.__name__}`. "
+            "Window manager-specific widget classes are now prefixed with their corresponding window manager name. "
+            "Please update your imports accordingly."
+        )
+        return obj
+
+    return wrapper  # type: ignore
+
+
+Language = __bake_deprecation_message(HyprlandLanguage, "Language")
+Workspaces = __bake_deprecation_message(HyprlandWorkspaces, "Workspaces")
+ActiveWindow = __bake_deprecation_message(HyprlandActiveWindow, "ActiveWindow")
+
+
 __all__ = [
     "HyprlandWorkspaces",
     "HyprlandActiveWindow",
     "HyprlandLanguage",
     "WorkspaceButton",
     "get_hyprland_connection",
+    "Language",
+    "Workspaces",
+    "ActiveWindow",
 ]

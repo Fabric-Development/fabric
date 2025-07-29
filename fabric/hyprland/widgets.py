@@ -48,7 +48,7 @@ class HyprlandWorkspaces(Workspaces):
         if self.connection.ready:
             self.on_ready()
         else:
-            self.connection.connect("event::ready", self.on_ready)
+            self.connection.connect("notify::ready", self.on_ready)
         self.connect("scroll-event", self.do_handle_scroll)
 
     def on_ready(self):
@@ -101,6 +101,7 @@ class HyprlandWorkspaces(Workspaces):
             )
         return self.urgent(int(raw_workspace["id"]))
 
+    # override signals from super class
     def do_action_next(self):
         return self.connection.send_command(
             f"batch/dispatch workspace {'e' if not self._empty_scroll else ''}+1"

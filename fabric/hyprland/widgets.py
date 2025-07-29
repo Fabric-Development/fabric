@@ -243,13 +243,13 @@ T = TypeVar("T")
 
 
 def __bake_deprecation_message(obj: T, old_name: str) -> T:
-    def wrapper():
+    def wrapper(*args, **kwargs):
         logger.warning(
             f"[{old_name}][DEPRECATION] `{old_name}` has been renamed to `{obj.__name__}`. "
             "Window manager-specific widget classes are now prefixed with their corresponding window manager name. "
             "Please update your imports accordingly."
         )
-        return obj
+        return obj(*args, **kwargs)  # type: ignore
 
     return wrapper  # type: ignore
 

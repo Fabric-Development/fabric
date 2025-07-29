@@ -8,10 +8,10 @@ from fabric.widgets.centerbox import CenterBox
 from fabric.system_tray.widgets import SystemTray
 from fabric.widgets.circularprogressbar import CircularProgressBar
 from fabric.widgets.wayland import WaylandWindow as Window
-from fabric.hyprland.widgets import (
-    HyprlandLanguage,
-    HyprlandActiveWindow,
-    HyprlandWorkspaces,
+from fabric.i3.widgets import (
+    I3Language,
+    I3ActiveWindow,
+    I3Workspaces,
     WorkspaceButton,
 )
 from fabric.utils import FormattedString, get_relative_path, bulk_replace
@@ -113,15 +113,16 @@ class StatusBar(Window):
             name="bar-inner",
             start_children=Box(
                 name="start-container",
-                children=HyprlandWorkspaces(
+                children=I3Workspaces(
                     name="workspaces",
                     spacing=4,
+                    buttons=[WorkspaceButton(id=ws_id, label=None) for ws_id in range(1, 11)],
                     buttons_factory=lambda ws_id: WorkspaceButton(id=ws_id, label=None),
                 ),
             ),
             center_children=Box(
                 name="center-container",
-                children=HyprlandActiveWindow(name="hyprland-window"),
+                children=I3ActiveWindow(name="hyprland-window"),
             ),
             end_children=Box(
                 name="end-container",
@@ -131,7 +132,7 @@ class StatusBar(Window):
                     self.system_status,
                     SystemTray(name="system-tray", spacing=4),
                     DateTime(name="date-time"),
-                    HyprlandLanguage(
+                    I3Language(
                         name="hyprland-window",
                         formatter=FormattedString(
                             "{replace_lang(language)}",

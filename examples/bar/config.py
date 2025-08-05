@@ -116,7 +116,6 @@ class StatusBar(Window):
                 children=HyprlandWorkspaces(
                     name="workspaces",
                     spacing=4,
-                    buttons=[WorkspaceButton(id=ws_id, label=None) for ws_id in range(1, 11)],
                     buttons_factory=lambda ws_id: WorkspaceButton(id=ws_id, label=None),
                 ),
             ),

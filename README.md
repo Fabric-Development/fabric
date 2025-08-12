@@ -31,7 +31,7 @@ A Collection of Desktop rices that muscle-show what you are able to do using Fab
   ![configs could be found under the examples/bar and examples/side-panel directories](assets/example-files-bar-showcase.png)
 - [Ax-Shell](https://github.com/axenide/Ax-Shell)
   ![](https://wiki.ffpy.org/showcase/axenide-ax-shell.webp)
-- [HydePanel](https://github.com/rubiin/HyDePanel)
+- [Tsumiki](https://github.com/rubiin/Tsumiki)
   ![](https://wiki.ffpy.org/showcase/rubiin-hydepanel.webp)
 - [Spacerice](https://github.com/SlumberDemon/dotfiles/tree/spacerice)
   ![](https://wiki.ffpy.org/showcase/slumberdemon-spacerice.webp)

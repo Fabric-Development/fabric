@@ -115,6 +115,37 @@ class PixbufUtils:
             surface, target_width=nw, target_height=nh
         )
 
+    @staticmethod
+    def scale(
+        pixbuf: GdkPixbuf.Pixbuf,
+        target_width: int,
+        target_height: int,
+        interp_type: GdkPixbuf.InterpType = GdkPixbuf.InterpType.NEAREST,
+        preserve_aspect: bool = True,
+    ) -> GdkPixbuf.Pixbuf:
+        """
+        scale down or up the given `GdkPixbuf.Pixbuf` to the given target width and height.
+        this method is most useful for preserving the aspect ratio of the input to the output buffer.
+
+        :param pixbuf: the input pixbuf
+        :type pixbuf: GdkPixbuf.Pixbuf
+        :param target_width: the width of destination `GdkPixbuf.Pixbuf` in pixels.
+        :type target_width: int
+        :param target_height: the height of destination `GdkPixbuf.Pixbuf` in pixels.
+        :type target_height: int
+        :param interp_type: the interpolation type for the transformation, defaults to `GdkPixbuf.InterpType.NEAREST`.
+        :param preserve_aspect: whether to preserve the aspect ratio of the input to the output buffer, defaults to `True`.
+        :type preserve_aspect: bool, optional
+        :return: the result pixbuf.
+        :rtype: GdkPixbuf.Pixbuf
+        """
+        if not preserve_aspect:
+            return pixbuf.scale_simple(target_width, target_height, interp_type)
+        width = pixbuf.get_width()
+        height = pixbuf.get_height()
+        scale = min(target_width / width, target_height / height, 1.0)
+        return pixbuf.scale_simple(width * scale, height * scale, interp_type)  # type: ignore
+
 
 class FormattedString:
     """simple string formatter made to be baked mid-runtime"""

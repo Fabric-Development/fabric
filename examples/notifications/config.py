@@ -1,4 +1,5 @@
 from typing import cast
+from os import path
 
 from fabric import Application
 from fabric.widgets.box import Box
@@ -9,7 +10,7 @@ from fabric.widgets.wayland import WaylandWindow
 from fabric.notifications import Notifications, Notification
 from fabric.utils import invoke_repeater, get_relative_path
 
-from gi.repository import GdkPixbuf
+from gi.repository import GdkPixbuf, Gtk
 
 
 NOTIFICATION_WIDTH = 360
@@ -31,7 +32,7 @@ class NotificationWidget(Box):
 
         body_container = Box(spacing=4, orientation="h")
 
-        if image_pixbuf := self._notification.image_pixbuf:
+        if image_pixbuf := self._load_notification_pixbuf(self._notification):
             body_container.add(
                 Image(
                     pixbuf=image_pixbuf.scale_simple(
@@ -129,6 +130,44 @@ class NotificationWidget(Box):
             initial_call=False,
         )
 
+    def _load_notification_pixbuf(self, notification: Notification) -> GdkPixbuf.Pixbuf | None:
+        try:
+            if getattr(notification, "image_pixbuf", None):
+                return notification.image_pixbuf
+
+            if getattr(notification, "image_data", None):
+                loader = GdkPixbuf.PixbufLoader()
+                loader.write(notification.image_data)
+                loader.close()
+                return loader.get_pixbuf()
+
+            if getattr(notification, "image_path", None) and path.exists(notification.image_path):
+                return GdkPixbuf.Pixbuf.new_from_file_at_scale(
+                    notification.image_path,
+                    NOTIFICATION_IMAGE_SIZE,
+                    NOTIFICATION_IMAGE_SIZE,
+                    True,
+                )
+
+            if getattr(notification, "app_icon", None):
+                app_icon = notification.app_icon
+                # Try as file path first
+                if path.exists(app_icon):
+                    return GdkPixbuf.Pixbuf.new_from_file_at_scale(
+                        app_icon,
+                        NOTIFICATION_IMAGE_SIZE,
+                        NOTIFICATION_IMAGE_SIZE,
+                        True,
+                    )
+                # Otherwise, try from icon theme
+                theme = Gtk.IconTheme.get_default()
+                info = theme.lookup_icon(app_icon, NOTIFICATION_IMAGE_SIZE, 0)
+                if info:
+                    return info.load_icon()
+        except Exception as e:
+            print(f"Failed to load notification icon: {e}")
+
+        return None
 
 if __name__ == "__main__":
     app = Application(

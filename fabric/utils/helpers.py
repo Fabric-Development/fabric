@@ -942,6 +942,25 @@ def remove_handler(handler_id: int):
     return GLib.source_remove(handler_id)
 
 
+def keyboard_event_serialize(event: Gdk.EventKey) -> str:
+    return " ".join(
+        bulk_replace(
+            Gtk.accelerator_name(event.keyval, event.state).strip(),
+            ["<Mod2>", "<Shift>", "<Primary>", "<Mod4><Super>", "<Alt>"],
+            [" ", "Shift ", "Ctrl ", "Super ", "Alt "],
+        )
+        .strip()
+        .lower()
+        .split()
+    )
+
+
+def keyboard_event_match(event: Gdk.EventKey, pattern: str, regex: bool = True) -> bool:
+    serialized = keyboard_event_serialize(event).casefold()
+    if regex:
+        return any((re.match(pattern, serialized) or (),))
+    return pattern.casefold() == serialized
+
 # FIXME: deprecated (please don't use, there's a replacement of each function)
 def set_stylesheet_from_file(file_path: str, compiled: bool = True) -> None:
     __deprecation_table()

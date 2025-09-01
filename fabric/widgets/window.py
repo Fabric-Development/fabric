@@ -5,8 +5,12 @@ from typing import Literal, Self, Any
 from collections.abc import Callable, Iterable
 from fabric.core.service import Property
 from fabric.core.application import Application
-from fabric.utils.helpers import get_enum_member, bulk_replace
 from fabric.widgets.container import Container
+from fabric.utils.helpers import (
+    get_enum_member,
+    keyboard_event_serialize,
+    make_arguments_ignorable,
+)
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GLib
@@ -95,18 +99,12 @@ class Window(Gtk.Window, Container):
 
     def do_handle_key_press_event(self, _, event):
         if not (
-            keybind_entry := self._keybinding_handlers.get(
-                " ".join(
-                    bulk_replace(
-                        Gtk.accelerator_name(event.keyval, event.state).strip(),
-                        ["<Mod2>", "<Shift>", "<Primary>", "<Mod4><Super>", "<Alt>"],
-                        [" ", "Shift ", "Ctrl ", "Super ", "Alt "],
-                    ).split()
-                )
+            keybind_entries := self._keybinding_handlers.get(
+                keyboard_event_serialize(event)
             )
         ):
             return
-        for kbh in keybind_entry:
+        for kbh in keybind_entries:
             kbh[0](self, event)
         return
 
@@ -115,18 +113,29 @@ class Window(Gtk.Window, Container):
             if not kbd:
                 self._keybinding_handlers.pop(kbn)
         if not self._keybinding_handlers:
-            self.disconnect_by_func(self.do_handle_key_press_event)
+            self.disconnect(self._keybinding_handlers)
             self._key_press_handler = 0
         return
 
-    def add_keybinding(self, keybind: str, callback: Callable[[Self, Any], Any]) -> int:
+    def add_keybinding(
+        self,
+        keybind: str,
+        callback: Callable[[Self, Any], Any] | Callable,
+        ignore_missing: bool = True,
+    ) -> int:
         handler = GLib.random_int()
 
-        keybind_entry = self._keybinding_handlers.setdefault(keybind, [])
-        keybind_entry.append((callback, handler))
+        keybind_entry = self._keybinding_handlers.setdefault(keybind.casefold(), [])
+        keybind_entry.append(
+            (
+                callback if not ignore_missing else make_arguments_ignorable(callback),
+                handler,
+            )
+        )
+
         if not self._key_press_handler:
             self._key_press_handler = self.connect(
-                "key-press-event", self.do_handle_key_press_event
+                "key-press-event", self.do_handle_key_press_event, ignore_missing=False
             )
 
         return handler

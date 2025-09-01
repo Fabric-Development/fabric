@@ -72,6 +72,7 @@ class AppLauncher(Window):
                 ],
             )
         )
+        self.add_keybinding("escape", lambda: self.application.quit())
         self.show_all()
 
     def arrange_viewport(self, query: str = ""):

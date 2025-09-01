@@ -46,6 +46,9 @@ class Container(Gtk.Container, Widget):
         **kwargs,
     ):
         Gtk.Container.__init__(self)  # type: ignore
+
+        self.children = children or []
+
         Widget.__init__(
             self,
             name,
@@ -62,5 +65,3 @@ class Container(Gtk.Container, Widget):
             size,
             **kwargs,
         )
-        if children:
-            self.children = children

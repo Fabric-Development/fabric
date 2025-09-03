@@ -9,7 +9,7 @@ POWER_PROFILES_BUS_NAME = "net.hadess.PowerProfiles"
 POWER_PROFILES_BUS_PATH = "/net/hadess/PowerProfiles"
 
 
-class PowerProfiles(Service):
+class PowerProfile(Service):
     """A service for interacting with PowerProfiles' DBus"""
 
     @Signal

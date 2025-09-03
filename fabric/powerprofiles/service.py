@@ -10,7 +10,7 @@ POWER_PROFILES_BUS_PATH = "/net/hadess/PowerProfiles"
 
 
 class PowerProfiles(Service):
-    """Service to interact with the PowerProfiles service via GIO."""
+    """A service for interacting with PowerProfiles' DBus"""
 
     @Signal
     def changed(self) -> None: ...
@@ -43,12 +43,12 @@ class PowerProfiles(Service):
                 f"[PowerProfile] Could not change power level to {profile}: {e}"
             )
 
-    @Property(list, "read-write")
+    @Property(list, "readable")
     def profiles(self) -> list[str]:
         prop = self._proxy.get_cached_property("Profiles")
         return prop.unpack() if prop else []
 
-    @Property(bool, "read-write", default_value=False)
+    @Property(bool, "readable", default_value=False)
     def performance_degraded(self) -> bool:
         prop = self._proxy.get_cached_property("PerformanceDegraded")
         return prop.unpack() if prop else False

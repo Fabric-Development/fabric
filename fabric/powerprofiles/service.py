@@ -23,7 +23,7 @@ class PowerProfile(Service):
     @active_profile.setter
     def active_profile(self, profile: str) -> None:
         try:
-            self.call_method(
+            self.do_call_proxy_method(
                 bus_name=POWER_PROFILES_BUS_NAME,
                 object_path=POWER_PROFILES_BUS_PATH,
                 interface_name="org.freedesktop.DBus.Properties",
@@ -80,13 +80,13 @@ class PowerProfile(Service):
             POWER_PROFILES_BUS_PATH,
             arg0=None,
             flags=Gio.DBusSignalFlags.NONE,
-            callback=self.handle_property_change,
+            callback=self.do_handle_property_change,
         )
 
-    def handle_property_change(self, *_):
+    def do_handle_property_change(self, *_):
         self.emit("changed")
 
-    def call_method(
+    def do_call_proxy_method(
         self,
         bus_name,
         object_path,

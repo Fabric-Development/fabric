@@ -9,7 +9,7 @@ POWER_PROFILES_BUS_NAME = "net.hadess.PowerProfiles"
 POWER_PROFILES_BUS_PATH = "/net/hadess/PowerProfiles"
 
 
-class PowerProfile(Service):
+class PowerProfiles(Service):
     """A service for interacting with PowerProfiles' DBus"""
 
     @Signal
@@ -37,10 +37,10 @@ class PowerProfile(Service):
                     ),
                 ),
             )
-            logger.info(f"[PowerProfile] Power profile set to {profile}")
+            logger.info(f"[PowerProfiles] Power profile set to {profile}")
         except Exception as e:
             logger.exception(
-                f"[PowerProfile] Could not change power level to {profile}: {e}"
+                f"[PowerProfiles] Could not change power level to {profile}: {e}"
             )
 
     @Property(list, "readable")

@@ -50,7 +50,7 @@ class PowerProfiles(Service):
 
     @Property(str, "readable")
     def icon_name(self) -> str:
-        return "power-profile-{}-symbolic".format(self.active_profile)
+        return f"power-profile-{self.active_profile}-symbolic"
 
     @Property(bool, "readable", default_value=False)
     def performance_degraded(self) -> bool:

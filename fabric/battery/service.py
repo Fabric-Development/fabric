@@ -41,14 +41,14 @@ class Battery(Service):
 
     @Property(bool, "readable", default_value=False)
     def charging(self) -> bool:
-        val = self.do_get_cached_property("Charging")
+        val = self.do_get_cached_property("State")
         if val is None:
             return False
         return val == DEVICE_STATE.get("CHARGING", 1)
 
     @Property(bool, "readable", default_value=False)
     def charged(self) -> bool:
-        val = self.do_get_cached_property("FullyCharged")
+        val = self.do_get_cached_property("State")
         if val is None:
             return False
         return val == DEVICE_STATE.get("FULLY_CHARGED", 4)

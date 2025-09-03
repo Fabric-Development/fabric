@@ -170,3 +170,6 @@ class Window(Gtk.Window, Container):
         Gtk.Window.do_size_allocate(self, alloc)  # type: ignore
 
         return self.set_pass_through(self._pass_through)
+  
+    def toggle(self):
+        return self.hide() if self.get_visible() else self.show()

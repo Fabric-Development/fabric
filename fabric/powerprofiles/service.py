@@ -78,9 +78,9 @@ class PowerProfile(Service):
             "org.freedesktop.DBus.Properties",
             "PropertiesChanged",
             POWER_PROFILES_BUS_PATH,
-            arg0=None,
-            flags=Gio.DBusSignalFlags.NONE,
-            callback=self.do_handle_property_change,
+            None,
+            Gio.DBusSignalFlags.NONE,
+            self.do_handle_property_change,
         )
 
     def do_handle_property_change(self, *_):

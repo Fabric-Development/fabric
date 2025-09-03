@@ -23,10 +23,19 @@ class PowerProfiles(Service):
     @active_profile.setter
     def active_profile(self, profile: str) -> None:
         try:
-            self._set_dbus_property(
-                interface_name=POWER_PROFILES_BUS_NAME,
-                property_name="ActiveProfile",
-                value_variant=GLib.Variant("s", value=profile),
+            self.call_method(
+                bus_name=POWER_PROFILES_BUS_NAME,
+                object_path=POWER_PROFILES_BUS_PATH,
+                interface_name="org.freedesktop.DBus.Properties",
+                method_name="Set",
+                parameters=GLib.Variant(
+                    "(ssv)",
+                    (
+                        POWER_PROFILES_BUS_NAME,
+                        "ActiveProfile",
+                        GLib.Variant("s", profile),
+                    ),
+                ),
             )
             logger.info(f"[PowerProfile] Power profile set to {profile}")
         except Exception as e:
@@ -100,15 +109,3 @@ class PowerProfiles(Service):
             None,
         )
         return result.unpack()
-
-    def _set_dbus_property(self, interface_name, property_name, value_variant):
-        """Sets a D-Bus property using the standard D-Bus Properties interface."""
-        return self.call_method(
-            bus_name=POWER_PROFILES_BUS_NAME,
-            object_path=POWER_PROFILES_BUS_PATH,
-            interface_name="org.freedesktop.DBus.Properties",
-            method_name="Set",
-            parameters=GLib.Variant(
-                "(ssv)", (interface_name, property_name, value_variant)
-            ),
-        )

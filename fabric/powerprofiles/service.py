@@ -48,6 +48,10 @@ class PowerProfiles(Service):
         prop = self._proxy.get_cached_property("Profiles")
         return prop.unpack() if prop else []
 
+    @Property(str, "readable")
+    def icon_name(self) -> str:
+        return "power-profile-{}-symbolic".format(self.active_profile)
+
     @Property(bool, "readable", default_value=False)
     def performance_degraded(self) -> bool:
         prop = self._proxy.get_cached_property("PerformanceDegraded")

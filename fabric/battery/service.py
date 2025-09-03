@@ -27,57 +27,57 @@ class Battery(Service):
     @Signal
     def changed(self) -> None: ...
 
-    @Property(type=bool, default=False)
+    @Property(bool, "readable", default=False)
     def available(self) -> bool:
         return self.do_get_cached_property("IsPresent") or False
 
-    @Property(type=str, default="")
+    @Property(str, "readable", default="")
     def vendor(self) -> str:
         return self.do_get_cached_property("Vendor") or ""
 
-    @Property(type=int, default=0)
+    @Property(int, "readable", default=0)
     def percent(self) -> int:
         return self.do_get_cached_property("Percentage") or 0
 
-    @Property(type=bool, default=False)
+    @Property(bool, "readable", default=False)
     def charging(self) -> bool:
         val = self.do_get_cached_property("Charging")
         if val is None:
             return False
         return val == DEVICE_STATE.get("CHARGING", 1)
 
-    @Property(type=bool, default=False)
+    @Property(bool, "readable", default=False)
     def charged(self) -> bool:
         val = self.do_get_cached_property("FullyCharged")
         if val is None:
             return False
         return val == DEVICE_STATE.get("FULLY_CHARGED", 4)
 
-    @Property(type=str, default="")
+    @Property(str, "readable", default="")
     def icon_name(self) -> str:
         return self.do_get_cached_property("IconName") or ""
 
-    @Property(type=int, default=0)
+    @Property(int, "readable", default=0)
     def time_remaining(self) -> int:
         return self.do_get_cached_property("TimeToEmpty") or 0
 
-    @Property(type=int, default=0)
+    @Property(int, "readable", default=0)
     def time_to_full(self) -> int:
         return self.do_get_cached_property("TimeToFull") or 0
 
-    @Property(type=float, default=0.0)
+    @Property(float, "readable", default=0.0)
     def energy(self) -> float:
         return self.do_get_cached_property("Energy") or 0.0
 
-    @Property(type=float, default=0.0)
+    @Property(float, "readable", default=0.0)
     def energy_full(self) -> float:
         return self.do_get_cached_property("EnergyFull") or 0.0
 
-    @Property(type=float, default=0.0)
+    @Property(float, "readable", default=0.0)
     def energy_rate(self) -> float:
         return self.do_get_cached_property("EnergyRate") or 0.0
 
-    @Property(type=float, default=0.0)
+    @Property(float, "readable", default=0.0)
     def temperature(self) -> float:
         return self.do_get_cached_property("Temperature") or 0.0
 

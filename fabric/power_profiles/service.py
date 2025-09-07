@@ -48,7 +48,7 @@ class PowerProfiles(Service):
         prop = self._proxy.get_cached_property("Profiles")
         return prop.unpack() if prop else []
 
-    @Property(bool, "readable")
+    @Property(bool, "readable", default_value=False)
     def battery_aware(self) -> bool:
         prop = self._proxy.get_cached_property("BatteryAware")
         return prop.unpack() if prop else False

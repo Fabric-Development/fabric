@@ -48,14 +48,39 @@ class PowerProfiles(Service):
         prop = self._proxy.get_cached_property("Profiles")
         return prop.unpack() if prop else []
 
+    @Property(bool, "readable")
+    def battery_aware(self) -> bool:
+        prop = self._proxy.get_cached_property("BatteryAware")
+        return prop.unpack() if prop else False
+
+    @Property(list, "readable")
+    def actions(self) -> list[str]:
+        prop = self._proxy.get_cached_property("Actions")
+        return prop.unpack() if prop else []
+
+    @Property(list, "readable")
+    def actions_info(self) -> list[str]:
+        prop = self._proxy.get_cached_property("ActionsInfo")
+        return prop.unpack() if prop else []
+
+    @Property(list, "readable")
+    def active_profile_holds(self) -> list[str]:
+        prop = self._proxy.get_cached_property("ActiveProfileHolds")
+        return prop.unpack() if prop else []
+
     @Property(str, "readable")
     def icon_name(self) -> str:
         return f"power-profile-{self.active_profile}-symbolic"
 
-    @Property(bool, "readable", default_value=False)
-    def performance_degraded(self) -> bool:
+    @Property(str, "readable")
+    def performance_degraded(self) -> str:
         prop = self._proxy.get_cached_property("PerformanceDegraded")
-        return prop.unpack() if prop else False
+        return prop.unpack() if prop else ""
+
+    @Property(str, "readable")
+    def performance_inhibited(self) -> str:
+        prop = self._proxy.get_cached_property("PerformanceInhibited")
+        return prop.unpack() if prop else ""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

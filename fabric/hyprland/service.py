@@ -212,7 +212,6 @@ class Hyprland(Service):
         ):
             raw_data: GLib.Bytes = input_stream.read_bytes_finish(res)
             resp: bytes = raw_data.get_data()  # type: ignore
-            print("data if any: ", resp)
             callback(
                 HyprlandReply(
                     command=command,

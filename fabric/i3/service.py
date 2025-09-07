@@ -228,12 +228,3 @@ class I3(Service):
             f"event::{event_name}",
             I3Event(event_name, event_data, payload.encode()),
         )
-
-
-if __name__ == "__main__":
-    # !NOTE: if this snippet is present in mainstream Fabric please report it
-    conn = I3()
-    conn.connect("event", lambda _, evn: print(evn.name))
-
-    loop = GLib.MainLoop.new(None, False)
-    loop.run()

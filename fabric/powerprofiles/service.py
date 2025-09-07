@@ -15,7 +15,7 @@ class PowerProfiles(Service):
     @Signal
     def changed(self) -> None: ...
 
-    @Property(str, "read-write", default_value="balanced")
+    @Property(str, "read-write")
     def active_profile(self) -> str:
         prop = self._proxy.get_cached_property("ActiveProfile")
         return prop.unpack() if prop else "balanced"
@@ -43,27 +43,27 @@ class PowerProfiles(Service):
                 f"[PowerProfiles] Could not change power level to {profile}: {e}"
             )
 
-    @Property(list, "readable", default_value=[])
+    @Property(list, "readable")
     def profiles(self) -> list[str]:
         prop = self._proxy.get_cached_property("Profiles")
         return prop.unpack() if prop else []
 
-    @Property(bool, "readable", default_value=False)
+    @Property(bool, "readable")
     def battery_aware(self) -> bool:
         prop = self._proxy.get_cached_property("BatteryAware")
         return prop.unpack() if prop else False
 
-    @Property(list, "readable", default_value=[])
+    @Property(list, "readable")
     def actions(self) -> list[str]:
         prop = self._proxy.get_cached_property("Actions")
         return prop.unpack() if prop else []
 
-    @Property(list, "readable", default_value=[])
+    @Property(list, "readable")
     def actions_info(self) -> list[str]:
         prop = self._proxy.get_cached_property("ActionsInfo")
         return prop.unpack() if prop else []
 
-    @Property(list, "readable", default_value=[])
+    @Property(list, "readable")
     def active_profile_holds(self) -> list[str]:
         prop = self._proxy.get_cached_property("ActiveProfileHolds")
         return prop.unpack() if prop else []
@@ -72,12 +72,12 @@ class PowerProfiles(Service):
     def icon_name(self) -> str:
         return f"power-profile-{self.active_profile}-symbolic"
 
-    @Property(str, "readable", default_value="")
+    @Property(str, "readable")
     def performance_degraded(self) -> str:
         prop = self._proxy.get_cached_property("PerformanceDegraded")
         return prop.unpack() if prop else ""
 
-    @Property(str, "readable", default_value="")
+    @Property(str, "readable")
     def performance_inhibited(self) -> str:
         prop = self._proxy.get_cached_property("PerformanceInhibited")
         return prop.unpack() if prop else ""

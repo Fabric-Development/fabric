@@ -15,7 +15,7 @@ class PowerProfiles(Service):
     @Signal
     def changed(self) -> None: ...
 
-    @Property(str, "read-write")
+    @Property(str, "read-write", default_value="balanced")
     def active_profile(self) -> str:
         prop = self._proxy.get_cached_property("ActiveProfile")
         return prop.unpack() if prop else "balanced"
@@ -43,9 +43,19 @@ class PowerProfiles(Service):
                 f"[PowerProfiles] Could not change power level to {profile}: {e}"
             )
 
-    @Property(list, "readable")
+    @Property(list, "readable", default_value=[])
     def profiles(self) -> list[str]:
         prop = self._proxy.get_cached_property("Profiles")
+        return prop.unpack() if prop else []
+
+    @Property(list, "readable", default_value=[])
+    def actions(self) -> list[str]:
+        prop = self._proxy.get_cached_property("Actions")
+        return prop.unpack() if prop else []
+
+    @Property(list, "readable", default_value=[])
+    def active_profile_holds(self) -> list[str]:
+        prop = self._proxy.get_cached_property("ActiveProfileHolds")
         return prop.unpack() if prop else []
 
     @Property(str, "readable")
@@ -55,6 +65,11 @@ class PowerProfiles(Service):
     @Property(bool, "readable", default_value=False)
     def performance_degraded(self) -> bool:
         prop = self._proxy.get_cached_property("PerformanceDegraded")
+        return prop.unpack() if prop else False
+
+    @Property(bool, "readable", default_value=False)
+    def performance_inhibited(self) -> bool:
+        prop = self._proxy.get_cached_property("PerformanceInhibited")
         return prop.unpack() if prop else False
 
     def __init__(self, **kwargs):

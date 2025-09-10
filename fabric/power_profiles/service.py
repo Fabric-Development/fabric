@@ -9,43 +9,19 @@ POWER_PROFILES_BUS_NAME = "net.hadess.PowerProfiles"
 POWER_PROFILES_BUS_PATH = "/net/hadess/PowerProfiles"
 
 
-class PowerProfilesNotRunningError(Exception):
-    """Exception raised when PowerProfiles is not running."""
-
-    def __init__(self, *args):
-        super().__init__("PowerProfiles is not running", *args)
-
-
 class PowerProfiles(Service):
     """A service for interacting with PowerProfiles' DBus"""
-
-    def check_if_available(self) -> bool:
-        if not self.is_available:
-            raise PowerProfilesNotRunningError()
-        return True
 
     @Signal
     def changed(self) -> None: ...
 
-    @Property(bool, "readable", default_value=False)
-    def is_available(self) -> bool:
-        return self._proxy.has_owner
-
     @Property(str, "read-write")
     def active_profile(self) -> str:
-        self.check_if_available()
         prop = self._proxy.get_cached_property("ActiveProfile")
         return prop.unpack() if prop else "balanced"
 
     @active_profile.setter
     def active_profile(self, profile: str) -> None:
-        self.check_if_available()
-        pfl_names = [profile["Profile"] for profile in self.profiles]
-        if profile not in pfl_names:
-            raise ValueError(
-                f"Profile '{profile}' not found in available profiles: {pfl_names}"
-            )
-
         try:
             self.do_call_proxy_method(
                 bus_name=POWER_PROFILES_BUS_NAME,
@@ -69,48 +45,40 @@ class PowerProfiles(Service):
 
     @Property(list, "readable")
     def profiles(self) -> list[str]:
-        self.check_if_available()
         prop = self._proxy.get_cached_property("Profiles")
         return prop.unpack() if prop else []
 
     @Property(bool, "readable", default_value=False)
     def battery_aware(self) -> bool:
-        self.check_if_available()
         prop = self._proxy.get_cached_property("BatteryAware")
         return prop.unpack() if prop else False
 
     @Property(list, "readable")
     def actions(self) -> list[str]:
-        self.check_if_available()
         prop = self._proxy.get_cached_property("Actions")
         return prop.unpack() if prop else []
 
     @Property(list, "readable")
     def actions_info(self) -> list[str]:
-        self.check_if_available()
         prop = self._proxy.get_cached_property("ActionsInfo")
         return prop.unpack() if prop else []
 
     @Property(list, "readable")
     def active_profile_holds(self) -> list[str]:
-        self.check_if_available()
         prop = self._proxy.get_cached_property("ActiveProfileHolds")
         return prop.unpack() if prop else []
 
     @Property(str, "readable")
     def icon_name(self) -> str:
-        self.check_if_available()
         return f"power-profile-{self.active_profile}-symbolic"
 
     @Property(str, "readable")
     def performance_degraded(self) -> str:
-        self.check_if_available()
         prop = self._proxy.get_cached_property("PerformanceDegraded")
         return prop.unpack() if prop else ""
 
     @Property(str, "readable")
     def performance_inhibited(self) -> str:
-        self.check_if_available()
         prop = self._proxy.get_cached_property("PerformanceInhibited")
         return prop.unpack() if prop else ""
 
@@ -130,8 +98,6 @@ class PowerProfiles(Service):
             POWER_PROFILES_BUS_NAME,
             None,
         )
-        if not self._proxy:
-            raise PowerProfilesNotRunningError()
 
         logger.info("[PowerProfiles] Proxy initialized")
 

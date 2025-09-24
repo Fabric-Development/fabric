@@ -26,7 +26,7 @@ from typing import (
 )
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, Gdk, GdkPixbuf, GObject, Gio, GLib
+from gi.repository import Gtk, Gdk, GdkPixbuf, GObject, Gio, GioUnix, GLib
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -198,21 +198,23 @@ class DesktopApp:
     hidden: bool
 
     def __init__(
-        self, app: Gio.DesktopAppInfo, icon_theme: Gtk.IconTheme | None = None
+        self, app: GioUnix.DesktopAppInfo, icon_theme: Gtk.IconTheme | None = None
     ):
-        self._app: Gio.DesktopAppInfo = app
+        self._app: GioUnix.DesktopAppInfo = app
         self._icon_theme = icon_theme or Gtk.IconTheme.get_default()
         self._pixbuf: GdkPixbuf.Pixbuf | None = None
         self.name = app.get_name()  # type: ignore
-        self.generic_name = app.get_generic_name()  # type: ignore
         self.display_name = app.get_display_name()  # type: ignore
         self.description = app.get_description()  # type: ignore
-        self.window_class = app.get_startup_wm_class()  # type: ignore
         self.executable = app.get_executable()  # type: ignore
         self.command_line = app.get_commandline()  # type: ignore
         self.icon = app.get_icon()  # type: ignore
         self.icon_name = self.icon.to_string() if self.icon is not None else None  # type: ignore
-        self.hidden = app.get_is_hidden()
+
+        # THIS IS UGLY, GNOME!
+        self.generic_name = GioUnix.DesktopAppInfo.get_generic_name(app)  # type: ignore
+        self.window_class = GioUnix.DesktopAppInfo.get_startup_wm_class(app)  # type: ignore
+        self.hidden = GioUnix.DesktopAppInfo.get_is_hidden(app)
 
     def launch(self):
         return self._app.launch()  # type: ignore
@@ -270,7 +272,7 @@ def get_desktop_applications(include_hidden: bool = False) -> list[DesktopApp]:
     icon_theme = Gtk.IconTheme.get_default()
     return [
         DesktopApp(app, icon_theme)
-        for app in Gio.DesktopAppInfo.get_all()
+        for app in GioUnix.DesktopAppInfo.get_all()
         if include_hidden or app.should_show()
     ]
 
@@ -960,6 +962,7 @@ def keyboard_event_match(event: Gdk.EventKey, pattern: str, regex: bool = True) 
     if regex:
         return any((re.match(pattern, serialized) or (),))
     return pattern.casefold() == serialized
+
 
 # FIXME: deprecated (please don't use, there's a replacement of each function)
 def set_stylesheet_from_file(file_path: str, compiled: bool = True) -> None:

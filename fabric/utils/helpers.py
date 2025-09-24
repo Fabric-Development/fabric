@@ -26,6 +26,7 @@ from typing import (
 )
 
 gi.require_version("Gtk", "3.0")
+gi.require_version("GioUnix", "2.0")
 from gi.repository import Gtk, Gdk, GdkPixbuf, GObject, Gio, GioUnix, GLib
 
 P = ParamSpec("P")
@@ -35,29 +36,34 @@ MISSING = TypeVar("MISSING")
 Number: TypeAlias = int | float
 
 
-class __DeprecationHook__:
-    def __init__(self, deprecated_to_replacement: dict[str, str]):
-        self.lookup_table = deprecated_to_replacement
-
-    def __call__(self):
-        if replacement := self.lookup_table.get(
-            (caller := inspect.currentframe().f_back.f_code.co_name),  # type: ignore
-            None,
-        ):
-            return logger.warning(
-                f"the function `{caller}` is deprecated and will be removed in future versions of Fabric, consider using `{replacement}` instead"
-            )
-        return
-
-
-__deprecation_table = __DeprecationHook__(
-    {
-        "idlify": "idle_add",
-        "set_stylesheet_from_string": "Application.add_stylesheet_from_string",
-        "set_stylesheet_from_file": "Application.add_stylesheet_from_file",
-        "get_gdk_rgba": "Gdk.RGBA.parse OR parse_color",
+class __Deprecated__(Generic[P, T]):
+    DEPRECATED_SYMBOLS_NOTES = {
+        "idlify": "consider using `idle_add` instead.",
+        "set_stylesheet_from_string": "consider using `Application.add_stylesheet_from_string` instead.",
+        "set_stylesheet_from_file": "consider using `Application.add_stylesheet_from_file` instead.",
+        "get_gdk_rgba": "consider using `Gdk.RGBA.parse` OR `parse_color` instead.",
+        "get_connectables_for_kwargs": "it was meant for internal usage, an unstable replacement is `Service.get_connectables_for_kwargs`",
     }
-)
+
+    def __init__(self, func: Callable[P, T]):
+        self.func = func
+        self.dispatched_warning: bool = False
+
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
+        if self.dispatched_warning:
+            return self.func(*args, **kwargs)
+
+        fname: str = self.func.__name__
+        if not (note := self.DEPRECATED_SYMBOLS_NOTES.get(fname, None)):
+            logger.debug(
+                f"the function `{fname}` was marked as deprecated, though the author of the deprecation forgot to add a notes entry to the deprecation table. report this."
+            )
+        else:
+            logger.warning(
+                f"the function `{fname}` is deprecated and will be removed in future versions of Fabric. note: {note}"
+            )
+        self.dispatched_warning = True
+        return self.func(*args, **kwargs)
 
 
 class PixbufUtils:
@@ -297,11 +303,6 @@ def parse_color(color: str | Iterable[Number]) -> Gdk.RGBA:
         if rgba.parse(color):
             return rgba
     raise ValueError(f"{color} is an invalid color format")
-
-
-def get_gdk_rgba(color: str | Iterable[Number]) -> Gdk.RGBA:
-    __deprecation_table()
-    return parse_color(color)
 
 
 def compile_css(
@@ -669,7 +670,9 @@ def exec_shell_command(cmd: str) -> str | Literal[False]:
     :rtype: str | Literal[False]
     """
     if not isinstance(cmd, str):
-        raise ValueError  # FIXME: add error message
+        raise ValueError(
+            f"the argument `cmd` should be a string (e.g. `uname -a`), instead got: {cmd}"
+        )
 
     try:
         result, output, error, status = GLib.spawn_command_line_sync(cmd)  # type: ignore
@@ -789,16 +792,6 @@ def kebab_case_to_snake_case(string: str) -> str:
     return string.replace("-", "_").lower()
 
 
-def get_connectables_for_kwargs(kwargs: dict[str, Callable]) -> Generator:
-    __deprecation_table()
-    for key, value in zip(kwargs.keys(), kwargs.values()):
-        if key.startswith("on_"):
-            yield [snake_case_to_kebab_case(key[3:]), value]
-        elif key.startswith("notify_"):
-            # yield a connectable property
-            yield [f"notify::{snake_case_to_kebab_case(key[7:])}", value]
-
-
 def get_enum_member(
     enum: type[E], member: str | E, mapping: dict[str, str] = {}, default: Any = MISSING
 ) -> E:
@@ -806,7 +799,9 @@ def get_enum_member(
         return member
 
     if not isinstance(member, str):
-        raise ValueError  # FIXME: add exception message
+        raise ValueError(
+            f"the member argument is supposed to be either a string or an enum literal of the same kind. instead got: {member}"
+        )
 
     for name, replacement in mapping.items():
         if member.casefold() == name.casefold():
@@ -964,10 +959,24 @@ def keyboard_event_match(event: Gdk.EventKey, pattern: str, regex: bool = True) 
     return pattern.casefold() == serialized
 
 
-# FIXME: deprecated (please don't use, there's a replacement of each function)
-def set_stylesheet_from_file(file_path: str, compiled: bool = True) -> None:
-    __deprecation_table()
+# FIXME: deprecated (please don't use, there's a replacement for each function)
+@__Deprecated__
+def get_gdk_rgba(color: str | Iterable[Number]) -> Gdk.RGBA:
+    return parse_color(color)
 
+
+@__Deprecated__
+def get_connectables_for_kwargs(kwargs: dict[str, Callable]) -> Generator:
+    for key, value in zip(kwargs.keys(), kwargs.values()):
+        if key.startswith("on_"):
+            yield [snake_case_to_kebab_case(key[3:]), value]
+        elif key.startswith("notify_"):
+            # yield a connectable property
+            yield [f"notify::{snake_case_to_kebab_case(key[7:])}", value]
+
+
+@__Deprecated__
+def set_stylesheet_from_file(file_path: str, compiled: bool = True) -> None:
     provider = Gtk.CssProvider()
     if compiled:
         with open(file_path, "r") as f:
@@ -981,9 +990,8 @@ def set_stylesheet_from_file(file_path: str, compiled: bool = True) -> None:
     return
 
 
+@__Deprecated__
 def set_stylesheet_from_string(css_string: str, compiled: bool = True) -> None:
-    __deprecation_table()
-
     provider = Gtk.CssProvider()
     if compiled:
         provider.load_from_data(bytearray(compile_css(css_string), "utf-8"))
@@ -995,6 +1003,6 @@ def set_stylesheet_from_string(css_string: str, compiled: bool = True) -> None:
     return
 
 
+@__Deprecated__
 def idlify(func: Callable, *args) -> int:
-    __deprecation_table()
     return idle_add(func, *args)

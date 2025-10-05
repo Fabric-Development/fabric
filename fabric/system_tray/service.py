@@ -241,7 +241,7 @@ class SystemTrayItem(Service):
     @Property(Gtk.IconTheme, "readable")
     def icon_theme(self) -> Gtk.IconTheme:
         if not self._icon_theme:
-            self._icon_theme = Gtk.IconTheme()
+            self._icon_theme = Gtk.IconTheme.get_default()
             search_path = self.get_icon_theme_path()
             self._icon_theme.set_search_path([search_path]) if search_path not in (
                 None,

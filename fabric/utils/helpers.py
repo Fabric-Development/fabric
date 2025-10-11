@@ -1,6 +1,7 @@
 import gi
 import re
 import os
+import sys
 import time
 import math
 import cairo
@@ -754,7 +755,22 @@ def get_relative_path(path: str, level: int = 1) -> str:
     :return: the relative path
     :rtype: str
     """
-    prev_globals = inspect.stack()[level][0].f_globals
+
+    frame = None
+
+    # Use sys._getframe if available 
+    getframe = getattr(sys, "_getframe", None)
+    if getframe is not None:
+        try:
+            frame = getframe(level)
+        except ValueError:
+            frame = None
+
+    # Fallback
+    if frame is None:
+        frame = inspect.stack()[level][0]
+
+    prev_globals = frame.f_globals
     file_var = (
         os.path.dirname(os.path.abspath(prev_globals["__file__"]))
         if "__file__" in prev_globals

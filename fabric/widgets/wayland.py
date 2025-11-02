@@ -8,7 +8,7 @@ from fabric.widgets.window import Window
 from fabric.utils.helpers import extract_css_values, get_enum_member
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, Gdk
+from gi.repository import Gtk, Gdk, GObject
 
 try:
     gi.require_version("GtkLayerShell", "0.1")
@@ -24,23 +24,42 @@ class WaylandWindowExclusivity(Enum):
     NORMAL = 2
     AUTO = 3
 
+class Layer(GObject.GEnum):
+    BACKGROUND = 0
+    BOTTOM = 1
+    TOP = 2
+    OVERLAY = 3
+    ENTRY_NUMBER = 4
+
+class KeyboardMode(GObject.GEnum):
+    NONE = 0
+    EXCLUSIVE = 1
+    ON_DEMAND = 2
+    ENTRY_NUMBER = 3
+
+class Edge(GObject.GEnum):
+    LEFT = 0
+    RIGHT = 1
+    TOP = 2
+    BOTTOM = 3
+    ENTRY_NUMBER = 4
 
 class WaylandWindow(Window):
     @Property(
-        GtkLayerShell.Layer,
+        Layer,
         flags="read-write",
-        default_value=GtkLayerShell.Layer.TOP,
+        default_value=Layer.TOP,
     )
-    def layer(self) -> GtkLayerShell.Layer:  # type: ignore
+    def layer(self) -> Layer:  # type: ignore
         return self._layer  # type: ignore
 
     @layer.setter
     def layer(
         self,
-        value: Literal["background", "bottom", "top", "overlay"] | GtkLayerShell.Layer,
+        value: Literal["background", "bottom", "top", "overlay"] | Layer,
     ) -> None:
         self._layer = get_enum_member(
-            GtkLayerShell.Layer, value, default=GtkLayerShell.Layer.TOP
+            Layer, value, default=Layer.TOP
         )
         return GtkLayerShell.set_layer(self, self._layer)
 
@@ -86,11 +105,11 @@ class WaylandWindow(Window):
                 return GtkLayerShell.set_exclusive_zone(self, False)
 
     @Property(
-        GtkLayerShell.KeyboardMode,
+        KeyboardMode,
         "read-write",
-        default_value=GtkLayerShell.KeyboardMode.NONE,
+        default_value=KeyboardMode.NONE,
     )
-    def keyboard_mode(self) -> GtkLayerShell.KeyboardMode:
+    def keyboard_mode(self) -> KeyboardMode:
         return self._keyboard_mode
 
     @keyboard_mode.setter
@@ -102,37 +121,37 @@ class WaylandWindow(Window):
             "on-demand",
             "entry-number",
         ]
-        | GtkLayerShell.KeyboardMode,
+        | KeyboardMode,
     ):
         self._keyboard_mode = get_enum_member(
-            GtkLayerShell.KeyboardMode, value, default=GtkLayerShell.KeyboardMode.NONE
+            KeyboardMode, value, default=KeyboardMode.NONE
         )
         return GtkLayerShell.set_keyboard_mode(self, self._keyboard_mode)
 
-    @Property(tuple[GtkLayerShell.Edge, ...], "read-write")
+    @Property(tuple[Edge, ...], "read-write")
     def anchor(self):
         return tuple(
             x
             for x in [
-                GtkLayerShell.Edge.TOP,
-                GtkLayerShell.Edge.RIGHT,
-                GtkLayerShell.Edge.BOTTOM,
-                GtkLayerShell.Edge.LEFT,
+                Edge.TOP,
+                Edge.RIGHT,
+                Edge.BOTTOM,
+                Edge.LEFT,
             ]
             if GtkLayerShell.get_anchor(self, x)
         )
 
     @anchor.setter
-    def anchor(self, value: str | Iterable[GtkLayerShell.Edge]) -> None:
+    def anchor(self, value: str | Iterable[Edge]) -> None:
         self._anchor = value
         if isinstance(value, (list, tuple)) and all(
-            isinstance(edge, GtkLayerShell.Edge) for edge in value
+            isinstance(edge, Edge) for edge in value
         ):
             for edge in [
-                GtkLayerShell.Edge.TOP,
-                GtkLayerShell.Edge.RIGHT,
-                GtkLayerShell.Edge.BOTTOM,
-                GtkLayerShell.Edge.LEFT,
+                Edge.TOP,
+                Edge.RIGHT,
+                Edge.BOTTOM,
+                Edge.LEFT,
             ]:
                 if edge not in value:
                     GtkLayerShell.set_anchor(self, edge, False)
@@ -151,10 +170,10 @@ class WaylandWindow(Window):
         return tuple(
             GtkLayerShell.get_margin(self, x)
             for x in [
-                GtkLayerShell.Edge.TOP,
-                GtkLayerShell.Edge.RIGHT,
-                GtkLayerShell.Edge.BOTTOM,
-                GtkLayerShell.Edge.LEFT,
+                Edge.TOP,
+                Edge.RIGHT,
+                Edge.BOTTOM,
+                Edge.LEFT,
             ]
         )
 
@@ -168,33 +187,33 @@ class WaylandWindow(Window):
     def keyboard_mode(self):
         kb_mode = GtkLayerShell.get_keyboard_mode(self)
         if GtkLayerShell.get_keyboard_interactivity(self):
-            kb_mode = GtkLayerShell.KeyboardMode.EXCLUSIVE
+            kb_mode = KeyboardMode.EXCLUSIVE
         return kb_mode
 
     @keyboard_mode.setter
     def keyboard_mode(
         self,
-        value: Literal["none", "exclusive", "on-demand"] | GtkLayerShell.KeyboardMode,
+        value: Literal["none", "exclusive", "on-demand"] | KeyboardMode,
     ):
         return GtkLayerShell.set_keyboard_mode(
             self,
             get_enum_member(
-                GtkLayerShell.KeyboardMode,
+                KeyboardMode,
                 value,
-                default=GtkLayerShell.KeyboardMode.NONE,
+                default=KeyboardMode.NONE,
             ),
         )
 
     def __init__(
         self,
         layer: Literal["background", "bottom", "top", "overlay"]
-        | GtkLayerShell.Layer = GtkLayerShell.Layer.TOP,
+        | Layer = Layer.TOP,
         anchor: str = "",
         margin: str | Iterable[int] = "0px 0px 0px 0px",
         exclusivity: Literal["auto", "normal", "none"]
         | WaylandWindowExclusivity = WaylandWindowExclusivity.NONE,
         keyboard_mode: Literal["none", "exclusive", "on-demand"]
-        | GtkLayerShell.KeyboardMode = GtkLayerShell.KeyboardMode.NONE,
+        | KeyboardMode = KeyboardMode.NONE,
         pass_through: bool = False,
         monitor: int | Gdk.Monitor | None = None,
         title: str = "fabric",
@@ -238,8 +257,8 @@ class WaylandWindow(Window):
             size,
             **kwargs,
         )
-        self._layer = GtkLayerShell.Layer.ENTRY_NUMBER
-        self._keyboard_mode = GtkLayerShell.KeyboardMode.NONE
+        self._layer = Layer.ENTRY_NUMBER
+        self._keyboard_mode = KeyboardMode.NONE
         self._anchor = anchor
         self._exclusivity = WaylandWindowExclusivity.NONE
 
@@ -280,17 +299,17 @@ class WaylandWindow(Window):
         return tuple(set(tuple(direction_map[match.lower()[0]] for match in matches)))
 
     @staticmethod
-    def extract_edges_from_string(string: str) -> dict["GtkLayerShell.Edge", bool]:
+    def extract_edges_from_string(string: str) -> dict["Edge", bool]:
         anchor_values = WaylandWindow.extract_anchor_values(string.lower())
         return {
-            GtkLayerShell.Edge.TOP: "top" in anchor_values,
-            GtkLayerShell.Edge.RIGHT: "right" in anchor_values,
-            GtkLayerShell.Edge.BOTTOM: "bottom" in anchor_values,
-            GtkLayerShell.Edge.LEFT: "left" in anchor_values,
+            Edge.TOP: "top" in anchor_values,
+            Edge.RIGHT: "right" in anchor_values,
+            Edge.BOTTOM: "bottom" in anchor_values,
+            Edge.LEFT: "left" in anchor_values,
         }
 
     @staticmethod
-    def extract_margin(input: str | Iterable[int]) -> dict["GtkLayerShell.Edge", int]:
+    def extract_margin(input: str | Iterable[int]) -> dict["Edge", int]:
         margins = (
             extract_css_values(input.lower())
             if isinstance(input, str)
@@ -299,8 +318,8 @@ class WaylandWindow(Window):
             else (0, 0, 0, 0)
         )
         return {
-            GtkLayerShell.Edge.TOP: margins[0],
-            GtkLayerShell.Edge.RIGHT: margins[1],
-            GtkLayerShell.Edge.BOTTOM: margins[2],
-            GtkLayerShell.Edge.LEFT: margins[3],
+            Edge.TOP: margins[0],
+            Edge.RIGHT: margins[1],
+            Edge.BOTTOM: margins[2],
+            Edge.LEFT: margins[3],
         }

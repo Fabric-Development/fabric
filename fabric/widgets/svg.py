@@ -129,7 +129,7 @@ class Svg(Gtk.DrawingArea, Widget):
         rect.width = width  # type: ignore
         rect.height = height  # type: ignore
 
-        if self._style_compiled is not None and self._handle.set_stylesheet(
+        if self._style_compiled is not None and not self._handle.set_stylesheet(
             self._style_compiled.encode()  # type: ignore
         ):
             logger.error("[Svg] failed to apply style, probably invalid style property")

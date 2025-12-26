@@ -41,9 +41,10 @@ class SystemTrayItem(Button):
 
         tooltip = self._item.tooltip
         self.set_tooltip_markup(
-            tooltip.description or tooltip.title or self._item.title.title()
-            if self._item.title
-            else "Unknown"
+            tooltip.description or 
+            tooltip.title or 
+            (self._item.title.title() if self._item.title else None) or 
+            "Unknown"
         )
         return
 

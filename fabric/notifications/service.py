@@ -323,7 +323,9 @@ class Notification(Service):
         self._hints: GLib.Variant = raw_variant.get_child_value(6)  # type: ignore
         self._timeout: int = raw_variant.get_child_value(7).unpack()  # type: ignore
 
-        self._urgency: int = self.do_get_hint_entry("urgency") or 1  # type: ignore
+        self._urgency: int = (
+            0 if ((v := self.do_get_hint_entry("urgency")) is None) else v
+        )  # type: ignore
 
         self._image_file: str | None = self.do_get_hint_entry(
             "image-path"
@@ -340,7 +342,7 @@ class Notification(Service):
         self, entry_key: str, unpack: bool = True
     ) -> GLib.Variant | Any | None:
         variant = self._hints.lookup_value(entry_key)
-        if not unpack or not variant:
+        if not unpack or variant is None:
             return variant
         return variant.unpack()  # type: ignore
 

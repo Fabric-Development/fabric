@@ -2,6 +2,9 @@
 .vscode
 *vscode*
 
+# pycharm
+.idea
+
 # ruff formatter
 .ruff*/
 

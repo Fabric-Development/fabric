@@ -1,0 +1,60 @@
+* {
+  all: unset;
+}
+
+:vars {
+  --primary: #8bda76;
+  --surface-bright: #363b33;
+  --surface: #10150e;
+  --on-primary: #023900;
+}
+
+/* circular scale */
+#demo-circular-scale slider {
+  background-color: var(--primary);
+  min-width: 20px;
+  min-height: 40px;
+  margin-left: 15px;
+  margin-right: 15px;
+  border-radius: 50px;
+}
+#demo-circular-scale highlight {
+  background-color: var(--primary);
+  /* max of width/height/border size */
+  min-width: 24px;
+}
+#demo-circular-scale trough {
+  background-color: var(--surface-bright);
+  /* max of width/height/border size */
+  border: 12px solid;
+}
+#demo-circular-scale {
+    background-color: transparent;
+}
+
+/* scale */
+#demo-scale slider {
+  background-color: var(--on-primary);
+  min-width: 10px;
+  min-height: 10px;
+  margin: 0px 20px 0px 0px;
+  border-radius: 100%;
+}
+#demo-scale highlight {
+  background-color: var(--primary);
+  border-radius: 20px 20px 20px 20px;
+  margin-left: -20px;
+}
+#demo-scale trough {
+  background-color: var(--surface-bright);
+  border-radius: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  padding-left: 20px;
+}
+
+/* container */
+#container-box {
+  padding: 20px;
+  background-color: var(--surface);
+}

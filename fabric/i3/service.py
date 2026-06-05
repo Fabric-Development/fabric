@@ -1,6 +1,5 @@
 import os
 import json
-import time
 import socket
 import struct
 from enum import IntEnum
@@ -8,7 +7,7 @@ from loguru import logger
 from typing import ParamSpec
 from dataclasses import dataclass
 from fabric.core.service import Service, Signal, Property
-from fabric.utils.helpers import exec_shell_command, idle_add
+from fabric.utils.helpers import exec_shell_command, idle_add, invoke_repeater
 from gi.repository import GLib
 
 P = ParamSpec("P")
@@ -98,15 +97,16 @@ class I3(Service):
         super().__init__(**kwargs)
 
         self._ready = False
-        self.lookup_socket()
-
-        self.event_socket_thread = GLib.Thread.new(
-            "i3-socket-service",
-            self.main_event_loop,  # type: ignore
-        )
-
-        self._ready = True
-        self.notify("ready")
+        try:
+            self.lookup_socket()
+            self._connect_event_socket()
+            self._ready = True
+            self.notify("ready")
+        except I3SocketNotFoundError as e:
+            logger.error(
+                f"[I3Service] initial connection failed: {e}. Attempting reconnection..."
+            )
+            idle_add(self._reconnect_socket, pin=True)
 
     @staticmethod
     def lookup_socket() -> str:
@@ -124,6 +124,13 @@ class I3(Service):
 
         raise I3SocketNotFoundError(
             "Couldn't find i3 or Sway socket, is either of them running?"
+        )
+
+    def _connect_event_socket(self):
+        self.event_socket_thread = GLib.Thread.new(
+            "i3-socket-service",
+            self.event_socket_task,
+            self.SOCKET_PATH,
         )
 
     @staticmethod
@@ -189,55 +196,71 @@ class I3(Service):
 
         return I3Reply(command=command, reply=reply_data, is_ok=is_ok)
 
-    
-    def main_event_loop(self):
-        while True:
-            try:
-                path = self.lookup_socket()
-                self.event_socket_task(path)
+    def event_socket_task(self, socket_addr: str) -> bool:
+        try:
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
+                sock.connect(socket_addr)
 
-            except (I3SocketError, ConnectionError) as e:
-                logger.warning(f"[I3Service] socket connection error: {e}")
-            except Exception as e:
-                logger.warning(f"[I3Service] events socket thread ended with an error: {e}")
+                # subscribe to all events
+                sock.sendall(
+                    self.pack(
+                        I3MessageType.SUBSCRIBE,
+                        json.dumps(
+                            [
+                                evnt_name.replace("_event", "")
+                                for mt in I3MessageType
+                                if (evnt_name := mt.name.lower()).endswith("_event")
+                            ]
+                        ),
+                    )
+                )
+                self.unpack(sock)  # success reply
 
-            if not self._wait_for_socket():
-                logger.error(f"[I3Service] failed to connect to socket")
-                break
+                while True:
+                    idle_add(self.handle_raw_event, *self.unpack(sock))
+
+        except (I3SocketError, ConnectionError) as e:
+            logger.warning(f"[I3Service] socket connection error: {e}")
+            self._ready = False
+            self.notify("ready")
+            idle_add(self._reconnect_socket)
+        except Exception as e:
+            logger.warning(f"[I3Service] events socket thread ended with an error: {e}")
 
         return False
 
-    def event_socket_task(self, socket_addr: str) -> bool:
-        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
-            sock.connect(socket_addr)
+    def _reconnect_socket(self):
+        logger.debug("[I3Service] starting reconnection loop...")
+        tries = 0
+        max_tries = 500
 
-            # subscribe to all events
-            sock.sendall(
-                self.pack(
-                    I3MessageType.SUBSCRIBE,
-                    json.dumps(
-                        [
-                            evnt_name.replace("_event", "")
-                            for mt in I3MessageType
-                            if (evnt_name := mt.name.lower()).endswith("_event")
-                        ]
-                    ),
+        def reconnect() -> bool:
+            nonlocal tries
+            tries += 1
+
+            if tries > max_tries:
+                logger.error(
+                    f"[I3Service] gave up reconnecting after {max_tries} attempts"
                 )
-            )
-            self.unpack(sock)  # success reply
+                return False
 
-            while True:
-                idle_add(self.handle_raw_event, *self.unpack(sock))
-    
-    def _wait_for_socket(self)->bool:
-        socket_path_exists = False
-        for tries in range(0, 500):
-            socket_path_exists = os.path.exists(self.lookup_socket())
-            if socket_path_exists:
-                break
-            time.sleep(0.001)
+            try:
+                # the socket path doesn't change from my testing
+                if not os.path.exists(self.lookup_socket()):
+                    raise I3SocketNotFoundError
+            except I3SocketNotFoundError:
+                logger.debug(
+                    f"[I3Service] socket not yet available, (attempt {tries}/{max_tries}) retrying..."
+                )
+                return True
 
-        return socket_path_exists
+            logger.info("[I3Service] socket available, reconnecting...")
+            self._connect_event_socket()
+            self._ready = True
+            self.notify("ready")
+            return False  # stop repeating
+
+        invoke_repeater(1, reconnect, initial_call=False)
 
     def handle_raw_event(self, message_type: int, payload: str):
         event_data = json.loads(payload)

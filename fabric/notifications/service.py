@@ -1,5 +1,4 @@
 import gi
-import time
 import base64
 from enum import Enum
 from loguru import logger
@@ -311,7 +310,7 @@ class Notification(Service):
             if data["image-pixmap"]
             else None
         )
-        self._time = data["time"] or time.time()
+        self._time = data["time"] or float(GLib.DateTime.new_now_utc().to_unix())
 
         return self
 
@@ -350,7 +349,7 @@ class Notification(Service):
         ):
             self._image_pixmap = NotificationImagePixmap(raw_image_data)
 
-        self._time: float = time.time()
+        self._time: float = float(GLib.DateTime.new_now_utc().to_unix())
 
     def do_get_hint_entry(
         self, entry_key: str, unpack: bool = True

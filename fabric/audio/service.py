@@ -67,14 +67,14 @@ class AudioStream(Service):
     @Property(float, "read-write")
     def volume(self) -> float:
         return float(
-            (self._stream.get_volume() / self._control.get_vol_max_norm()) * 100
+            (self._stream.props.volume / self._control.get_vol_max_norm()) * 100
         )
 
     @volume.setter
     def volume(self, value: float):
         value = 0 if value < 0 else value
         value = self._parent.max_volume if value > self._parent.max_volume else value
-        self._old_vol = self._stream.get_volume()
+        self._old_vol = self._stream.props.volume
         self._stream.set_volume(int((value * self._control.get_vol_max_norm()) / 100))
         self._stream.push_volume()  # type: ignore
         return self.changed()

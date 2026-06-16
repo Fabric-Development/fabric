@@ -257,10 +257,10 @@ class Audio(Service):
         return rlist
 
     def on_default_stream_changed(self, id: int, type: str):
-        logger.info(f"[Audio][{type.title()}] Changing default {type} to {id}")
+        # logger.info(f"[Audio][{type.title()}] Changing default {type} to {id}")
 
         if (old_strm := self.__getattribute__(f"_{type}")) is not None:
-            logger.info(f"[Audio][{type.title()}] Removing old {type} stream")
+            # logger.info(f"[Audio][{type.title()}] Removing old {type} stream")
             try:
                 hndlr_id = self.__getattribute__(f"_{type}_connection")
                 old_strm.handler_disconnect(hndlr_id)
@@ -304,9 +304,9 @@ class Audio(Service):
             "changed", lambda *_: self.changed()
         )
 
-        logger.info(
-            f"[Audio][{audio_stream.type.title()}] Adding stream {stream_id} with name {audio_stream.name}"
-        )
+        # logger.info(
+        #    f"[Audio][{audio_stream.type.title()}] Adding stream {stream_id} with name {audio_stream.name}"
+        # )
         self.do_notify_streams(stream)
         return self.changed()
 
@@ -317,9 +317,9 @@ class Audio(Service):
         audio_stream = self._streams.pop(stream_id)
         audio_stream.handler_disconnect(self._stream_connectors.pop(stream_id))  # type: ignore
 
-        logger.info(
-            f"[Audio][{audio_stream.type.title()}] Removing stream {stream_id} with name {audio_stream.name}"
-        )
+        # logger.info(
+        #    f"[Audio][{audio_stream.type.title()}] Removing stream {stream_id} with name {audio_stream.name}"
+        # )
         self.do_notify_streams(audio_stream.stream)
         audio_stream.close()
         return self.changed()

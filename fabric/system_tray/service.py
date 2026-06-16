@@ -1,5 +1,6 @@
 import gi
 from loguru import logger
+from pathlib import Path
 from typing import NamedTuple, Literal, Any, cast
 from fabric.core.service import Service, Signal, Property
 from fabric.utils.helpers import load_dbus_xml, bulk_connect, get_enum_member
@@ -174,8 +175,22 @@ class SystemTrayItem(Service):
             preferred_icon_name = icon_name
             preferred_icon_pixmap = icon_pixmap
 
-        icon_theme = self.icon_theme
+        # Some apps return an absolute path instead of the icon name
+        if preferred_icon_pixmap is None and preferred_icon_name:
+            path = Path(preferred_icon_name)
+            if path.is_absolute() and path.exists():
+                try:
+                    target = size if size is not None else 24
+                    return GdkPixbuf.Pixbuf.new_from_file_at_scale(
+                        str(path),
+                        target,
+                        target,
+                        True,
+                    )
+                except GLib.GError:
+                    return None
 
+        icon_theme = self.icon_theme
         icon_theme_sizes: list | None = (
             icon_theme.get_icon_sizes(preferred_icon_name)
             if preferred_icon_name is not None

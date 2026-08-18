@@ -306,6 +306,22 @@ def parse_color(color: str | Iterable[Number]) -> Gdk.RGBA:
     raise ValueError(f"{color} is an invalid color format")
 
 
+# precompiled regex patterns for compile_css
+FASS_IMPORT_PATTERN = re.compile(
+    r'@import\s+(?:url\()?["\']?([^"\')]+)["\']?\)?\s*;'
+)
+FASS_VARS_SELECTOR_PATTERN = re.compile(r":vars\s*{\s*([^}]+)\s*}")
+FASS_VARS_DECL_PATTERN = re.compile(r"--([\w-]+)\s*:\s*([^;]+)\s*;")
+FASS_VARS_REF_PATTERN = re.compile(r"var\(--([\w-]+)\)")
+FASS_CONSTANT_PATTERN = re.compile(r"@define\s+([\w-]+)\s+([^;]+);")
+FASS_CONSTANT_APPLY_PATTERN = re.compile(r"apply\(([\w-]+)\)")
+FASS_MACRO_PATTERN = re.compile(
+    r"@define\s+([\w-]+)\(([^)]*)\)\s*{\s*([^}]+)\s*}"
+)
+FASS_MACRO_APPLY_PATTERN = re.compile(
+    r"@apply\s+([\w-]+)\(([^)]*)\)\s*;?"
+)
+
 def compile_css(
     css_string: str,
     base_path: str = ".",
@@ -345,17 +361,6 @@ def compile_css(
     :rtype: str
     """
 
-    import_pattern = re.compile(r'@import\s+(?:url\()?["\']?([^"\')]+)["\']?\)?\s*;')
-
-    vars_selector_pattern = re.compile(r":vars\s*{\s*([^}]+)\s*}")
-    vars_declaration_pattern = re.compile(r"--([\w-]+)\s*:\s*([^;]+)\s*;")
-    vars_reference_pattern = re.compile(r"var\(--([\w-]+)\)")
-
-    constant_pattern = re.compile(r"@define\s+([\w-]+)\s+([^;]+);")
-    constant_apply_pattern = re.compile(r"apply\(([\w-]+)\)")
-
-    macro_pattern = re.compile(r"@define\s+([\w-]+)\(([^)]*)\)\s*{\s*([^}]+)\s*}")
-    macro_apply_pattern = re.compile(r"@apply\s+([\w-]+)\(([^)]*)\)\s*;?")
 
     functions_map: dict[str, Callable] = (
         {}
@@ -389,13 +394,13 @@ def compile_css(
                 )
                 return f"/* couldn't import file: {file_path} */"
 
-        return import_pattern.sub(import_replacement, css_content)
+        return FASS_IMPORT_PATTERN.sub(import_replacement, css_content)
 
     # resolve @import statements before passing over to the preprocessor
     css_output = resolve_imports(css_string)
 
     # color variables
-    match = vars_selector_pattern.search(css_output)
+    match = FASS_VARS_SELECTOR_PATTERN.search(css_output)
     css_output = (
         f"{match.group(1)}\n\n{css_output.replace(match.group(0), '')}"
         if match
@@ -403,17 +408,17 @@ def compile_css(
     )
 
     # this could be preprocessed as the original value not (a translation to Gtk's syntax)
-    css_output = vars_declaration_pattern.sub(
+    css_output = FASS_VARS_DECL_PATTERN.sub(
         lambda m: f"@define-color {m.group(1)} {m.group(2)};", css_output
     )
-    css_output = vars_reference_pattern.sub(r"@\1", css_output)
+    css_output = FASS_VARS_REF_PATTERN.sub(r"@\1", css_output)
 
     # preprocessing
     constants: dict[str, str] = {
-        m.group(1): m.group(2) for m in constant_pattern.finditer(css_output)
+        m.group(1): m.group(2) for m in FASS_CONSTANT_PATTERN.finditer(css_output)
     }
-    css_output = constant_pattern.sub("", css_output)
-    css_output = constant_apply_pattern.sub(
+    css_output = FASS_CONSTANT_PATTERN.sub("", css_output)
+    css_output = FASS_CONSTANT_APPLY_PATTERN.sub(
         lambda m: constants.get(m.group(1), m.group(0)), css_output
     )
 
@@ -425,9 +430,9 @@ def compile_css(
             tuple(args_group.split(",")) if (args_group := m.group(2)) else (),
             m.group(3).strip(),
         )
-        for m in macro_pattern.finditer(css_output)
+        for m in FASS_MACRO_PATTERN.finditer(css_output)
     }
-    css_output = macro_pattern.sub("", css_output)
+    css_output = FASS_MACRO_PATTERN.sub("", css_output)
 
     def apply_macro_replacement(match: re.Match) -> str:
         macro_name = match.group(1)
@@ -454,7 +459,7 @@ def compile_css(
 
         return macro_body
 
-    css_output = macro_apply_pattern.sub(apply_macro_replacement, css_output)
+    css_output = FASS_MACRO_APPLY_PATTERN.sub(apply_macro_replacement, css_output)
 
     # clean up
     css_output = re.sub(r"\n\s*\n", "\n", css_output).strip()

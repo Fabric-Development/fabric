@@ -326,6 +326,7 @@ FASS_CSS_PATTERN = re.compile(
         r"(-?\d+)(?:px)?(?:\s+(-?\d+)(?:px)?(?:\s+(-?\d+)(?:px)?(?:\s+(-?\d+)(?:px)?)?)?)?"
     )
 FASS_CLEANUP_PATTERN = re.compile(r"\n\s*\n")
+PASCAL_CASE_PATTERN = re.compile(r"[A-Z]?[a-z]+|[A-Z]{2,}(?=[A-Z][a-z]|\d|\W|$)|\d+")
 
 def compile_css(
     css_string: str,
@@ -803,7 +804,7 @@ def pascal_case_to_snake_case(string: str) -> str:
     return "_".join(
         map(
             str.lower,
-            re.findall(r"[A-Z]?[a-z]+|[A-Z]{2,}(?=[A-Z][a-z]|\d|\W|$)|\d+", string),
+            PASCAL_CASE_PATTERN.findall(string),
         )
     )
 

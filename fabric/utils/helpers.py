@@ -322,6 +322,11 @@ FASS_MACRO_APPLY_PATTERN = re.compile(
     r"@apply\s+([\w-]+)\(([^)]*)\)\s*;?"
 )
 
+FASS_CSS_PATTERN = re.compile(
+        r"(-?\d+)(?:px)?(?:\s+(-?\d+)(?:px)?(?:\s+(-?\d+)(?:px)?(?:\s+(-?\d+)(?:px)?)?)?)?"
+    )
+FASS_CLEANUP_PATTERN = re.compile(r"\n\s*\n")
+
 def compile_css(
     css_string: str,
     base_path: str = ".",
@@ -462,7 +467,7 @@ def compile_css(
     css_output = FASS_MACRO_APPLY_PATTERN.sub(apply_macro_replacement, css_output)
 
     # clean up
-    css_output = re.sub(r"\n\s*\n", "\n", css_output).strip()
+    css_output = FASS_CLEANUP_PATTERN.sub("\n", css_output).strip()
 
     return css_output
 
@@ -573,10 +578,8 @@ def extract_css_values(css_string: str) -> tuple[int, int, int, int]:
         does not contain enough values, the missing values are filled with zeros.
     :rtype: tuple
     """
-    pattern = re.compile(
-        r"(-?\d+)(?:px)?(?:\s+(-?\d+)(?:px)?(?:\s+(-?\d+)(?:px)?(?:\s+(-?\d+)(?:px)?)?)?)?"
-    )
-    matches = pattern.match(css_string)
+
+    matches = FASS_CSS_PATTERN.match(css_string)
     default_values = (0, 0, 0, 0)
     if matches:
         values = [int(val) if val else 0 for val in matches.groups()]

@@ -25,6 +25,9 @@ class WaylandWindowExclusivity(Enum):
     AUTO = 3
 
 
+ANCHOR_DIRECTION_PATTERN = re.compile(r"\b(left|right|top|bottom)\b", re.IGNORECASE)
+
+
 class WaylandWindow(Window):
     @Property(
         GtkLayerShell.Layer,
@@ -275,8 +278,7 @@ class WaylandWindow(Window):
         :rtype: list
         """
         direction_map = {"l": "left", "t": "top", "r": "right", "b": "bottom"}
-        pattern = re.compile(r"\b(left|right|top|bottom)\b", re.IGNORECASE)
-        matches = pattern.findall(string)
+        matches = ANCHOR_DIRECTION_PATTERN.findall(string)
         return tuple(set(tuple(direction_map[match.lower()[0]] for match in matches)))
 
     @staticmethod

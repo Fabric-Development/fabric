@@ -154,6 +154,7 @@ class Widget(Gtk.Widget, Service):
         Service.__init__(self, **kwargs)
 
         self._style_provider: Gtk.CssProvider | None = None
+        self._style_compiled: str | None = None
         self._cursor: Gdk.Cursor | None = None
 
         self.set_name(name) if name is not None else None
@@ -217,11 +218,16 @@ class Widget(Gtk.Widget, Service):
         )
         style = compile_css(style) if compile is True else style
 
+        if style == self._style_compiled and self._style_provider is not None:
+            return
+
         self.get_style_context().remove_provider(
             self._style_provider
         ) if self._style_provider is not None and append is False else None
 
-        self._style_provider = Gtk.CssProvider()
+        if self._style_provider is None:
+            self._style_provider = Gtk.CssProvider()
+        self._style_compiled = style
         self._style_provider.load_from_data(style.encode())  # type: ignore
         self.get_style_context().add_provider(
             self._style_provider, Gtk.STYLE_PROVIDER_PRIORITY_USER

@@ -1,21 +1,22 @@
+import os
+from typing import Any, Literal, NamedTuple, cast
+
 import gi
 from loguru import logger
-from pathlib import Path
-from typing import NamedTuple, Literal, Any, cast
-from fabric.core.service import Service, Signal, Property
-from fabric.utils.helpers import load_dbus_xml, bulk_connect, get_enum_member
+
+from fabric.core.service import Property, Service, Signal
+from fabric.utils.helpers import bulk_connect, get_enum_member, load_dbus_xml
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("DbusmenuGtk3", "0.4")
 from gi.repository import (
-    Gtk,
-    Gio,
+    DbusmenuGtk3,
     Gdk,
     GdkPixbuf,
-    DbusmenuGtk3,
+    Gio,
     GLib,
+    Gtk,
 )
-
 
 STATUS_NOTIFIER_WATCHER_BUS_NAME = "org.kde.StatusNotifierWatcher"
 STATUS_NOTIFIER_WATCHER_BUS_PATH = "/StatusNotifierWatcher"
@@ -177,12 +178,12 @@ class SystemTrayItem(Service):
 
         # Some apps return an absolute path instead of the icon name
         if preferred_icon_pixmap is None and preferred_icon_name:
-            path = Path(preferred_icon_name)
-            if path.is_absolute() and path.exists():
+            path = preferred_icon_name
+            if os.path.isabs(path) and os.path.exists(path):
                 try:
                     target = size if size is not None else 24
                     return GdkPixbuf.Pixbuf.new_from_file_at_scale(
-                        str(path),
+                        path,
                         target,
                         target,
                         True,

@@ -161,7 +161,9 @@ class Hyprland(Service):
         """
         resp = b""
         try:
-            _, socket_addr, *__ = Hyprland.lookup_socket()
+            if not Hyprland.COMMANDS_SOCKET:
+                Hyprland.lookup_socket()
+            socket_addr = Hyprland.COMMANDS_SOCKET
 
             # from Gio's docs:
             # > GSocketClient is a lightweight object, you don't need to cache it.
@@ -206,7 +208,9 @@ class Hyprland(Service):
         :param callback: the callback on where would you like to receive the reply of the command
         :type callback: Callable[[HyprlandReply], Any]
         """
-        _, socket_addr, *_ = Hyprland.lookup_socket()
+        if not Hyprland.COMMANDS_SOCKET:
+            Hyprland.lookup_socket()
+        socket_addr = Hyprland.COMMANDS_SOCKET
 
         # from Gio's docs:
         # > GSocketClient is a lightweight object, you don't need to cache it.

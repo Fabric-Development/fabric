@@ -166,8 +166,12 @@ class I3(Service):
         reply_data = {}
         is_ok = False
         try:
+            if not I3.SOCKET_PATH:
+                I3.lookup_socket()
+            socket_addr = I3.SOCKET_PATH
+
             with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
-                sock.connect(I3.lookup_socket())
+                sock.connect(socket_addr)
                 sock.sendall(I3.pack(message_type, command))
 
                 _, payload = I3.unpack(sock)

@@ -217,9 +217,6 @@ class Widget(Gtk.Widget, Service):
         )
         style = compile_css(style) if compile is True else style
 
-        if self._style_provider is not None:
-            return
-
         self.get_style_context().remove_provider(
             self._style_provider
         ) if self._style_provider is not None and append is False else None

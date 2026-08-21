@@ -18,19 +18,6 @@ def get_hyprland_connection() -> Hyprland:
 
     return connection
 
-def does_hyprland_support_lua() -> bool:
-    conn = get_hyprland_connection()
-    # +0 does nothing.
-    output = conn.send_command(
-        "batch/dispatch hl.dsp.focus({ workspace = \"+0\" })"
-    )
-    return output.is_ok
-
-HYPRLAND_FOCUS_WORKSPACE_TEMPLATE = (
-    "batch/dispatch hl.dsp.focus({{ workspace = \"{ws_id}\" }})"
-    if does_hyprland_support_lua()
-    else "batch/dispatch workspace {ws_id}"
-)
 
 class HyprlandWorkspaces(Workspaces):
     def __init__(
@@ -44,6 +31,12 @@ class HyprlandWorkspaces(Workspaces):
     ):
         super().__init__(buttons, buttons_factory, invert_scroll, **kwargs)
         self.connection = get_hyprland_connection()
+
+        self._focus_command_template = (
+            'batch/dispatch hl.dsp.focus({{ workspace = "{ws_id}" }})'
+            if self.connection.supports_lua
+            else "batch/dispatch workspace {ws_id}"
+        )
 
         self._empty_scroll = empty_scroll
         bulk_connect(
@@ -117,17 +110,21 @@ class HyprlandWorkspaces(Workspaces):
     # override signals from super class
     def do_action_next(self):
         return self.connection.send_command(
-            HYPRLAND_FOCUS_WORKSPACE_TEMPLATE.format(ws_id='+1' if self._empty_scroll else 'e+1')
+            self._focus_command_template.format(
+                ws_id="+1" if self._empty_scroll else "e+1"
+            )
         )
 
     def do_action_previous(self):
         return self.connection.send_command(
-            HYPRLAND_FOCUS_WORKSPACE_TEMPLATE.format(ws_id='-1' if self._empty_scroll else 'e-1')
+            self._focus_command_template.format(
+                ws_id="-1" if self._empty_scroll else "e-1"
+            )
         )
 
     def do_button_clicked(self, button: WorkspaceButton):
         return self.connection.send_command(
-            HYPRLAND_FOCUS_WORKSPACE_TEMPLATE.format(ws_id=str(button.id))
+            self._focus_command_template.format(ws_id=str(button.id))
         )
 
 

@@ -12,7 +12,7 @@ from gi.repository import (
 )
 
 P = ParamSpec("P")
-HYPRLAND_COMMAND_BUFFER_SIZE = 1_048_576  # 12mb -> binary bytes
+HYPRLAND_COMMAND_BUFFER_SIZE = 1_048_576  # 1mb
 
 
 # exceptions
@@ -59,11 +59,17 @@ class Hyprland(Service):
     this can be used for ONLY sending commands or both sending and receiving events
     """
 
+    # refs
+    # https://wiki.hyprland.org/IPC
     EVENTS_SOCKET = COMMANDS_SOCKET = None
     SOCKET_PATH = ""
 
-    # refs
-    # https://wiki.hyprland.org/IPC
+    @Property(bool, "readable", default_value=False)
+    def supports_lua(self) -> bool:
+        # +0 does nothing. hopefully.
+        return Hyprland.send_command(
+            'batch/dispatch hl.dsp.focus({ workspace = "+0" })'
+        ).is_ok
 
     @Property(bool, "readable", "is-ready", default_value=False)
     def ready(self) -> bool:

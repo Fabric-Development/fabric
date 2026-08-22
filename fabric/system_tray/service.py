@@ -1,21 +1,19 @@
 import os
-from typing import Any, Literal, NamedTuple, cast
-
 import gi
 from loguru import logger
-
-from fabric.core.service import Property, Service, Signal
-from fabric.utils.helpers import bulk_connect, get_enum_member, load_dbus_xml
+from typing import NamedTuple, Literal, Any, cast
+from fabric.core.service import Service, Signal, Property
+from fabric.utils.helpers import load_dbus_xml, bulk_connect, get_enum_member
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("DbusmenuGtk3", "0.4")
 from gi.repository import (
-    DbusmenuGtk3,
+    Gtk,
+    Gio,
     Gdk,
     GdkPixbuf,
-    Gio,
+    DbusmenuGtk3,
     GLib,
-    Gtk,
 )
 
 STATUS_NOTIFIER_WATCHER_BUS_NAME = "org.kde.StatusNotifierWatcher"

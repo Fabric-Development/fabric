@@ -1,4 +1,3 @@
-import os
 import gi
 from loguru import logger
 from typing import NamedTuple, Literal, Any, cast
@@ -174,21 +173,6 @@ class SystemTrayItem(Service):
             preferred_icon_name = icon_name
             preferred_icon_pixmap = icon_pixmap
 
-        # Some apps return an absolute path instead of the icon name
-        if preferred_icon_pixmap is None and preferred_icon_name:
-            path = preferred_icon_name
-            if os.path.isabs(path) and os.path.exists(path):
-                try:
-                    target = size if size is not None else 24
-                    return GdkPixbuf.Pixbuf.new_from_file_at_scale(
-                        path,
-                        target,
-                        target,
-                        True,
-                    )
-                except GLib.GError:
-                    return None
-
         icon_theme = self.icon_theme
         icon_theme_sizes: list | None = (
             icon_theme.get_icon_sizes(preferred_icon_name)
@@ -198,17 +182,22 @@ class SystemTrayItem(Service):
         icon_theme_sizes = [] if not icon_theme_sizes else icon_theme_sizes
         icon_theme_sizes.append(size if size is not None else 24)
 
-        pixbuf = (
-            preferred_icon_pixmap.as_pixbuf()
-            if preferred_icon_pixmap is not None
-            else icon_theme.load_icon(
+        pixbuf: GdkPixbuf.Pixbuf | None = None
+
+        if preferred_icon_pixmap:
+            pixbuf = preferred_icon_pixmap.as_pixbuf()
+        elif preferred_icon_name and GLib.file_test(
+            preferred_icon_name, GLib.FileTest.EXISTS
+        ):
+            # some apps return an absolute path instead of the icon name
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file(preferred_icon_name)
+        elif preferred_icon_name:
+            pixbuf = icon_theme.load_icon(
                 preferred_icon_name,
                 max(icon_theme_sizes),
-                Gtk.IconLookupFlags.FORCE_SIZE,
+                Gtk.IconLookupFlags.FORCE_SIZE | Gtk.IconLookupFlags.USE_BUILTIN,
             )
-            if preferred_icon_name is not None
-            else None
-        )
+
         return (
             pixbuf.scale_simple(
                 size,
@@ -256,11 +245,10 @@ class SystemTrayItem(Service):
     def icon_theme(self) -> Gtk.IconTheme:
         if not self._icon_theme:
             self._icon_theme = Gtk.IconTheme.get_default()
-            search_path = self.get_icon_theme_path()
-            self._icon_theme.set_search_path([search_path]) if search_path not in (
-                None,
-                "",
-            ) else None
+            search_path = self.icon_theme_path
+            self._icon_theme.set_search_path(
+                [search_path, *self._icon_theme.get_search_path()]
+            ) if search_path else None
         return self._icon_theme
 
     @Property(str, "readable")

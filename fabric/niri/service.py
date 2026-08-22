@@ -1,0 +1,134 @@
+import json
+from dataclasses import dataclass
+from typing import ParamSpec, cast
+
+from gi.repository import Gio, GLib
+from loguru import logger
+
+from fabric.core.service import Property, Service, Signal
+from fabric.utils.helpers import (
+    idle_add,
+    pascal_case_to_snake_case,
+    snake_case_to_kebab_case,
+)
+
+P = ParamSpec("P")
+NIRI_COMMAND_BUFFER_SIZE = 1_048_576  # 1mb
+
+
+# exceptions
+# TODO: use the rest of 'em
+class NiriError(Exception): ...
+
+
+class NiriSocketError(Exception): ...
+
+
+class NiriSocketNotFoundError(Exception): ...
+
+
+# dataclasses with frozen flag
+# to avoid unexpected changes
+@dataclass(frozen=True)
+class NiriEvent:
+    name: str
+    "the name of the received event"
+    data: dict | list | str
+    "data gathered from the event's body"
+    raw_data: bytes
+    "the data as is from the socket event"
+
+
+@dataclass(frozen=True)
+class NiriReply:
+    command: str
+    reply: bytes
+    is_ok: bool
+
+
+class Niri(Service):
+    """
+    a connection to a running Niri instance's socket
+    """
+
+    # refs
+    # https://github.com/niri-wm/niri/wiki/IPC
+    # https://niri-wm.github.io/niri/niri_ipc/enum.Event.html
+
+    SOCKET: Gio.UnixSocketAddress | None = None
+    SOCKET_PATH: str = ""
+
+    @Property(bool, "readable", "is-ready", default_value=False)
+    def ready(self) -> bool:
+        return self._ready
+
+    @Signal
+    def ready(self):
+        return self.notify("ready")
+
+    @Signal("event", flags="detailed")
+    def event(self, event: object): ...
+
+    def __init__(self, commands_only: bool = False, **kwargs):
+        super().__init__(**kwargs)
+        self._ready = False
+        self.lookup_socket()  # set the above constants
+
+        self._socket_conn: Gio.SocketConnection = Gio.SocketClient().connect(
+            cast(Gio.UnixSocketAddress, self.SOCKET)
+        )
+        self._socket_writer = Gio.DataOutputStream.new(
+            self._socket_conn.get_output_stream()
+        )
+        self._socket_reader = Gio.DataInputStream.new(
+            self._socket_conn.get_input_stream()
+        )
+
+        # all aboard...
+        if not commands_only:
+            self.event_socket_thread = GLib.Thread.new(
+                "niri-socket-service", self.event_socket_task
+            )
+
+        self._ready = True
+        self.ready.emit()
+
+    @staticmethod
+    def lookup_socket() -> tuple[Gio.UnixSocketAddress, str]:
+        if Niri.SOCKET and Niri.SOCKET_PATH:  # this _should_ handle "" as None
+            return (Niri.SOCKET, Niri.SOCKET_PATH)
+
+        if not (socket_path := GLib.getenv("NIRI_SOCKET")) and GLib.file_test(
+            socket_path, GLib.FileTest.EXISTS
+        ):
+            raise NiriSocketNotFoundError("couldn't find Niri socket, is Niri running?")
+
+        Niri.SOCKET = Gio.UnixSocketAddress.new(socket_path)
+        Niri.SOCKET_PATH = socket_path
+
+        return (Niri.SOCKET, Niri.SOCKET_PATH)
+
+    def event_socket_task(self) -> bool:
+        self._socket_writer.put_string('"EventStream"\n', None)
+        self._socket_conn.get_output_stream().flush(None)
+
+        while not self._socket_reader.is_closed():
+            print("in loop")
+            raw_data: tuple[bytes, int] = self._socket_reader.read_line()  # type: ignore
+
+            idle_add(self.handle_raw_event, raw_data[0])
+
+        logger.warning("[NiriService] events socket thread ended")
+        return False
+
+    def handle_raw_event(self, raw_event: bytes):
+        decoded_event: dict[str, dict | list | str] = json.loads(raw_event)
+        ((event_name, event_body),) = decoded_event.items()
+
+        event = NiriEvent(
+            snake_case_to_kebab_case(pascal_case_to_snake_case(event_name)),
+            event_body,
+            raw_event,
+        )
+
+        return self.emit(f"event::{event.name}", event)

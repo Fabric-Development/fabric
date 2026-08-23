@@ -8,7 +8,10 @@ from fabric.utils import bulk_connect, get_enum_member_name, snake_case_to_kebab
 class CvcImportError(ImportError):
     def __init__(self, *args):
         super().__init__(
-            "Cvc is not installed, please install it first, you can use automated installer in the git repository",
+            (
+                "Cvc is not installed, please install it first, a common fix could be installing the cinnamon-desktop package (this is not the actual desktop environment, just a bunch of helper libraries.)\n"
+                "if the cinnamon-desktop package is not available for you, we do have an automated installer in fabric's git repository."
+            ),
             *args,
         )
 
@@ -67,14 +70,14 @@ class AudioStream(Service):
     @Property(float, "read-write")
     def volume(self) -> float:
         return float(
-            (self._stream.get_volume() / self._control.get_vol_max_norm()) * 100
+            (self._stream.props.volume / self._control.get_vol_max_norm()) * 100
         )
 
     @volume.setter
     def volume(self, value: float):
         value = 0 if value < 0 else value
         value = self._parent.max_volume if value > self._parent.max_volume else value
-        self._old_vol = self._stream.get_volume()
+        self._old_vol = self._stream.props.volume
         self._stream.set_volume(int((value * self._control.get_vol_max_norm()) / 100))
         self._stream.push_volume()  # type: ignore
         return self.changed()

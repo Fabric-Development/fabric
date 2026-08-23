@@ -32,6 +32,12 @@ class HyprlandWorkspaces(Workspaces):
         super().__init__(buttons, buttons_factory, invert_scroll, **kwargs)
         self.connection = get_hyprland_connection()
 
+        self._focus_command_template = (
+            'batch/dispatch hl.dsp.focus({{ workspace = "{ws_id}" }})'
+            if self.connection.supports_lua
+            else "batch/dispatch workspace {ws_id}"
+        )
+
         self._empty_scroll = empty_scroll
         bulk_connect(
             self.connection,
@@ -104,16 +110,22 @@ class HyprlandWorkspaces(Workspaces):
     # override signals from super class
     def do_action_next(self):
         return self.connection.send_command(
-            f"batch/dispatch workspace {'e' if not self._empty_scroll else ''}+1"
+            self._focus_command_template.format(
+                ws_id="+1" if self._empty_scroll else "e+1"
+            )
         )
 
     def do_action_previous(self):
         return self.connection.send_command(
-            f"batch/dispatch workspace {'e' if not self._empty_scroll else ''}-1"
+            self._focus_command_template.format(
+                ws_id="-1" if self._empty_scroll else "e-1"
+            )
         )
 
     def do_button_clicked(self, button: WorkspaceButton):
-        return self.connection.send_command(f"batch/dispatch workspace {button.id}")
+        return self.connection.send_command(
+            self._focus_command_template.format(ws_id=str(button.id))
+        )
 
 
 class HyprlandActiveWindow(ActiveWindow):

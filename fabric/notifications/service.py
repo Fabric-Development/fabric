@@ -145,6 +145,7 @@ NotificationSerializedData = TypedDict(
         "actions": list[tuple[str, str]],
         "image-file": str | None,
         "image-pixmap": tuple[int, int, int, bool, int, int, str] | None,
+        "time": float,
     },
 )
 
@@ -254,6 +255,15 @@ class Notification(Service):
         """
         return self._image_file  # type: ignore
 
+    @Property(float, "readable")
+    def time(self) -> float:
+        """The Unix timestamp at which this notification was received
+
+        :return: Unix timestamp (seconds since epoch)
+        :rtype: float
+        """
+        return self._time
+
     @Property(GdkPixbuf.Pixbuf, "readable")
     def image_pixbuf(self) -> GdkPixbuf.Pixbuf:
         """A `Pixbuf` loaded from either `image-pixmap` or the `image-file` property
@@ -300,6 +310,7 @@ class Notification(Service):
             if data["image-pixmap"]
             else None
         )
+        self._time = data["time"] or float(GLib.DateTime.new_now_local().to_unix())
 
         return self
 
@@ -338,6 +349,8 @@ class Notification(Service):
         ):
             self._image_pixmap = NotificationImagePixmap(raw_image_data)
 
+        self._time: float = float(GLib.DateTime.new_now_local().to_unix())
+
     def do_get_hint_entry(
         self, entry_key: str, unpack: bool = True
     ) -> GLib.Variant | Any | None:
@@ -366,6 +379,7 @@ class Notification(Service):
             "image-pixmap": self._image_pixmap.serialize()
             if self._image_pixmap
             else None,
+            "time": self._time,
         }
 
     def invoke_action(self, action: str):

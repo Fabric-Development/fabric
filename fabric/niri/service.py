@@ -74,14 +74,24 @@ class Niri(Service):
         self._ready = False
         self.lookup_socket()  # set the above constants
 
-        self._socket_conn: Gio.SocketConnection = Gio.SocketClient().connect(
+        self._command_conn = Gio.SocketClient().connect(
             cast(Gio.UnixSocketAddress, self.SOCKET)
         )
-        self._socket_writer = Gio.DataOutputStream.new(
-            self._socket_conn.get_output_stream()
+        self._command_writer = Gio.DataOutputStream.new(
+            self._command_conn.get_output_stream()
         )
-        self._socket_reader = Gio.DataInputStream.new(
-            self._socket_conn.get_input_stream()
+        self._command_reader = Gio.DataInputStream.new(
+            self._command_conn.get_input_stream()
+        )
+
+        self._event_conn: Gio.SocketConnection = Gio.SocketClient().connect(
+            cast(Gio.UnixSocketAddress, self.SOCKET)
+        )
+        self._event_writer = Gio.DataOutputStream.new(
+            self._event_conn.get_output_stream()
+        )
+        self._event_reader = Gio.DataInputStream.new(
+            self._event_conn.get_input_stream()
         )
 
         # all aboard...
@@ -109,12 +119,18 @@ class Niri(Service):
         return (Niri.SOCKET, Niri.SOCKET_PATH)
 
     def event_socket_task(self) -> bool:
-        self._socket_writer.put_string('"EventStream"\n', None)
-        self._socket_conn.get_output_stream().flush(None)
+        self._event_writer.put_string('"EventStream"\n', None)
+        self._event_conn.get_output_stream().flush(None)
 
-        while not self._socket_reader.is_closed():
-            print("in loop")
-            raw_data: tuple[bytes, int] = self._socket_reader.read_line()  # type: ignore
+        raw_reply, length = self._event_reader.read_line()
+
+        if length <= 0 or (b"Ok" not in raw_reply):
+            raise NiriSocketError(
+                "Niri closed the event socket before acknowledging EventStream"
+            )
+
+        while not self._event_reader.is_closed():
+            raw_data: tuple[bytes, int] = self._event_reader.read_line()  # type: ignore
 
             idle_add(self.handle_raw_event, raw_data[0])
 
@@ -132,3 +148,23 @@ class Niri(Service):
         )
 
         return self.emit(f"event::{event.name}", event)
+
+    def send_command(self, command: dict | list | str):
+        encoded_command = (
+            json.dumps(
+                command,
+                separators=(",", ":"),
+            ).encode("utf-8")
+            + b"\n"
+        )
+
+        self._command_writer.write_all(
+            encoded_command,
+            None,
+        )
+
+        self._command_writer.flush(None)
+
+        raw_reply, length = self._command_reader.read_line()
+
+        return raw_reply

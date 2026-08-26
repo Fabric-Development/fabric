@@ -13,18 +13,16 @@ from fabric.utils.helpers import (
 )
 
 P = ParamSpec("P")
-NIRI_COMMAND_BUFFER_SIZE = 1_048_576  # 1mb
 
 
 # exceptions
-# TODO: use the rest of 'em
 class NiriError(Exception): ...
 
 
-class NiriSocketError(Exception): ...
+class NiriSocketError(NiriError): ...
 
 
-class NiriSocketNotFoundError(Exception): ...
+class NiriSocketNotFoundError(NiriSocketError): ...
 
 
 # dataclasses with frozen flag
@@ -41,9 +39,12 @@ class NiriEvent:
 
 @dataclass(frozen=True)
 class NiriReply:
-    command: str
+    command: dict | list | str
+    "the command fed to get this reply"
     reply: bytes
+    "the reply line raw bytes raw bytes are given to avoid deserializing commands that the user typically ignores its output"
     is_ok: bool
+    "if the command ran successfuly or not, this is infered through a basic check (if reply has `'Err'` in it then `is_ok` is `False`)"
 
 
 class Niri(Service):
@@ -97,7 +98,7 @@ class Niri(Service):
         # all aboard...
         if not commands_only:
             self.event_socket_thread = GLib.Thread.new(
-                "niri-socket-service", self.event_socket_task
+                "niri-socket-service", self.do_handle_event_socket_task
             )
 
         self._ready = True
@@ -118,7 +119,7 @@ class Niri(Service):
 
         return (Niri.SOCKET, Niri.SOCKET_PATH)
 
-    def event_socket_task(self) -> bool:
+    def do_handle_event_socket_task(self) -> bool:
         self._event_writer.put_string('"EventStream"\n', None)
         self._event_conn.get_output_stream().flush(None)
 
@@ -130,19 +131,21 @@ class Niri(Service):
             )
 
         while not self._event_reader.is_closed():
-            raw_data: tuple[bytes, int] = self._event_reader.read_line()  # type: ignore
+            raw_data, _ = cast(tuple[bytes, int], self._event_reader.read_line())  # type: ignore
 
-            idle_add(self.handle_raw_event, raw_data[0])
+            idle_add(self.do_handle_raw_event, raw_data)
 
         logger.warning("[NiriService] events socket thread ended")
         return False
 
-    def handle_raw_event(self, raw_event: bytes):
+    def do_handle_raw_event(
+        self, raw_event: bytes
+    ):  # shall not be called from a threads
         decoded_event: dict[str, dict | list | str] = json.loads(raw_event)
         ((event_name, event_body),) = decoded_event.items()
 
         event = NiriEvent(
-            snake_case_to_kebab_case(pascal_case_to_snake_case(event_name)),
+            snake_case_to_kebab_case(pascal_case_to_snake_case(event_name)),  # sick
             event_body,
             raw_event,
         )
@@ -165,6 +168,8 @@ class Niri(Service):
 
         self._command_writer.flush(None)
 
-        raw_reply, length = self._command_reader.read_line()
+        raw_reply, _ = self._command_reader.read_line()
 
-        return raw_reply
+        return NiriReply(command, raw_reply, b'"Err":' not in raw_reply)
+
+    # TODO: send_command_async

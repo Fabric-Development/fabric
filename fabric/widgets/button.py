@@ -12,7 +12,7 @@ class Button(Gtk.Button, Container):
 
     .. note::
 
-        You might need to not use any other optional child (i.e. `label` and `image`) when setting the `child` widget
+        Use the `clicked` signal to get notified when the button gets pressed easily.
     """
 
     def __init__(

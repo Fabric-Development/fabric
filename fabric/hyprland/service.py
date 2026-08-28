@@ -12,7 +12,7 @@ from gi.repository import (
 )
 
 P = ParamSpec("P")
-HYPRLAND_COMMAND_BUFFER_SIZE = 1_048_576  # 12mb -> binary bytes
+HYPRLAND_COMMAND_BUFFER_SIZE = 1_048_576  # 1mb
 
 
 # exceptions
@@ -27,7 +27,7 @@ class HyprlandSocketNotFoundError(Exception): ...
 
 
 # dataclasses with frozen flag
-# to avoid unexpected changess
+# to avoid unexpected changes
 @dataclass(frozen=True)
 class HyprlandEvent:
     name: str
@@ -47,7 +47,7 @@ class HyprlandReply:
     is_ok: bool
     """
     this indicates if the ran command has returned `ok` or not
-    if set to `False` this means either the command executation has failed
+    if set to `False` this means either the command execution has failed
     or the command itself doesn't return a indication on if it failed or not
     (i.e commands that return data from Hyprland)
     """
@@ -64,11 +64,17 @@ class Hyprland(Service):
         This service is backward compaitible so this is just a friendly note
     """
 
+    # refs
+    # https://wiki.hyprland.org/IPC
     EVENTS_SOCKET = COMMANDS_SOCKET = None
     SOCKET_PATH = ""
 
-    # refs
-    # https://wiki.hyprland.org/IPC
+    @Property(bool, "readable", default_value=False)
+    def supports_lua(self) -> bool:
+        # +0 does nothing. hopefully.
+        return Hyprland.send_command(
+            'batch/dispatch hl.dsp.focus({ workspace = "+0" })'
+        ).is_ok
 
     @Property(bool, "readable", "is-ready", default_value=False)
     def ready(self) -> bool:

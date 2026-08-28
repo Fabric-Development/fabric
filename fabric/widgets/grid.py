@@ -1,39 +1,21 @@
 import gi
-from typing import Literal
 from collections.abc import Iterable
-from fabric.core.service import Property
-from fabric.widgets.widget import Widget
+from typing import Literal
 
-gi.require_version("Gtk", "3.0")
+from fabric.widgets.widget import Widget
 from gi.repository import Gtk
 
 
-class Container(Gtk.Container, Widget):
-    @Property(list[Gtk.Widget], "read-write", install=False)
-    def children(self) -> list[Gtk.Widget]:
-        """A list of children this container is (currently) holding
-
-        :rtype: list[Gtk.Widget]
-        """
-        return self.get_children()
-
-    @children.setter
-    def children(self, value: Gtk.Widget | Iterable[Gtk.Widget]):
-        for old_child in self.get_children():
-            self.remove(old_child)
-        if isinstance(value, (tuple, list)):
-            for widget in value:
-                self.add(widget)
-            return
-        self.add(value)
-        return
-
+class Grid(Gtk.Grid, Widget):
     def __init__(
         self,
-        children: Gtk.Widget | Iterable[Gtk.Widget] | None = None,
         name: str | None = None,
         visible: bool = True,
         all_visible: bool = False,
+        row_spacing: int = 0,
+        column_spacing: int = 0,
+        column_homogeneous: bool = False,
+        row_homogeneous: bool = False,
         style: str | None = None,
         style_classes: Iterable[str] | str | None = None,
         tooltip_text: str | None = None,
@@ -49,10 +31,7 @@ class Container(Gtk.Container, Widget):
         size: Iterable[int] | int | None = None,
         **kwargs,
     ):
-        Gtk.Container.__init__(self)  # type: ignore
-
-        self.children = children or []
-
+        Gtk.Grid.__init__(self)
         Widget.__init__(
             self,
             name,
@@ -69,3 +48,24 @@ class Container(Gtk.Container, Widget):
             size,
             **kwargs,
         )
+        self.set_row_spacing(row_spacing)
+        self.set_column_spacing(column_spacing)
+        self.set_column_homogeneous(column_homogeneous)
+        self.set_row_homogeneous(row_homogeneous)
+
+    def attach_flow(
+        self, children: Iterable[Widget], columns, start_row=0, start_col=0
+    ):
+        """
+        Adds widgets to a Gtk.Grid in a flow layout.
+
+        Args:
+            children (list): List of Gtk.Widget to add.
+            columns (int): Number of columns in the grid.
+            start_row (int): Optional starting row.
+            start_col (int): Optional starting column.
+        """
+        for index, child in enumerate(children):
+            row = start_row + index // columns
+            col = start_col + index % columns
+            self.attach(child, col, row, 1, 1)

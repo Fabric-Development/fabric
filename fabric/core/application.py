@@ -6,10 +6,15 @@ import inspect
 from loguru import logger
 from types import FrameType
 from inspect import FrameInfo
-from collections.abc import Iterable
 from typing import overload, Literal, Self
+from collections.abc import Iterable, Callable
 from fabric.core.service import Service, Property
-from fabric.utils.helpers import load_dbus_xml, compile_css
+from fabric.utils.helpers import (
+    load_dbus_xml,
+    snake_case_to_kebab_case,
+    get_function_annotations,
+    compile_css,
+)
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk, GLib, Gio
@@ -88,10 +93,14 @@ class FileHook:
 
 class DBusClient:
     def __init__(
-        self, config: "Application", connection: Gio.DBusConnection, *args, **kwargs
+        self,
+        application: "Application",
+        connection: Gio.DBusConnection,
+        *args,
+        **kwargs,
     ):
         super().__init__(*args, **kwargs)
-        self.config = config
+        self.application = application
         self.hook = FileHook.from_here()
         self.connection: Gio.DBusConnection = connection
         self.do_register()
@@ -132,20 +141,24 @@ class DBusClient:
                         invocation.return_value(
                             GLib.Variant(
                                 "(v)",
-                                (
-                                    GLib.Variant(
-                                        "a{sb}",
-                                        self.do_serialize_windows(),
-                                    ),
-                                ),
+                                (GLib.Variant("a{sb}", self.do_serialize_windows()),),
+                            )
+                        )
+                    case "Actions":
+                        invocation.return_value(
+                            GLib.Variant(
+                                "(v)",
+                                (GLib.Variant("a{sas}", self.do_serialize_actions()),),
                             )
                         )
                     case _:
                         invocation.return_value(None)
+
             case "GetAll":
                 all_properties = {
                     "File": GLib.Variant("s", self.hook.file_path),
                     "Windows": GLib.Variant("a{sb}", self.do_serialize_windows()),
+                    "Actions": GLib.Variant("a{sas}", self.do_serialize_actions()),
                 }
 
                 invocation.return_value(GLib.Variant("(a{sv})", (all_properties,)))
@@ -181,6 +194,25 @@ class DBusClient:
                         ),
                     )
                 )
+            case "InvokeAction":
+                action_name: str = params[0]
+                arguments: list[str] = params[1]
+                if not (action := self.application.actions.get(action_name, None)):
+                    invocation.return_value(
+                        GLib.Variant(
+                            "(bs)",
+                            (True, f"couldn't find action with name `{action_name}`"),
+                        )
+                    )
+                else:
+                    try:
+                        invocation.return_value(
+                            GLib.Variant("(bs)", (False, str(action[0](*arguments))))
+                        )
+                    except Exception as e:
+                        invocation.return_value(
+                            GLib.Variant("(bs)", (False, e.__repr__()))
+                        )
             case _:
                 invocation.return_value(None)
 
@@ -188,14 +220,26 @@ class DBusClient:
 
     def do_serialize_windows(self) -> dict[str, bool]:
         windows: dict[str, bool] = {}
-        for window in self.config.windows:
+        for window in self.application.windows:
             windows[window.get_name()] = window.is_visible()
         return windows
 
+    def do_serialize_actions(self) -> dict[str, tuple[str, ...]]:
+        rd: dict[str, tuple[str, ...]] = {}
+        for name, value in self.application.actions.items():
+            rd[name] = value[1]
+        return rd
+
 
 class Application(Gtk.Application, Service):
+    _actions: dict[str, tuple[Callable, tuple[str, ...]]] = {}
+
     activated = Property(bool, flags="read-write", default_value=False)
     name = Property(str, flags="read-write")
+
+    @Property(dict[str, tuple[Callable, tuple[str, ...]]])
+    def actions(self) -> dict[str, tuple[Callable, tuple[str, ...]]]:
+        return self._actions
 
     @Property(list[Gtk.Window])
     def windows(self) -> list[Gtk.Window]:
@@ -462,3 +506,33 @@ class Application(Gtk.Application, Service):
         return (self.set_style_provider if not append else self.add_style_provider)(
             provider
         )
+
+    @staticmethod
+    def action(name: str | None = None):
+        """
+        An action is an alternative way for calling userspace defined functions through the dbus client (or cli)
+        actions make it easier for calling functions defined in modules rather than your config's entry point
+
+        :param name: a name to register this action with, if none, use the function's name converted to kebab case, defaults to None
+        :type name: str | None, optional
+        """
+
+        def wrapper(func: Callable):
+            nonlocal name
+
+            name = name or snake_case_to_kebab_case(func.__name__)
+            if oa := Application._actions.get(name, None):
+                logger.error(
+                    f"[Action] a different action is already registered with the name `{name}` ({oa})"
+                )
+                return func
+
+            logger.info(f"[Action] registering action with name {name}")
+
+            Application._actions[name] = (
+                func,
+                tuple(get_function_annotations(func).arguments.keys()),
+            )
+            return func
+
+        return wrapper

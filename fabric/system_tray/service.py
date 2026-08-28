@@ -21,7 +21,6 @@ from gi.repository import (
     GLib,
 )
 
-
 STATUS_NOTIFIER_WATCHER_BUS_NAME = "org.kde.StatusNotifierWatcher"
 STATUS_NOTIFIER_WATCHER_BUS_PATH = "/StatusNotifierWatcher"
 STATUS_NOTIFIER_WATCHER_BUS_IFACE_NODE = load_dbus_xml(
@@ -201,7 +200,6 @@ class SystemTrayItem(Service):
             preferred_icon_pixmap = icon_pixmap
 
         icon_theme = self.icon_theme
-
         icon_theme_sizes: list | None = (
             icon_theme.get_icon_sizes(preferred_icon_name)
             if preferred_icon_name is not None
@@ -210,17 +208,22 @@ class SystemTrayItem(Service):
         icon_theme_sizes = [] if not icon_theme_sizes else icon_theme_sizes
         icon_theme_sizes.append(size if size is not None else 24)
 
-        pixbuf = (
-            preferred_icon_pixmap.as_pixbuf()
-            if preferred_icon_pixmap is not None
-            else icon_theme.load_icon(
+        pixbuf: GdkPixbuf.Pixbuf | None = None
+
+        if preferred_icon_pixmap:
+            pixbuf = preferred_icon_pixmap.as_pixbuf()
+        elif preferred_icon_name and GLib.file_test(
+            preferred_icon_name, GLib.FileTest.EXISTS
+        ):
+            # some apps return an absolute path instead of the icon name
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file(preferred_icon_name)
+        elif preferred_icon_name:
+            pixbuf = icon_theme.load_icon(
                 preferred_icon_name,
                 max(icon_theme_sizes),
-                Gtk.IconLookupFlags.FORCE_SIZE,
+                Gtk.IconLookupFlags.FORCE_SIZE | Gtk.IconLookupFlags.USE_BUILTIN,
             )
-            if preferred_icon_name is not None
-            else None
-        )
+
         return (
             pixbuf.scale_simple(
                 size,
@@ -300,12 +303,11 @@ class SystemTrayItem(Service):
     @Property(Gtk.IconTheme, "readable")
     def icon_theme(self) -> Gtk.IconTheme:
         if not self._icon_theme:
-            self._icon_theme = Gtk.IconTheme()
-            search_path = self.get_icon_theme_path()
-            self._icon_theme.set_search_path([search_path]) if search_path not in (
-                None,
-                "",
-            ) else None
+            self._icon_theme = Gtk.IconTheme.get_default()
+            search_path = self.icon_theme_path
+            self._icon_theme.set_search_path(
+                [search_path, *self._icon_theme.get_search_path()]
+            ) if search_path else None
         return self._icon_theme
 
     @Property(str, "readable")

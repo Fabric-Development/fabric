@@ -196,6 +196,116 @@ class TestServiceSignals(unittest.TestCase):
         self.assertEqual(emittedSignals, expectedOutput)
         emittedSignals = []
 
+    def testServiceSignalsConnectAndEmit5(self):
+        # ignorable arguments
+        emittedSignals: list[str] = []
+        expectedOutput = [
+            "int-signal",
+            "str-signal",
+            "bool-signal",
+            "boxed-signal",
+            "complex-signal",
+        ]
+
+        def onSignal(signalName):
+            emittedSignals.append(signalName)
+
+        service = self.ServiceWithSignals(
+            on_int_signal=lambda: onSignal("int-signal"),
+            on_str_signal=lambda: onSignal("str-signal"),
+            on_bool_signal=lambda: onSignal("bool-signal"),
+            on_boxed_signal=lambda: onSignal("boxed-signal"),
+            on_complex_signal=lambda: onSignal("complex-signal"),
+        )
+
+        service.emit("int-signal", 42)
+        service.emit("str-signal", "42")
+        service.emit("bool-signal", True)
+        service.emit("boxed-signal", object)
+        service.emit("complex-signal", 42, "42", True, object)
+
+        self.assertEqual(emittedSignals, expectedOutput)
+        emittedSignals = []
+
+    def testServiceSignalsConnectAndEmit6(self):
+        # ignorable arguments
+        emittedSignals: list[str] = []
+        expectedOutput = [
+            "int-signal",
+            "str-signal",
+            "bool-signal",
+            "boxed-signal",
+            "complex-signal",
+        ]
+
+        def onSignal(signalName):
+            emittedSignals.append(signalName)
+
+        service = self.ServiceWithSignals(
+            on_int_signal=lambda s: self.assertEqual(s, service)
+            or onSignal("int-signal"),
+            on_str_signal=lambda s: self.assertEqual(s, service)
+            or onSignal("str-signal"),
+            on_bool_signal=lambda s: self.assertEqual(s, service)
+            or onSignal("bool-signal"),
+            on_boxed_signal=lambda s: self.assertEqual(s, service)
+            or onSignal("boxed-signal"),
+            on_complex_signal=lambda s: self.assertEqual(s, service)
+            or onSignal("complex-signal"),
+        )
+
+        service.emit("int-signal", 42)
+        service.emit("str-signal", "42")
+        service.emit("bool-signal", True)
+        service.emit("boxed-signal", object)
+        service.emit("complex-signal", 42, "42", True, object)
+
+        self.assertEqual(emittedSignals, expectedOutput)
+        emittedSignals = []
+
+    def testServiceSignalsConnectAndEmit7(self):
+        # ignorable arguments
+        emittedSignals: list[str] = []
+        expectedOutput = [
+            "int-signal",
+            "str-signal",
+            "bool-signal",
+            "boxed-signal",
+            "complex-signal",
+        ]
+
+        def onSignal(signalName):
+            emittedSignals.append(signalName)
+
+        service = self.ServiceWithSignals(
+            on_int_signal=lambda s, i: self.assertEqual(i, 42)
+            or self.assertEqual(s, service)
+            or onSignal("int-signal"),
+            on_str_signal=lambda s, i: self.assertEqual(i, "42")
+            or self.assertEqual(s, service)
+            or onSignal("str-signal"),
+            on_bool_signal=lambda s, i: self.assertEqual(i, True)
+            or self.assertEqual(s, service)
+            or onSignal("bool-signal"),
+            on_boxed_signal=lambda s, i: self.assertEqual(i, object)
+            or self.assertEqual(s, service)
+            or onSignal("boxed-signal"),
+            on_complex_signal=lambda s, i1, i2, i3, i4: self.assertEqual(
+                (i1, i2, i3, i4), (42, "42", True, object)
+            )
+            or self.assertEqual(s, service)
+            or onSignal("complex-signal"),
+        )
+
+        service.emit("int-signal", 42)
+        service.emit("str-signal", "42")
+        service.emit("bool-signal", True)
+        service.emit("boxed-signal", object)
+        service.emit("complex-signal", 42, "42", True, object)
+
+        self.assertEqual(emittedSignals, expectedOutput)
+        emittedSignals = []
+
 
 if __name__ == "__main__":
     unittest.main()

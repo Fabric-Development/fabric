@@ -48,7 +48,7 @@ class BluetoothDeviceSlot(CenterBox):
         return
 
 
-class BluetoohConnections(Box):
+class BluetoothConnections(Box):
     def __init__(self, **kwargs):
         super().__init__(
             spacing=4,
@@ -102,7 +102,7 @@ class BluetoohConnections(Box):
 
 if __name__ == "__main__":
     bluetooth_widget = Window(
-        child=BluetoohConnections(),
+        child=BluetoothConnections(),
         visible=True,
         all_visible=True,
         on_destroy=lambda *_: app.quit(),

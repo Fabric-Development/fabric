@@ -50,12 +50,18 @@ class NotificationImagePixmap:
             self.has_alpha,
             self.bits_per_sample,
             self.channels,
-            self.byte_array,
+            pixmap_data,
         ) = data
 
-        self.byte_array = GLib.Bytes.new(base64.b64decode(self.byte_array))  # type: ignore
+        # if this doesn't work, please report.
+        loader = GdkPixbuf.PixbufLoader.new_with_type("png")
+        decoded_data = base64.b64decode(pixmap_data)
+        bytes_data = GLib.Bytes.new(decoded_data)
+        loader.write_bytes(bytes_data)  # type: ignore
+        loader.close()
 
-        self._pixbuf = None
+        self._pixbuf = loader.get_pixbuf()  # type: ignore
+        self.byte_array = None
 
         return self
 
@@ -105,9 +111,9 @@ class NotificationImagePixmap:
             self.has_alpha,
             self.bits_per_sample,
             self.channels,
-            base64.b64encode(cast(bytes, self.byte_array.unref_to_array())).decode(
-                "ascii"
-            ),
+            base64.b64encode(
+                cast(bytes, self.as_pixbuf().save_to_bufferv("png", [], [])[1])
+            ).decode(),
         )
 
 
@@ -139,6 +145,7 @@ NotificationSerializedData = TypedDict(
         "actions": list[tuple[str, str]],
         "image-file": str | None,
         "image-pixmap": tuple[int, int, int, bool, int, int, str] | None,
+        "time": float,
     },
 )
 
@@ -196,7 +203,7 @@ class Notification(Service):
     def replaces_id(self) -> int:
         """An optional ID of an existing notification that this notification is intended to replace
 
-        :return: the id of the targetted notification (or None)
+        :return: the id of the targeted notification (or None)
         :rtype: int
         """
         return self._replaces_id
@@ -248,6 +255,15 @@ class Notification(Service):
         """
         return self._image_file  # type: ignore
 
+    @Property(float, "readable")
+    def time(self) -> float:
+        """The Unix timestamp at which this notification was received
+
+        :return: Unix timestamp (seconds since epoch)
+        :rtype: float
+        """
+        return self._time
+
     @Property(GdkPixbuf.Pixbuf, "readable")
     def image_pixbuf(self) -> GdkPixbuf.Pixbuf:
         """A `Pixbuf` loaded from either `image-pixmap` or the `image-file` property
@@ -267,7 +283,7 @@ class Notification(Service):
 
         :param data: the serialized data to consume and covert to an object
         :type data: NotificationSerializedData
-        :return: the newly created notification objet
+        :return: the newly created notification object
         :rtype: Notification
         """
         self = cls.__new__(cls)
@@ -294,6 +310,7 @@ class Notification(Service):
             if data["image-pixmap"]
             else None
         )
+        self._time = data["time"] or float(GLib.DateTime.new_now_local().to_unix())
 
         return self
 
@@ -317,7 +334,9 @@ class Notification(Service):
         self._hints: GLib.Variant = raw_variant.get_child_value(6)  # type: ignore
         self._timeout: int = raw_variant.get_child_value(7).unpack()  # type: ignore
 
-        self._urgency: int = self.do_get_hint_entry("urgency") or 1  # type: ignore
+        self._urgency: int = (
+            0 if ((v := self.do_get_hint_entry("urgency")) is None) else v
+        )  # type: ignore
 
         self._image_file: str | None = self.do_get_hint_entry(
             "image-path"
@@ -330,11 +349,13 @@ class Notification(Service):
         ):
             self._image_pixmap = NotificationImagePixmap(raw_image_data)
 
+        self._time: float = float(GLib.DateTime.new_now_local().to_unix())
+
     def do_get_hint_entry(
         self, entry_key: str, unpack: bool = True
     ) -> GLib.Variant | Any | None:
         variant = self._hints.lookup_value(entry_key)
-        if not unpack or not variant:
+        if not unpack or variant is None:
             return variant
         return variant.unpack()  # type: ignore
 
@@ -358,6 +379,7 @@ class Notification(Service):
             "image-pixmap": self._image_pixmap.serialize()
             if self._image_pixmap
             else None,
+            "time": self._time,
         }
 
     def invoke_action(self, action: str):

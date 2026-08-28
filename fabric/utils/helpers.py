@@ -1,6 +1,7 @@
 import gi
 import re
 import os
+import sys
 import time
 import math
 import cairo
@@ -26,7 +27,8 @@ from typing import (
 )
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, Gdk, GdkPixbuf, GObject, Gio, GLib
+gi.require_version("GioUnix", "2.0")
+from gi.repository import Gtk, Gdk, GdkPixbuf, GObject, Gio, GioUnix, GLib
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -35,46 +37,34 @@ MISSING = TypeVar("MISSING")
 Number: TypeAlias = int | float
 
 
-class __DeprecationHook__:
-    def __init__(self, deprecated_to_replacement: dict[str, str | None]):
-        self.lookup_table = deprecated_to_replacement
-
-    def __call__(self, addional_message: str | None = None):
-        def inner(func):
-            func_name = func.__name__
-            replacement = self.lookup_table.get(func_name, None)
-            message = f"`{func_name}` is deprecated and will be removed in later versions of Fabric."
-            message += (
-                f" consider using `{replacement}` instead." if replacement else ""
-            )
-            message += f" {addional_message}" if addional_message else ""
-            func.__doc__ = (
-                (func.__doc__ or "")
-                + f"""
-        .. warning::
-
-            {message}
-"""
-            )
-
-            @wraps(func)
-            def warn_call(*args, **kwargs):
-                logger.warning(message)
-                return func(*args, **kwargs)
-
-            return warn_call
-
-        return inner
-
-
-__deprecation_table = __DeprecationHook__(
-    {
-        "idlify": "idle_add",
-        "set_stylesheet_from_string": "Application.add_stylesheet_from_string",
-        "set_stylesheet_from_file": "Application.add_stylesheet_from_file",
-        "get_gdk_rgba": "Gdk.RGBA.parse OR parse_color",
+class __Deprecated__(Generic[P, T]):
+    DEPRECATED_SYMBOLS_NOTES = {
+        "idlify": "consider using `idle_add` instead.",
+        "set_stylesheet_from_string": "consider using `Application.add_stylesheet_from_string` instead.",
+        "set_stylesheet_from_file": "consider using `Application.add_stylesheet_from_file` instead.",
+        "get_gdk_rgba": "consider using `Gdk.RGBA.parse` OR `parse_color` instead.",
+        "get_connectables_for_kwargs": "it was meant for internal usage, an unstable replacement is `Service.get_connectables_for_kwargs`",
     }
-)
+
+    def __init__(self, func: Callable[P, T]):
+        self.func = func
+        self.dispatched_warning: bool = False
+
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
+        if self.dispatched_warning:
+            return self.func(*args, **kwargs)
+
+        fname: str = self.func.__name__
+        if not (note := self.DEPRECATED_SYMBOLS_NOTES.get(fname, None)):
+            logger.debug(
+                f"the function `{fname}` was marked as deprecated, though the author of the deprecation forgot to add a notes entry to the deprecation table. report this."
+            )
+        else:
+            logger.warning(
+                f"the function `{fname}` is deprecated and will be removed in future versions of Fabric. note: {note}"
+            )
+        self.dispatched_warning = True
+        return self.func(*args, **kwargs)
 
 
 class PixbufUtils:
@@ -132,9 +122,40 @@ class PixbufUtils:
             surface, target_width=nw, target_height=nh
         )
 
+    @staticmethod
+    def scale(
+        pixbuf: GdkPixbuf.Pixbuf,
+        target_width: int,
+        target_height: int,
+        interp_type: GdkPixbuf.InterpType = GdkPixbuf.InterpType.NEAREST,
+        preserve_aspect: bool = True,
+    ) -> GdkPixbuf.Pixbuf:
+        """
+        scale down or up the given `GdkPixbuf.Pixbuf` to the given target width and height.
+        this method is most useful for preserving the aspect ratio of the input to the output buffer.
+
+        :param pixbuf: the input pixbuf
+        :type pixbuf: GdkPixbuf.Pixbuf
+        :param target_width: the width of destination `GdkPixbuf.Pixbuf` in pixels.
+        :type target_width: int
+        :param target_height: the height of destination `GdkPixbuf.Pixbuf` in pixels.
+        :type target_height: int
+        :param interp_type: the interpolation type for the transformation, defaults to `GdkPixbuf.InterpType.NEAREST`.
+        :param preserve_aspect: whether to preserve the aspect ratio of the input to the output buffer, defaults to `True`.
+        :type preserve_aspect: bool, optional
+        :return: the result pixbuf.
+        :rtype: GdkPixbuf.Pixbuf
+        """
+        if not preserve_aspect:
+            return pixbuf.scale_simple(target_width, target_height, interp_type)
+        width = pixbuf.get_width()
+        height = pixbuf.get_height()
+        scale = min(target_width / width, target_height / height, 1.0)
+        return pixbuf.scale_simple(width * scale, height * scale, interp_type)  # type: ignore
+
 
 class FormattedString:
-    """simple string fomatter made to be baked mid-runtime"""
+    """simple string formatter made to be baked mid-runtime"""
 
     class FormatDict(dict):
         def __init__(self, *args, **kwargs):
@@ -184,21 +205,23 @@ class DesktopApp:
     hidden: bool
 
     def __init__(
-        self, app: Gio.DesktopAppInfo, icon_theme: Gtk.IconTheme | None = None
+        self, app: GioUnix.DesktopAppInfo, icon_theme: Gtk.IconTheme | None = None
     ):
-        self._app: Gio.DesktopAppInfo = app
+        self._app: GioUnix.DesktopAppInfo = app
         self._icon_theme = icon_theme or Gtk.IconTheme.get_default()
         self._pixbuf: GdkPixbuf.Pixbuf | None = None
         self.name = app.get_name()  # type: ignore
-        self.generic_name = app.get_generic_name()  # type: ignore
         self.display_name = app.get_display_name()  # type: ignore
         self.description = app.get_description()  # type: ignore
-        self.window_class = app.get_startup_wm_class()  # type: ignore
         self.executable = app.get_executable()  # type: ignore
         self.command_line = app.get_commandline()  # type: ignore
         self.icon = app.get_icon()  # type: ignore
         self.icon_name = self.icon.to_string() if self.icon is not None else None  # type: ignore
-        self.hidden = app.get_is_hidden()
+
+        # THIS IS UGLY, GNOME!
+        self.generic_name = GioUnix.DesktopAppInfo.get_generic_name(app)  # type: ignore
+        self.window_class = GioUnix.DesktopAppInfo.get_startup_wm_class(app)  # type: ignore
+        self.hidden = GioUnix.DesktopAppInfo.get_is_hidden(app)
 
     def launch(self):
         return self._app.launch()  # type: ignore
@@ -256,7 +279,7 @@ def get_desktop_applications(include_hidden: bool = False) -> list[DesktopApp]:
     icon_theme = Gtk.IconTheme.get_default()
     return [
         DesktopApp(app, icon_theme)
-        for app in Gio.DesktopAppInfo.get_all()
+        for app in GioUnix.DesktopAppInfo.get_all()
         if include_hidden or app.should_show()
     ]
 
@@ -266,7 +289,7 @@ def parse_color(color: str | Iterable[Number]) -> Gdk.RGBA:
 
     :param color: the color data, example of an iterable color; `(255, 255, 255) / (255, 255, 255, 255)`, for a list of parseable string formats head over to https://docs.gtk.org/gdk3/method.RGBA.parse.html
     :type color: str | Iterable[Number]
-    :raises ValueError: if the passed in color data is unparseable
+    :raises ValueError: if the passed in color data is unparsable
     :return: the newly created `Gdk.RGBA` (alpha is set to opaque if the passed in color data is RGB only)
     :rtype: Gdk.RGBA
     """
@@ -283,9 +306,21 @@ def parse_color(color: str | Iterable[Number]) -> Gdk.RGBA:
     raise ValueError(f"{color} is an invalid color format")
 
 
-def get_gdk_rgba(color: str | Iterable[Number]) -> Gdk.RGBA:
-    return parse_color(color)
-
+# precompiled regex patterns for compile_css
+FASS_IMPORT_PATTERN = re.compile(
+    r'@import\s+(?:url\()?["\']?([^"\')]+)["\']?\)?\s*;'
+)
+FASS_VARS_SELECTOR_PATTERN = re.compile(r":vars\s*{\s*([^}]+)\s*}")
+FASS_VARS_DECL_PATTERN = re.compile(r"--([\w-]+)\s*:\s*([^;]+)\s*;")
+FASS_VARS_REF_PATTERN = re.compile(r"var\(--([\w-]+)\)")
+FASS_CONSTANT_PATTERN = re.compile(r"@define\s+([\w-]+)\s+([^;]+);")
+FASS_CONSTANT_APPLY_PATTERN = re.compile(r"apply\(([\w-]+)\)")
+FASS_MACRO_PATTERN = re.compile(
+    r"@define\s+([\w-]+)\(([^)]*)\)\s*{\s*([^}]+)\s*}"
+)
+FASS_MACRO_APPLY_PATTERN = re.compile(
+    r"@apply\s+([\w-]+)\(([^)]*)\)\s*;?"
+)
 
 def compile_css(
     css_string: str,
@@ -328,17 +363,6 @@ def compile_css(
     :rtype: str
     """
 
-    import_pattern = re.compile(r'@import\s+(?:url\()?["\']?([^"\')]+)["\']?\)?\s*;')
-
-    vars_selector_pattern = re.compile(r":vars\s*{\s*([^}]+)\s*}")
-    vars_declaration_pattern = re.compile(r"--([\w-]+)\s*:\s*([^;]+)\s*;")
-    vars_reference_pattern = re.compile(r"var\(--([\w-]+)\)")
-
-    constant_pattern = re.compile(r"@define\s+([\w-]+)\s+([^;]+);")
-    constant_apply_pattern = re.compile(r"apply\(([\w-]+)\)")
-
-    macro_pattern = re.compile(r"@define\s+([\w-]+)\(([^)]*)\)\s*{\s*([^}]+)\s*}")
-    macro_apply_pattern = re.compile(r"@apply\s+([\w-]+)\(([^)]*)\)\s*;?")
 
     functions_map: dict[str, Callable] = (
         {}
@@ -372,13 +396,13 @@ def compile_css(
                 )
                 return f"/* couldn't import file: {file_path} */"
 
-        return import_pattern.sub(import_replacement, css_content)
+        return FASS_IMPORT_PATTERN.sub(import_replacement, css_content)
 
     # resolve @import statements before passing over to the preprocessor
     css_output = resolve_imports(css_string)
 
     # color variables
-    match = vars_selector_pattern.search(css_output)
+    match = FASS_VARS_SELECTOR_PATTERN.search(css_output)
     css_output = (
         f"{match.group(1)}\n\n{css_output.replace(match.group(0), '')}"
         if match
@@ -386,17 +410,17 @@ def compile_css(
     )
 
     # this could be preprocessed as the original value not (a translation to Gtk's syntax)
-    css_output = vars_declaration_pattern.sub(
+    css_output = FASS_VARS_DECL_PATTERN.sub(
         lambda m: f"@define-color {m.group(1)} {m.group(2)};", css_output
     )
-    css_output = vars_reference_pattern.sub(r"@\1", css_output)
+    css_output = FASS_VARS_REF_PATTERN.sub(r"@\1", css_output)
 
     # preprocessing
     constants: dict[str, str] = {
-        m.group(1): m.group(2) for m in constant_pattern.finditer(css_output)
+        m.group(1): m.group(2) for m in FASS_CONSTANT_PATTERN.finditer(css_output)
     }
-    css_output = constant_pattern.sub("", css_output)
-    css_output = constant_apply_pattern.sub(
+    css_output = FASS_CONSTANT_PATTERN.sub("", css_output)
+    css_output = FASS_CONSTANT_APPLY_PATTERN.sub(
         lambda m: constants.get(m.group(1), m.group(0)), css_output
     )
 
@@ -408,9 +432,9 @@ def compile_css(
             tuple(args_group.split(",")) if (args_group := m.group(2)) else (),
             m.group(3).strip(),
         )
-        for m in macro_pattern.finditer(css_output)
+        for m in FASS_MACRO_PATTERN.finditer(css_output)
     }
-    css_output = macro_pattern.sub("", css_output)
+    css_output = FASS_MACRO_PATTERN.sub("", css_output)
 
     def apply_macro_replacement(match: re.Match) -> str:
         macro_name = match.group(1)
@@ -437,7 +461,7 @@ def compile_css(
 
         return macro_body
 
-    css_output = macro_apply_pattern.sub(apply_macro_replacement, css_output)
+    css_output = FASS_MACRO_APPLY_PATTERN.sub(apply_macro_replacement, css_output)
 
     # clean up
     css_output = re.sub(r"\n\s*\n", "\n", css_output).strip()
@@ -565,7 +589,8 @@ def extract_css_values(css_string: str) -> tuple[int, int, int, int]:
 
 
 def monitor_file(
-    file_path: str,
+    path: str,
+    *callbacks: Callable,
     flags: Literal[
         "none",
         "watch-mounts",
@@ -574,27 +599,41 @@ def monitor_file(
         "watch-moves",
     ]
     | Gio.FileMonitorFlags = Gio.FileMonitorFlags.NONE,
+    initial_call: bool = False,
 ) -> Gio.FileMonitor:
     """
-    creates a monitor for a specified file or directory path
+    Monitor a specific file or directory for changes...
 
-    :param file_path: the path of the file or directory to be monitored
-    :type file_path: str
-    :param flags: the flags to configure the file monitor. Defaults to None.
+    :param path: path to the desired file or directory
+    :type path: str
+    :param callbacks: list of functions each assigned directly to the `"changed"` signal of the monitor
+    :type callbacks: Callable
+    :param flags: flags to configure the file monitor. Defaults to None.
     :type flags: Literal["none", "watch-mounts", "send-moved", "watch-hard-links", "watch-moves"], optional
+    :param initial_call: whether should the given callbacks get called upon registering. Defaults to False
+    :type initial_call: bool, optional
     :return: the monitor for the specified path
     :rtype: Gio.FileMonitor
     """
     file: Gio.File = Gio.File.new_for_uri(  # type: ignore
-        ("file://" + file_path) if "://" not in file_path else file_path
+        ("file://" + os.path.expanduser(path)) if "://" not in path else path
     )
-    return file.monitor(
+    monitor = file.monitor(
         get_enum_member(Gio.FileMonitorFlags, flags, default=Gio.FileMonitorFlags.NONE)
     )
 
+    for f in callbacks:
+        monitor.connect("changed", f)
+
+    [f() for f in callbacks] if initial_call else None
+
+    return monitor
+
 
 def cooldown(
-    cooldown_time: int, error: Callable | None = None, return_error: bool = False
+    cooldown_time: int | float,
+    error: Callable | None = None,
+    return_error: bool = False,
 ):
     """
     Decorator function that adds a cooldown period to a given function
@@ -639,7 +678,9 @@ def exec_shell_command(cmd: str) -> str | Literal[False]:
     :rtype: str | Literal[False]
     """
     if not isinstance(cmd, str):
-        raise ValueError  # FIXME: add error message
+        raise ValueError(
+            f"the argument `cmd` should be a string (e.g. `uname -a`), instead got: {cmd}"
+        )
 
     try:
         result, output, error, status = GLib.spawn_command_line_sync(cmd)  # type: ignore
@@ -662,7 +703,7 @@ def exec_shell_command_async(
     :type cmd: str
     :param callback: a function to retrieve the result at or `None` to ignore the result
     :type callback: Callable[[str], Any] | None, optional
-    :return: a Gio.Subprocess object which holds a referance to your process and a Gio.DataInputStream object for stdout
+    :return: a Gio.Subprocess object which holds a reference to your process and a Gio.DataInputStream object for stdout
     :rtype: tuple[Gio.Subprocess | None, Gio.DataInputStream]
     """
     process = Gio.Subprocess.new(
@@ -699,6 +740,9 @@ def invoke_repeater(
     :type interval: int
     :param func: the function to invoke
     :type func: Callable
+    :param args: list of arguments passed directly to the given function
+    :param initial_call: whether should the given function get called as soon as it is registered. Defaults to False
+    :type initial_call: bool, optional
     """
     if initial_call:
         func(*args)
@@ -718,7 +762,22 @@ def get_relative_path(path: str, level: int = 1) -> str:
     :return: the relative path
     :rtype: str
     """
-    prev_globals = inspect.stack()[level][0].f_globals
+
+    frame = None
+
+    # Use sys._getframe if available 
+    getframe = getattr(sys, "_getframe", None)
+    if getframe is not None:
+        try:
+            frame = getframe(level)
+        except ValueError:
+            frame = None
+
+    # Fallback
+    if frame is None:
+        frame = inspect.stack()[level][0]
+
+    prev_globals = frame.f_globals
     file_var = (
         os.path.dirname(os.path.abspath(prev_globals["__file__"]))
         if "__file__" in prev_globals
@@ -763,7 +822,9 @@ def get_enum_member(
         return member
 
     if not isinstance(member, str):
-        raise ValueError  # FIXME: add exception message
+        raise ValueError(
+            f"the member argument is supposed to be either a string or an enum literal of the same kind. instead got: {member}"
+        )
 
     for name, replacement in mapping.items():
         if member.casefold() == name.casefold():
@@ -848,6 +909,25 @@ def get_function_annotations(
     return FunctionAnnotations(args, return_type)
 
 
+def make_arguments_ignorable(func: Callable[..., T]) -> Callable[..., T]:
+    params = inspect.signature(func).parameters.values()
+    if any(p.kind == inspect.Parameter.VAR_POSITIONAL for p in params):
+        return func  # no
+
+    args_len = sum(
+        1
+        for p in params
+        if p.kind
+        in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+    )
+
+    @wraps(func)
+    def wrapper(*passed_args):
+        return func(*passed_args[:args_len])
+
+    return wrapper
+
+
 def truncate(string: str, max_length: int, suffix: str = "...") -> str:
     return (
         string
@@ -882,10 +962,33 @@ def remove_handler(handler_id: int):
     return GLib.source_remove(handler_id)
 
 
-# FIXME: deprecated (please don't use, there's a replacement of each function)
+def keyboard_event_serialize(event: Gdk.EventKey) -> str:
+    return " ".join(
+        bulk_replace(
+            Gtk.accelerator_name(event.keyval, event.state).strip(),
+            ["<Mod2>", "<Shift>", "<Primary>", "<Mod4><Super>", "<Alt>"],
+            [" ", "Shift ", "Ctrl ", "Super ", "Alt "],
+        )
+        .strip()
+        .lower()
+        .split()
+    )
 
 
-@__deprecation_table()
+def keyboard_event_match(event: Gdk.EventKey, pattern: str, regex: bool = True) -> bool:
+    serialized = keyboard_event_serialize(event).casefold()
+    if regex:
+        return any((re.match(pattern, serialized) or (),))
+    return pattern.casefold() == serialized
+
+
+# FIXME: deprecated (please don't use, there's a replacement for each function)
+@__Deprecated__
+def get_gdk_rgba(color: str | Iterable[Number]) -> Gdk.RGBA:
+    return parse_color(color)
+
+
+@__Deprecated__
 def get_connectables_for_kwargs(kwargs: dict[str, Callable]) -> Generator:
     for key, value in zip(kwargs.keys(), kwargs.values()):
         if key.startswith("on_"):
@@ -895,7 +998,7 @@ def get_connectables_for_kwargs(kwargs: dict[str, Callable]) -> Generator:
             yield [f"notify::{snake_case_to_kebab_case(key[7:])}", value]
 
 
-@__deprecation_table()
+@__Deprecated__
 def set_stylesheet_from_file(file_path: str, compiled: bool = True) -> None:
     provider = Gtk.CssProvider()
     if compiled:
@@ -910,7 +1013,7 @@ def set_stylesheet_from_file(file_path: str, compiled: bool = True) -> None:
     return
 
 
-@__deprecation_table()
+@__Deprecated__
 def set_stylesheet_from_string(css_string: str, compiled: bool = True) -> None:
     provider = Gtk.CssProvider()
     if compiled:
@@ -923,6 +1026,6 @@ def set_stylesheet_from_string(css_string: str, compiled: bool = True) -> None:
     return
 
 
-@__deprecation_table()
+@__Deprecated__
 def idlify(func: Callable, *args) -> int:
     return idle_add(func, *args)

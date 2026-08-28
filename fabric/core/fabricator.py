@@ -159,7 +159,7 @@ class Fabricator(Service, Generic[T]):
         process.wait_async(
             None, lambda *_: self.emit("polling-done", data)
         ) if process and self._stream else None
-        return True
+        return self._poll
 
     def do_invoke_function(self):
         if self._poll is not True:

@@ -27,6 +27,7 @@ from fabric.utils.helpers import (
     snake_case_to_kebab_case,
     kebab_case_to_snake_case,
     get_function_annotations,
+    make_arguments_ignorable,
 )
 
 OldSignal = gi._signalhelper.Signal
@@ -116,9 +117,13 @@ class Property(OldProperty, Generic[T]):
                 "_setter_middle_gate",
                 lambda instance, value: self.fset(instance, value),  # type: ignore
             )
+        try:
+            _type = type if issubclass(type, (bool, int, float, str)) else object
+        except TypeError:
+            _type = object
 
         super().__init__(
-            type=type if issubclass(type, (bool, int, float, str)) else object,
+            type=_type,
             default=default_value,
             nick=nickname or "",
             blurb=description,
@@ -150,7 +155,7 @@ class Property(OldProperty, Generic[T]):
         return super().__get__(instance, klass)  # type: ignore
 
     def __set__(self, instance, value) -> None:
-        # Propery = X -> set X as the current value of the property
+        # Property = X -> set X as the current value of the property
         return self._setter_middle_gate(instance, value)
 
     def _setter_middle_gate(self, instance, value) -> None:
@@ -248,9 +253,18 @@ class SignalWrapper(Generic[G, P, R]):
 
     # TODO: make it hint self's instance for the callback
     def connect(
-        self, callback: Callable[Concatenate[GObject.Object, P], Any], *args, **kwargs
+        self,
+        callback: Callable[Concatenate[G, P], Any] | Callable,
+        *args,
+        ignore_missing: bool = True,
     ) -> int:
-        return self.instance.connect(self.name, callback)  # type: ignore
+        return Service.connect(
+            self.instance,  # type: ignore
+            self.name,
+            callback,
+            *args,
+            ignore_missing=ignore_missing,
+        )
 
 
 class Signal(Generic[G, P, R]):
@@ -368,6 +382,7 @@ class Signal(Generic[G, P, R]):
 
         # all aboard...
         setattr(klass, "__gsignals__", klass_signals)
+        return
 
 
 @dataclass
@@ -417,14 +432,20 @@ class Service(GObject.Object, Generic[P, T]):
     @overload
     def build(
         self,
-        callback: Callable[Concatenate[Self, Builder[Self], P], Any],
+        callback: Callable[Concatenate[Self, Builder[Self], P], Any]
+        | Callable[Concatenate[Self, P], Any]
+        | Callable[P, Any],
         *args: P.args,
         **kwargs: P.kwargs,
     ) -> Self: ...
 
     def build(
         self,
-        callback: Optional[Callable[Concatenate[Self, Builder[Self], P], Any]] = None,
+        callback: Optional[
+            Callable[Concatenate[Self, Builder[Self], P], Any]
+            | Callable[Concatenate[Self, P], Any]
+            | Callable[P, Any]
+        ] = None,
         *args: P.args,
         **kwargs: P.kwargs,
     ) -> Union[Builder[Self], Self]:
@@ -445,7 +466,7 @@ class Service(GObject.Object, Generic[P, T]):
                 .useful_method()
                 .other_useful_method()
                 .set_something("something")
-                .unwrap() # unwrap self (the service) and get a refernce to it
+                .unwrap() # unwrap self (the service) and get a reference to it
             )
 
             # when passing a setup function it returns self by default
@@ -461,14 +482,14 @@ class Service(GObject.Object, Generic[P, T]):
 
 
         :param callback: an optional callback to use instead of chaining method calls, defaults to None
-        :type callback: Optional[Callable[Concatenate[Self, Builder[Self], P], Any]], optional
+        :type callback: Optional[Callable[Concatenate[Self, Builder[Self], P], Any] | Callable[Concatenate[Self, P], Any] | Callable[P, Any]], optional
         :return: a newly created builder (or a cached one if found)
         :rtype: Union[Builder[Self], Self]
         """
         if not self._builder:
             self._builder = Builder(self)
-        if callable and callable(callback):
-            callback(self, self._builder, *args, **kwargs)
+        if callable(callback):
+            make_arguments_ignorable(callback)(self, self._builder, *args, **kwargs)
             return self
         return self._builder
 
@@ -499,11 +520,15 @@ class Service(GObject.Object, Generic[P, T]):
     def connect(
         self,
         signal_name: str,
-        callback: Callable[Concatenate[Self, P], Any],
+        callback: Callable[Concatenate[Self, P], Any] | Callable,
         *args,
-        **kwargs,
+        ignore_missing: bool = True,
     ) -> int:
-        return super().connect(signal_name, callback, *args, **kwargs)  # type: ignore
+        return super().connect(
+            signal_name,
+            make_arguments_ignorable(callback) if ignore_missing else callback,
+            *args,
+        )  # type: ignore
 
     @staticmethod
     def filter_kwargs(kwargs: dict[str, Any]) -> dict[str, Any]:
@@ -530,21 +555,7 @@ class Service(GObject.Object, Generic[P, T]):
             self.connect(name, callback)  # type: ignore
         return
 
-    # set/get properties via [] accessor
-    def __getitem__(self, key: str) -> Any:
-        assert isinstance(key, str)
-        return self.get_property(key)
-
-    def __setitem__(self, key: str, value: Any) -> None:
-        assert isinstance(key, str)
-        return self.set_property(key, value)
-
-    def __len__(self) -> int:
-        return len(self.get_properties()) + len(self.get_signal_names())
-
-    def __int__(self) -> int:
-        return self.__len__()
-
+    # overrides
     def set_property(self, property_name: str, value: Any) -> None:
         return super().set_property(property_name, value)  # type: ignore
 
@@ -562,6 +573,32 @@ class Service(GObject.Object, Generic[P, T]):
 
     def get_properties(self) -> list[GObject.ParamSpec]:
         return GObject.list_properties(self)  # type: ignore
+
+    def notify(self, *properties: str):
+        for prop in properties:
+            super().notify(prop)
+        return
+
+    def notify_all(self):
+        for pspec in self.get_properties():
+            self.notify(pspec.get_nick() or pspec.get_name())
+        return
+
+    # set/get properties via [] accessor
+    def __getitem__(self, key: str) -> Any:
+        assert isinstance(key, str)
+        return self.get_property(key)
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        assert isinstance(key, str)
+        return self.set_property(key, value)
+
+    # extras
+    def __len__(self) -> int:
+        return len(self.get_properties()) + len(self.get_signal_names())
+
+    def __int__(self) -> int:
+        return self.__len__()
 
 
 __all__ = ["Signal", "Property", "Builder", "Service"]

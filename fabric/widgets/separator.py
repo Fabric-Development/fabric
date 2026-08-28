@@ -1,36 +1,23 @@
 import gi
 from typing import Literal
 from collections.abc import Iterable
-from fabric.core.service import Property
 from fabric.widgets.widget import Widget
+from fabric.utils.helpers import get_enum_member
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
 
-class Container(Gtk.Container, Widget):
-    @Property(list[Gtk.Widget], "read-write", install=False)
-    def children(self) -> list[Gtk.Widget]:
-        """A list of children this container is (currently) holding
-
-        :rtype: list[Gtk.Widget]
-        """
-        return self.get_children()
-
-    @children.setter
-    def children(self, value: Gtk.Widget | Iterable[Gtk.Widget]):
-        for old_child in self.get_children():
-            self.remove(old_child)
-        if isinstance(value, (tuple, list)):
-            for widget in value:
-                self.add(widget)
-            return
-        self.add(value)
-        return
-
+class Separator(Gtk.Separator, Widget):
     def __init__(
         self,
-        children: Gtk.Widget | Iterable[Gtk.Widget] | None = None,
+        orientation: Literal[
+            "horizontal",
+            "vertical",
+            "h",
+            "v",
+        ]
+        | Gtk.Orientation = Gtk.Orientation.HORIZONTAL,
         name: str | None = None,
         visible: bool = True,
         all_visible: bool = False,
@@ -49,10 +36,7 @@ class Container(Gtk.Container, Widget):
         size: Iterable[int] | int | None = None,
         **kwargs,
     ):
-        Gtk.Container.__init__(self)  # type: ignore
-
-        self.children = children or []
-
+        Gtk.Separator.__init__(self)
         Widget.__init__(
             self,
             name,
@@ -68,4 +52,9 @@ class Container(Gtk.Container, Widget):
             v_expand,
             size,
             **kwargs,
+        )
+        self.set_orientation(
+            get_enum_member(
+                Gtk.Orientation, orientation, default=Gtk.Orientation.HORIZONTAL
+            )
         )

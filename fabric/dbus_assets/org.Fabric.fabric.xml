@@ -11,6 +11,7 @@
 		</method>
 	</interface>
 	<interface name="org.Fabric.fabric">
+		<property name="Actions" type="a{sas}" access="read" />
 		<property name="Windows" type="a{sb}" access="read" />
 		<property name="File" type="s" access="read" />
 		<method name="Execute">
@@ -20,6 +21,13 @@
 		<method name="Evaluate">
 			<arg direction="in" type="s" name="code" />
 			<arg direction="out" type="s" />
+			<arg direction="out" type="s" />
+		</method>
+		<method name="InvokeAction">
+			<arg direction="in" type="s" name="action" />
+			<arg direction="in" type="as" name="arguments" />
+			<!-- (error, message) -->
+			<arg direction="out" type="b" />
 			<arg direction="out" type="s" />
 		</method>
 		<method name="Log">

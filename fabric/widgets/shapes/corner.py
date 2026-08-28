@@ -112,11 +112,13 @@ class Corner(Gtk.DrawingArea, Widget):
         aloc: cairo.Rectangle = self.get_allocation()  # type: ignore
         # ^ hear me out, Gtk.Allocation == Gdk.Rectangle == cairo.Rectangle
         width, height = aloc.width, aloc.height
+
+        state = self.get_state_flags()
         context: Gtk.StyleContext = self.get_style_context()
-        border_color: Gdk.RGBA = context.get_border_color(Gtk.StateFlags.NORMAL)  # type: ignore
+        border_color: Gdk.RGBA = context.get_border_color(state)  # type: ignore
         border_width = (
             max(
-                (border := context.get_border(Gtk.StateFlags.NORMAL)).top,  # type: ignore
+                (border := context.get_border(state)).top,  # type: ignore
                 border.bottom,  # type: ignore
                 border.left,  # type: ignore
                 border.right,  # type: ignore

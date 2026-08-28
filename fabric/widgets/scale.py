@@ -109,8 +109,8 @@ class Scale(Gtk.Scale, Widget):
         self._min_value: float = 0
         self._max_value: float = 1.0
 
-        self.min_value = min_value
         self.max_value = max_value
+        self.min_value = min_value
         self.value = value
 
         self.set_orientation(

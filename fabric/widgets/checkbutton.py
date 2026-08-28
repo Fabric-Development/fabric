@@ -1,36 +1,16 @@
 import gi
 from typing import Literal
 from collections.abc import Iterable
-from fabric.core.service import Property
-from fabric.widgets.widget import Widget
+from fabric.widgets.button import Button
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
 
-class Container(Gtk.Container, Widget):
-    @Property(list[Gtk.Widget], "read-write", install=False)
-    def children(self) -> list[Gtk.Widget]:
-        """A list of children this container is (currently) holding
-
-        :rtype: list[Gtk.Widget]
-        """
-        return self.get_children()
-
-    @children.setter
-    def children(self, value: Gtk.Widget | Iterable[Gtk.Widget]):
-        for old_child in self.get_children():
-            self.remove(old_child)
-        if isinstance(value, (tuple, list)):
-            for widget in value:
-                self.add(widget)
-            return
-        self.add(value)
-        return
-
+class CheckButton(Gtk.CheckButton, Button):
     def __init__(
         self,
-        children: Gtk.Widget | Iterable[Gtk.Widget] | None = None,
+        label: str | None = None,
         name: str | None = None,
         visible: bool = True,
         all_visible: bool = False,
@@ -49,12 +29,12 @@ class Container(Gtk.Container, Widget):
         size: Iterable[int] | int | None = None,
         **kwargs,
     ):
-        Gtk.Container.__init__(self)  # type: ignore
-
-        self.children = children or []
-
-        Widget.__init__(
+        Gtk.CheckButton.__init__(self)  # type: ignore
+        Button.__init__(
             self,
+            label,
+            None,
+            None,
             name,
             visible,
             all_visible,

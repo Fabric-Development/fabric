@@ -51,7 +51,7 @@ class SidePanel(Window):
 
         self.profile_pic = Box(
             name="profile-pic",
-            style=f"background-image: url(\"file://{get_profile_picture_path() or ''}\")",
+            style=f'background-image: url("file://{get_profile_picture_path() or ""}")',
         )
         self.uptime_label = Label(label=f"{self.get_current_uptime()}")
 

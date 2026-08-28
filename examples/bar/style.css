@@ -1,5 +1,5 @@
-/* we can use webcss variables, fabric compiles that to gtk css.
-   global variables can be stored in :vars */
+/* we can use web-css variables, fabric compiles those to gtk-css.
+   global variables can be defined in the :vars selector... */
 :vars {
     --background: #150d16;
     --foreground: #f5dbc4;
@@ -29,17 +29,16 @@
     --ws-urgent: var(--color12);
 }
 
-/* unset so we can style everything from the ground up. */
 * {
+    /* unset so we can style everything from the ground up. */
     all: unset;
+
+    /* text color */
     color: var(--foreground);
     font-size: 16px;
     font-family: "Jost*", sans-serif;
+    /* pill shape */
     border-radius: 100px;
-}
-
-button {
-    background-size: 400% 400%;
 }
 
 #bar-inner {
@@ -83,6 +82,27 @@ button {
     background-color: var(--ws-empty);
 }
 
+
+#system-status {
+    padding: 2px;
+    background-color: var(--module-bg);
+}
+
+#cpu-progress-bar,
+#ram-progress-bar,
+#volume-progress-bar {
+    color: transparent;
+    background-color: transparent
+}
+
+#cpu-progress-bar {
+    border: solid 0px alpha(var(--color9), 0.8);
+}
+
+#ram-progress-bar,
+#volume-progress-bar {
+    border: solid 0px var(--border-color);
+}
 
 #date-time,
 #hyprland-language,
@@ -132,30 +152,6 @@ menu>menuitem:last-child {
 
 menu>menuitem:hover {
     background-color: var(--border-color);
-}
-
-
-#cpu-progress-bar,
-#ram-progress-bar,
-#volume-progress-bar {
-    color: transparent;
-    background-color: transparent
-}
-
-
-#cpu-progress-bar {
-    border: solid 0px alpha(var(--color9), 0.8);
-}
-
-#ram-progress-bar,
-#volume-progress-bar {
-    border: solid 0px var(--border-color);
-}
-
-
-#widgets-container {
-    background-color: var(--module-bg);
-    padding: 2px;
 }
 
 tooltip {

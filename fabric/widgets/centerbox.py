@@ -80,7 +80,7 @@ class CenterBox(Box):
             Gtk.Orientation.HORIZONTAL: Gtk.Orientation.VERTICAL,
         }.get(orientation, Gtk.Orientation.VERTICAL)
         super().__init__(
-            spacing,
+            0,
             orientation_flipped,
             None,
             name,
@@ -106,6 +106,7 @@ class CenterBox(Box):
             )
 
         self._inner = box_factory()
+        self._inner.set_spacing(spacing)
 
         self.start_container = box_factory()
         self.center_container = box_factory()

@@ -146,5 +146,5 @@ class AppLauncher(Window):
 
 if __name__ == "__main__":
     app_launcher = AppLauncher()
-    app = Application("app-launcher", app_launcher, notify_activated=lambda app, *_: app.quit() if app.activated else None)
+    app = Application("app-launcher", app_launcher)
     app.run()

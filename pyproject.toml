@@ -27,6 +27,13 @@ classifiers = ["Programming Language :: Python"]
 
 [project.optional-dependencies]
 system-status = ["psutil"]
+sphinx = [
+  "sphinx==8.1.3",
+  "sphinx-toolbox==3.8.1",
+  "sphinx-markdown-builder==0.6.7",
+  "sphinxawesome-theme",
+  "recommonmark",
+]
 
 [tool.setuptools.package-data]
 "*" = ["*.xml", "*.js"]
@@ -45,7 +52,7 @@ system-status = ["psutil"]
 disable_error_code = ["no-redef", "method-assign"]
 
 [tool.pyright]
-reportRedeclaration = "none" # for fabric properties
+reportRedeclaration = "none"                # for fabric properties
 reportIncompatibleMethodOverride = "none"
 reportIncompatibleVariableOverride = "none"
-reportMissingModuleSource = "none" # for pygobject-stubs users
+reportMissingModuleSource = "none"          # for pygobject-stubs users

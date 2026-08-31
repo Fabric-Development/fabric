@@ -2,5 +2,5 @@ click
 loguru
 psutil
 pycairo
-PyGObject==3.50.0
+PyGObject
 pygobject-stubs

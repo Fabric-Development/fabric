@@ -29,7 +29,16 @@ class HyprlandWorkspaces(Workspaces):
         empty_scroll: bool = False,
         **kwargs,
     ):
-        super().__init__(buttons, buttons_factory, invert_scroll, **kwargs)
+        """
+        :param buttons: a list of predefined buttons, if a workspace was opened but no button representing it in the given list was found, call the buttons factory function to create a button for that workspace, defaults to None
+        :type buttons: Iterable[WorkspaceButton] | None, optional
+        :param buttons_factory: a factory for creating buttons once they're needed, the given function will only be called if no button was found for the new workspace in the given list of predefined buttons, the function can return None instead of a button to ignore adding that workspace, defaults to default_buttons_factory
+        :type buttons_factory: Callable[[int], WorkspaceButton  |  None] | None, optional
+        :param invert_scroll: invert the scroll wheel's direction (for switching via the wheel), defaults to False
+        :type invert_scroll: bool, optional
+        :param empty_scroll: scroll through empty workspaces (if found in the list), defaults to False
+        :type empty_scroll: bool, optional
+        """
         self.connection = get_hyprland_connection()
 
         self._focus_command_template = (

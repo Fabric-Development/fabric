@@ -41,11 +41,12 @@ class X11WindowGeometry(Enum):
 class X11Window(Window):
     # it's nothing fancy, but we have to work with what we have (so far)
     """
-    a dockable window for X11/Xorg
+    A dockable window for X11/XOrg
 
-    ### NOTE
-    none of the properties this window takes is guaranteed to work
-    since EMWH is not a standard protocol across all window managers
+    .. note::
+
+        None of the properties this window takes is guaranteed to work
+        since EMWH is not a standard protocol across all window managers
     """
 
     @Property(X11WindowLayer, "read-write")
@@ -254,7 +255,7 @@ class X11Window(Window):
         def on_draw(*_):
             # as of my test's results, the draw signal is
             # the only signal emitted when the window is fully realized
-            # and that's needed so we don't face a unexpected behavior later
+            # and that's needed so we don't face an unexpected behavior later
             self._xid = self.get_window().get_xid()  # type: ignore
             self._xwindow = self._xdisplay.create_resource_object("window", self._xid)  # type: ignore
             # thank you, goodbye!

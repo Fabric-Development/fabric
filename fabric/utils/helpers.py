@@ -333,7 +333,9 @@ def compile_css(
     supports transpiling web-css like variables over to GTK's `@define-color` syntax.
 
     also supports having CSS macros. syntax example:
+
     .. code-block:: css
+
         /* define a macro */
         @define my-macro(--arg-1, --arg-2) {
             /* CSS body goes here. example body.. */
@@ -514,7 +516,7 @@ def bulk_connect(
 
     :param connectable: the object to connect the signals to
     :type connectable: GObject.Object
-    :param mapping: the mapping of signals to callbacks, example: `{"signal-name": lambda *args: ...}`
+    :param mapping: the mapping of signals to callback functions
     :type mapping: dict[str, Callable]
     :rtype: tuple[int, ...]
     """

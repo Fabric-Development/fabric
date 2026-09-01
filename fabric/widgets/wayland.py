@@ -21,17 +21,27 @@ except:
 
 class WaylandWindowExclusivity(Enum):
     NONE = 1
+    "do not reserve any space for this window"
     NORMAL = 2
+    "should reserve space for this window"
     AUTO = 3
+    "automatically decide whether to reserve space or not"
 
 
 class WaylandWindow(Window):
+    """A wayland specific window for docking purposes (works as a layer)"""
+
     @Property(
         GtkLayerShell.Layer,
         flags="read-write",
         default_value=GtkLayerShell.Layer.TOP,
     )
     def layer(self) -> GtkLayerShell.Layer:  # type: ignore
+        """The layer in which this window sits on
+
+        :return: the layer type for this window
+        :rtype: GtkLayerShell.Layer
+        """
         return self._layer  # type: ignore
 
     @layer.setter
@@ -46,6 +56,11 @@ class WaylandWindow(Window):
 
     @Property(int, "read-write")
     def monitor(self) -> int:
+        """This window's current monitor
+
+        :return: the monitor id of this window
+        :rtype: int
+        """
         if not (monitor := cast(Gdk.Monitor, GtkLayerShell.get_monitor(self))):
             return -1
         display = monitor.get_display() or Gdk.Display.get_default()
@@ -67,6 +82,10 @@ class WaylandWindow(Window):
 
     @Property(WaylandWindowExclusivity, "read-write")
     def exclusivity(self) -> WaylandWindowExclusivity:
+        """Exclusivity (space reserving) mode for this window
+
+        :rtype: WaylandWindowExclusivity
+        """
         return self._exclusivity
 
     @exclusivity.setter
@@ -110,7 +129,11 @@ class WaylandWindow(Window):
         return GtkLayerShell.set_keyboard_mode(self, self._keyboard_mode)
 
     @Property(tuple[GtkLayerShell.Edge, ...], "read-write")
-    def anchor(self):
+    def anchor(self) -> tuple[GtkLayerShell.Edge, ...]:
+        """The list of anchor edges of this window (e.g. "top left bottom")
+
+        :rtype: tuple[GtkLayerShell.Edge, ...]
+        """
         return tuple(
             x
             for x in [
@@ -148,6 +171,10 @@ class WaylandWindow(Window):
 
     @Property(tuple[int, ...], flags="read-write")
     def margin(self) -> tuple[int, ...]:
+        """This window's margin (formatted as `(top, right, bottom, left)`)
+
+        :rtype: tuple[int, ...]
+        """
         return tuple(
             GtkLayerShell.get_margin(self, x)
             for x in [
@@ -165,7 +192,11 @@ class WaylandWindow(Window):
         return
 
     @Property(object, "read-write")
-    def keyboard_mode(self):
+    def keyboard_mode(self) -> GtkLayerShell.KeyboardMode:
+        """This window's keybaord input mode
+
+        :rtype: GtkLayerShell.KeyboardMode
+        """
         kb_mode = GtkLayerShell.get_keyboard_mode(self)
         if GtkLayerShell.get_keyboard_interactivity(self):
             kb_mode = GtkLayerShell.KeyboardMode.EXCLUSIVE
@@ -218,6 +249,52 @@ class WaylandWindow(Window):
         size: Iterable[int] | int | None = None,
         **kwargs,
     ):
+        """
+        :param layer: the layer on which this window should sit on, defaults to GtkLayerShell.Layer.TOP
+        :type layer: Literal["background", "bottom", "top", "overlay"] | GtkLayerShell.Layer, optional
+        :param anchor: anchor edges for this window (e.g. "top right bottom"), defaults to ""
+        :type anchor: str, optional
+        :param margin: margen values for each edge (in the format of "top right bottom left"), defaults to "0px 0px 0px 0px"
+        :type margin: str | Iterable[int], optional
+        :param exclusivity: the way should this window reserve its surrounding space, defaults to WaylandWindowExclusivity.NONE
+        :type exclusivity: Literal["auto", "normal", "none"] | WaylandWindowExclusivity, optional
+        :param keyboard_mode: select the way this window should handle keyboard input, defaults to GtkLayerShell.KeyboardMode.NONE
+        :type keyboard_mode: Literal["none", "exclusive", "on-demand"] | GtkLayerShell.KeyboardMode, optional
+        :param pass_through: whether to pass mouse events to the below window or not, defaults to False
+        :type pass_through: bool, optional
+        :param monitor: the monitor in which this window should be displayed at, defaults to None
+        :type monitor: int | Gdk.Monitor | None, optional
+        :param title: the title of this window (used for window manager scoping), defaults to "fabric"
+        :type title: str, optional
+        :param type: the type of this window (useful with some window managers), defaults to Gtk.WindowType.TOPLEVEL
+        :type type: Literal["top-level", "popup"] | Gtk.WindowType, optional
+        :param child: a child widget to add into this window, defaults to None
+        :type child: Gtk.Widget | None, optional
+        :param name: the name identifer for this widget (useful for styling), defaults to None
+        :type name: str | None, optional
+        :param visible: whether should this widget be visible or not once initialized, defaults to True
+        :type visible: bool, optional
+        :param all_visible: whether should this widget and all of its children be visible or not once initialized, defaults to False
+        :type all_visible: bool, optional
+        :param style: inline stylesheet to be applied on this widget, defaults to None
+        :type style: str | None, optional
+        :param style_classes: a list of style classes to be added into this widget once initialized, defaults to None
+        :type style_classes: Iterable[str] | str | None, optional
+        :param tooltip_text: the text that should be rendered inside the tooltip, defaults to None
+        :type tooltip_text: str | None, optional
+        :param tooltip_markup: same as `tooltip_text` but it accepts simple markup expressions, defaults to None
+        :type tooltip_markup: str | None, optional
+        :param h_align: horizontal alignment of this widget (compared to its parent), defaults to None
+        :type h_align: Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None, optional
+        :param v_align: vertical alignment of this widget (compared to its parent), defaults to None
+        :type v_align: Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None, optional
+        :param h_expand: whether should this widget fill in all the available horizontal space or not, defaults to False
+        :type h_expand: bool, optional
+        :param v_expand: whether should this widget fill in all the available vertical space or not, defaults to False
+        :type v_expand: bool, optional
+        :param size: a fixed size for this widget (not guranteed to get applied), defaults to None
+        :type size: Iterable[int] | int | None, optional
+        """
         Window.__init__(
             self,
             title,
@@ -259,15 +336,22 @@ class WaylandWindow(Window):
         self.show_all() if all_visible is True else self.show() if visible is True else None
 
     def steal_input(self) -> None:
+        """Ask the compositor to set this window to have the keyboard interactivity
+
+        .. warning::
+
+            Not guranteed to work with all Wayland compositors!
+        """
         return GtkLayerShell.set_keyboard_interactivity(self, True)
 
     def return_input(self) -> None:
+        """Tell the compositor to remove keyboard interactivity from this window"""
         return GtkLayerShell.set_keyboard_interactivity(self, False)
 
     @staticmethod
     def extract_anchor_values(string: str) -> tuple[str, ...]:
         """
-        extracts the geometry values from a given geometry string.
+        Extracts the geometry values from a given geometry string.
 
         :param string: the string containing the geometry values.
         :type string: str

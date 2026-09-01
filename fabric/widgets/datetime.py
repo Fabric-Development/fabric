@@ -12,8 +12,21 @@ from gi.repository import Gtk, GLib, Gdk
 
 
 class DateTime(Button):
+    """Dead simple implementation of a date-time widget
+
+    The way this widget works is by having a button that listens
+    for click events and upon that it switchs to the next date-time format
+    from the given list of `formatters`.
+
+    For more about formatters visit https://docs.python.org/3/library/time.html#time.strftime
+    """
+
     @Property(tuple[str, ...], "read-write")
-    def formatters(self):
+    def formatters(self) -> tuple[str, ...]:
+        """The list of datetime format strings used for each cycle
+
+        :rtype: tuple[str, ...]
+        """
         return self._formatters
 
     @formatters.setter
@@ -30,7 +43,11 @@ class DateTime(Button):
         return
 
     @Property(int, "read-write")
-    def interval(self):
+    def interval(self) -> int:
+        """Updating interval time in ms
+
+        :rtype: int
+        """
         return self._interval
 
     @interval.setter
@@ -64,6 +81,36 @@ class DateTime(Button):
         size: Iterable[int] | int | None = None,
         **kwargs,
     ):
+        """
+        :param formatters: the date-time formatter (or a list of formatters) for each cycle, defaults to ("%I:%M %p", "%A", "%m-%d-%Y")
+        :type formatters: str | Iterable[str], optional
+        :param interval: the interval for updating this widget's content (rerender date-time) in milliseconds, defaults to 1000
+        :type interval: int, optional
+        :param name: the name identifer for this widget (useful for styling), defaults to None
+        :type name: str | None, optional
+        :param visible: whether should this widget be visible or not once initialized, defaults to True
+        :type visible: bool, optional
+        :param all_visible: whether should this widget and all of its children be visible or not once initialized, defaults to False
+        :type all_visible: bool, optional
+        :param style: inline stylesheet to be applied on this widget, defaults to None
+        :type style: str | None, optional
+        :param style_classes: a list of style classes to be added into this widget once initialized, defaults to None
+        :type style_classes: Iterable[str] | str | None, optional
+        :param tooltip_text: the text that should be rendered inside the tooltip, defaults to None
+        :type tooltip_text: str | None, optional
+        :param tooltip_markup: same as `tooltip_text` but it accepts simple markup expressions, defaults to None
+        :type tooltip_markup: str | None, optional
+        :param h_align: horizontal alignment of this widget (compared to its parent), defaults to None
+        :type h_align: Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None, optional
+        :param v_align: vertical alignment of this widget (compared to its parent), defaults to None
+        :type v_align: Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None, optional
+        :param h_expand: whether should this widget fill in all the available horizontal space or not, defaults to False
+        :type h_expand: bool, optional
+        :param v_expand: whether should this widget fill in all the available vertical space or not, defaults to False
+        :type v_expand: bool, optional
+        :param size: a fixed size for this widget (not guranteed to get applied), defaults to None
+        :type size: Iterable[int] | int | None, optional
+        """
         super().__init__(
             None,
             None,

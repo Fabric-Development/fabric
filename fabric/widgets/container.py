@@ -11,6 +11,10 @@ from gi.repository import Gtk
 class Container(Gtk.Container, Widget):
     @Property(list[Gtk.Widget], "read-write", install=False)
     def children(self) -> list[Gtk.Widget]:
+        """A list of children this container is (currently) holding
+
+        :rtype: list[Gtk.Widget]
+        """
         return self.get_children()
 
     @children.setter

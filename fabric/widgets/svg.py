@@ -82,6 +82,32 @@ class Svg(Gtk.DrawingArea, Widget):
         size: Iterable[int] | int | None = None,
         **kwargs,
     ):
+        """
+        :param name: the name identifer for this widget (useful for styling), defaults to None
+        :type name: str | None, optional
+        :param visible: whether should this widget be visible or not once initialized, defaults to True
+        :type visible: bool, optional
+        :param all_visible: whether should this widget and all of its children be visible or not once initialized, defaults to False
+        :type all_visible: bool, optional
+        :param style: inline stylesheet to be applied on this widget, defaults to None
+        :type style: str | None, optional
+        :param style_classes: a list of style classes to be added into this widget once initialized, defaults to None
+        :type style_classes: Iterable[str] | str | None, optional
+        :param tooltip_text: the text that should be rendered inside the tooltip, defaults to None
+        :type tooltip_text: str | None, optional
+        :param tooltip_markup: same as `tooltip_text` but it accepts simple markup expressions, defaults to None
+        :type tooltip_markup: str | None, optional
+        :param h_align: horizontal alignment of this widget (compared to its parent), defaults to None
+        :type h_align: Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None, optional
+        :param v_align: vertical alignment of this widget (compared to its parent), defaults to None
+        :type v_align: Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None, optional
+        :param h_expand: whether should this widget fill in all the available horizontal space or not, defaults to False
+        :type h_expand: bool, optional
+        :param v_expand: whether should this widget fill in all the available vertical space or not, defaults to False
+        :type v_expand: bool, optional
+        :param size: a fixed size for this widget (not guranteed to get applied), defaults to None
+        :type size: Iterable[int] | int | None, optional
+        """
         Gtk.DrawingArea.__init__(self)  # type: ignore
         Widget.__init__(
             self,

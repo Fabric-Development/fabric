@@ -2,7 +2,13 @@ import gi
 from loguru import logger
 from typing import NamedTuple, Literal, Any, cast
 from fabric.core.service import Service, Signal, Property
-from fabric.utils.helpers import load_dbus_xml, bulk_connect, get_enum_member
+from fabric.utils.helpers import (
+    load_dbus_xml,
+    bulk_connect,
+    get_enum_member,
+    pascal_case_to_snake_case,
+    snake_case_to_kebab_case,
+)
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("DbusmenuGtk3", "0.4")
@@ -30,6 +36,8 @@ STATUS_NOTIFIER_ITEM_BUS_IFACE_NODE = load_dbus_xml(
 class SystemTrayItemPixmap(
     NamedTuple
 ):  # TODO: i don't think it's good to use NamedTuple, use dataclass instead
+    """A class for storing image data associated with a tray item"""
+
     width: int | None = None
     "icon width size in pixels"
     height: int | None = None
@@ -47,6 +55,11 @@ class SystemTrayItemPixmap(
             "tiles",
         ] = "nearest",
     ) -> GdkPixbuf.Pixbuf | None:
+        """Load a `Pixbuf` variant of this pixmap
+
+        :return: the newly created pixbuf in which it has the contents of this pixmap
+        :rtype: GdkPixbuf.Pixbuf | None
+        """
         if not (self.width and self.height and self.data):
             return None
 
@@ -84,6 +97,8 @@ class SystemTrayItemPixmap(
 
 
 class SystemTrayItemToolTip(NamedTuple):
+    """A class for storing tooltip data associated with a tray item"""
+
     icon_name: str | None = None
     "free-desktop compliant name for an icon"
     icon_pixmap: SystemTrayItemPixmap | None = None
@@ -95,6 +110,8 @@ class SystemTrayItemToolTip(NamedTuple):
 
 
 class SystemTrayItem(Service):
+    """A system tray item that implements the FDO's `StatusNotifierItem` interface (see https://www.freedesktop.org/wiki/Specifications/StatusNotifierItem)"""
+
     @Signal
     def changed(self) -> None: ...
     @Signal
@@ -158,6 +175,15 @@ class SystemTrayItem(Service):
         ]
         | GdkPixbuf.InterpType = GdkPixbuf.InterpType.BILINEAR,
     ) -> GdkPixbuf.Pixbuf | None:
+        """Query a `Pixbuf` of this item's icon based on a preferred size
+
+        :param size: the preferred size to look up using in the list of given icons (by the application), defaults to None
+        :type size: int | None, optional
+        :param resize_method: the way we should resize this Pixbuf, defaults to GdkPixbuf.InterpType.BILINEAR
+        :type resize_method: Literal["hyper", "bilinear", "nearest", "tiles"] | GdkPixbuf.InterpType, optional
+        :return: the newly loaded Pixbuf object (resized to the given size)
+        :rtype: GdkPixbuf.Pixbuf | None
+        """
         icon_name = self.icon_name
         attention_icon_name = self.attention_icon_name
 
@@ -215,23 +241,56 @@ class SystemTrayItem(Service):
     # remote properties
     @Property(int, "readable")
     def id(self) -> int:
+        """An identifier integer given by the application
+
+        :return: the id integer
+        :rtype: int
+        """
         return self.do_get_proxy_property("Id")
 
     @Property(str, "readable")
     def identifier(self) -> str:
+        """The local identifer of this tray item, based on the dbus of the owner application
+
+        :return: the local identifer
+        :rtype: str
+        """
         return self._identifier
 
     @Property(str, "readable")
     def title(self) -> str:
+        """The title of the application that owns this tray item
+
+        :return: the application's title
+        :rtype: str
+        """
         return self.do_get_proxy_property("Title")
 
     @Property(str, "readable")
-    def status(self) -> str:
-        return self.do_get_proxy_property("Status")
+    def status(self) -> Literal["passive", "active", "unknown"]:
+        """A string representing this item's application status
+
+        :return: this item's application status, "passive" means it can be considered "idle" and holding no important message, "active" means it is important that this item should get displayed to the user (e.g. time sensitive status), and finally "unknown", which infers the inability to get the status (e.g. not provided at all)
+        :rtype: str
+        """
+        return (self.do_get_proxy_property("Status") or "unknown").lower()  # type: ignore
 
     @Property(str, "readable")
-    def category(self) -> str:
-        return self.do_get_proxy_property("Category")
+    def category(
+        self,
+    ) -> Literal[
+        "application-status", "communications", "system-services", "hardware", "unknown"
+    ]:
+        """This item's category
+
+        :return: _description_
+        :rtype: str
+        """
+        return snake_case_to_kebab_case(
+            pascal_case_to_snake_case(
+                (self.do_get_proxy_property("Category") or "Unknown")
+            )
+        )
 
     @Property(int, "readable")
     def window_id(self) -> int:
@@ -435,6 +494,11 @@ class SystemTray(Service):
 
     @Property(dict[str, SystemTrayItem], "readable")
     def items(self) -> dict[str, SystemTrayItem]:
+        """Tray items held by this server
+
+        :return: a dict that maps local identifers to tray item objects
+        :rtype: dict[str, SystemTrayItem]
+        """
         return self._items
 
     def add_item(self, item: SystemTrayItem) -> None:

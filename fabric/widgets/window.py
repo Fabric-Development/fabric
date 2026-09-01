@@ -19,6 +19,10 @@ from gi.repository import Gtk, GLib
 class Window(Gtk.Window, Container):
     @Property(Application, install=False)
     def application(self) -> Application:
+        """The application instance associated with this window (if any)
+
+        :rtype: Application
+        """
         return self.get_application()  # type: ignore
 
     @Property(bool, "read-write", default_value=False)
@@ -59,6 +63,38 @@ class Window(Gtk.Window, Container):
         size: Iterable[int] | int | None = None,
         **kwargs,
     ):
+        """
+        :param title: the title of this window (used for window manager scoping), defaults to "fabric"
+        :type title: str, optional
+        :param type: the type of this window (useful with some window managers), defaults to Gtk.WindowType.TOPLEVEL
+        :type type: Literal["top-level", "popup"] | Gtk.WindowType, optional
+        :param child: a child widget to add into this window, defaults to None
+        :type child: Gtk.Widget | None, optional
+        :param name: the name identifer for this widget (useful for styling), defaults to None
+        :type name: str | None, optional
+        :param visible: whether should this widget be visible or not once initialized, defaults to True
+        :type visible: bool, optional
+        :param all_visible: whether should this widget and all of its children be visible or not once initialized, defaults to False
+        :type all_visible: bool, optional
+        :param style: inline stylesheet to be applied on this widget, defaults to None
+        :type style: str | None, optional
+        :param style_classes: a list of style classes to be added into this widget once initialized, defaults to None
+        :type style_classes: Iterable[str] | str | None, optional
+        :param tooltip_text: the text that should be rendered inside the tooltip, defaults to None
+        :type tooltip_text: str | None, optional
+        :param tooltip_markup: same as `tooltip_text` but it accepts simple markup expressions, defaults to None
+        :type tooltip_markup: str | None, optional
+        :param h_align: horizontal alignment of this widget (compared to its parent), defaults to None
+        :type h_align: Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None, optional
+        :param v_align: vertical alignment of this widget (compared to its parent), defaults to None
+        :type v_align: Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None, optional
+        :param h_expand: whether should this widget fill in all the available horizontal space or not, defaults to False
+        :type h_expand: bool, optional
+        :param v_expand: whether should this widget fill in all the available vertical space or not, defaults to False
+        :type v_expand: bool, optional
+        :param size: a fixed size for this widget (not guranteed to get applied), defaults to None
+        :type size: Iterable[int] | int | None, optional
+        """
         self._pass_through = pass_through
 
         Gtk.Window.__init__(
@@ -123,6 +159,15 @@ class Window(Gtk.Window, Container):
         callback: Callable[[Self, Any], Any] | Callable,
         ignore_missing: bool = True,
     ) -> int:
+        """Add a callback for a given keybinding (shortcut or keystroke)
+
+        :param keybind: the string representing the keybinding (e.g. `"Ctrl w"`)
+        :type keybind: str
+        :param callback: the callback which should be called once the given keybinding is received
+        :type callback: Callable[[Self, Any], Any]
+        :return: the keybinding connection's id (for disconnecting later)
+        :rtype: int
+        """
         handler = GLib.random_int()
 
         keybind_entry = self._keybinding_handlers.setdefault(keybind.casefold(), [])
@@ -141,6 +186,11 @@ class Window(Gtk.Window, Container):
         return handler
 
     def remove_keybinding(self, reference: int | Callable | str):
+        """Disconnect a keybinding callback via its handler, function or keybinding string
+
+        :param reference: the reference which can be the connection id, the callback itself or the string representing the keybinding
+        :type reference: int | Callable | str
+        """
         if isinstance(reference, (int, Callable)):
             for kbn, kbd in self._keybinding_handlers.items():
                 for bindref in kbd:

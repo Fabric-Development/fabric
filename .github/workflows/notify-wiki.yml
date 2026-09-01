@@ -1,0 +1,22 @@
+name: Fire Wiki Rebuild
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  notify-wiki:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+      NOTIFY_TOKEN: ${{ secrets.DOCS_REBUILD_TOKEN }} 
+    steps:
+      - name: Notify Wiki Repository
+        uses: convictional/trigger-workflow-and-wait@v1.6.1
+        with:
+          github_token: ${{ env.NOTIFY_TOKEN }}
+          workflow_file_name: "astro.yml" 
+          owner: Fabric-Development 
+          repo: fabric-wiki

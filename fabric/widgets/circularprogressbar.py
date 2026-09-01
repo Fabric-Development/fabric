@@ -13,6 +13,10 @@ from gi.repository import Gdk, Gtk
 class CircularProgressBar(Gtk.Bin, Container):
     @Property(float, "read-write", default_value=0.0)
     def min_value(self) -> float:
+        """Minimum value for this progress bar
+
+        :rtype: float
+        """
         return self._min_value
 
     @min_value.setter
@@ -22,6 +26,10 @@ class CircularProgressBar(Gtk.Bin, Container):
 
     @Property(float, "read-write", default_value=1.0)
     def max_value(self) -> float:
+        """Maximum value for this progress bar
+
+        :rtype: float
+        """
         return self._max_value
 
     @max_value.setter
@@ -33,6 +41,10 @@ class CircularProgressBar(Gtk.Bin, Container):
 
     @Property(float, "read-write", default_value=1.0)
     def value(self) -> float:
+        """The value this progress bar is currently holding
+
+        :rtype: float
+        """
         return self._value
 
     @value.setter
@@ -42,6 +54,10 @@ class CircularProgressBar(Gtk.Bin, Container):
 
     @Property(bool, "read-write", default_value=False)
     def pie(self) -> bool:
+        """Whether should this progress bar be displayed in the shape of a _pie_ or not
+
+        :rtype: bool
+        """
         return self._pie
 
     @pie.setter
@@ -51,6 +67,15 @@ class CircularProgressBar(Gtk.Bin, Container):
 
     @Property(int, "read-write", default_value=4)
     def line_width(self) -> int:
+        """
+        The width of this progress bar's value highlight
+
+        .. tip::
+            The CSS property `border-width` will act same as this property
+
+        :return: progress's fill width (in pixels)
+        :rtype: int
+        """
         return self._line_width
 
     @line_width.setter
@@ -60,20 +85,32 @@ class CircularProgressBar(Gtk.Bin, Container):
 
     @Property(object, "read-write")
     def line_style(self) -> cairo.LineCap:
+        """The shape of the ends of the value highlight
+
+        **Possible values**:
+        - `cairo.LineCap.BUTT`,`None` and `"none"`: do not add extra line ends
+        - `cairo.LineCap.ROUND` (`"round"`): add rounded caps for each end
+        - `cairo.LineCap.SQUARE` (`"square"`): (looks janky in the usecase of this class) add boxy caps to each end
+
+
+        .. image:: https://www.cairographics.org/samples/set_line_cap.png
+            :alt: an image showing the difference between different line style, types from right to left list as butt (or none), round and square
+
+
+        :rtype: cairo.LineCap
+        """
         return self._line_style  # type: ignore
 
     @line_style.setter
     def line_style(
         self,
-        line_style: Literal[
-            "none",
-            "butt",
-            "round",
-            "square",
-        ]
-        | cairo.LineCap,
+        line_style: Literal["none", "butt", "round", "square"] | cairo.LineCap,
     ):
-        self._line_style = get_enum_member(cairo.LineCap, line_style)  # type: ignore
+        self._line_style = get_enum_member(
+            cairo.LineCap,  # type: ignore
+            line_style,  # type: ignore
+            default=cairo.LineCap.BUTT,
+        )
         return self.queue_draw()
 
     @Property(float, "read-write", default_value=0.0)
@@ -134,6 +171,44 @@ class CircularProgressBar(Gtk.Bin, Container):
         size: Iterable[int] | int | None = None,
         **kwargs,
     ):
+        """
+        :param value: the default value to initialize this progress bar with, defaults to 1.0
+        :type value: float, optional
+        :param min_value: the minimum value this progress bar can reach, defaults to 0.0
+        :type min_value: float, optional
+        :param max_value: the maximum value this progress bar can reach, defaults to 1.0
+        :type max_value: float, optional
+        :param line_width: the width of this progress bar's value highlight (in pixels), you can set this property via the CSS property `border-width`, defaults to 4
+        :type line_width: int, optional
+        :param line_style: the style of this progress bar's value highlight, defaults to cairo.LineCap.ROUND
+        :type line_style: Literal["none", "butt", "round", "square"] | cairo.LineCap, optional
+        :param pie: whether should draw this progress bar in a "pie" shape, defaults to False
+        :type pie: bool, optional
+        :param name: the name identifer for this widget (useful for styling), defaults to None
+        :type name: str | None, optional
+        :param visible: whether should this widget be visible or not once initialized, defaults to True
+        :type visible: bool, optional
+        :param all_visible: whether should this widget and all of its children be visible or not once initialized, defaults to False
+        :type all_visible: bool, optional
+        :param style: inline stylesheet to be applied on this widget, defaults to None
+        :type style: str | None, optional
+        :param style_classes: a list of style classes to be added into this widget once initialized, defaults to None
+        :type style_classes: Iterable[str] | str | None, optional
+        :param tooltip_text: the text that should be rendered inside the tooltip, defaults to None
+        :type tooltip_text: str | None, optional
+        :param tooltip_markup: same as `tooltip_text` but it accepts simple markup expressions, defaults to None
+        :type tooltip_markup: str | None, optional
+        :param h_align: horizontal alignment of this widget (compared to its parent), defaults to None
+        :type h_align: Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None, optional
+        :param v_align: vertical alignment of this widget (compared to its parent), defaults to None
+        :type v_align: Literal["fill", "start", "end", "center", "baseline"] | Gtk.Align | None, optional
+        :param h_expand: whether should this widget fill in all the available horizontal space or not, defaults to False
+        :type h_expand: bool, optional
+        :param v_expand: whether should this widget fill in all the available vertical space or not, defaults to False
+        :type v_expand: bool, optional
+        :param size: a fixed size for this widget (not guranteed to get applied), defaults to None
+        :type size: Iterable[int] | int | None, optional
+        """
         Gtk.DrawingArea.__init__(self)  # type: ignore
         Container.__init__(
             self,
@@ -183,6 +258,24 @@ class CircularProgressBar(Gtk.Bin, Container):
         return self.do_get_preferred_width()
 
     def do_draw(self, cr: cairo.Context):
+        # CSS properties lookup table
+        #  -------------------------------
+        # | border: ... COLOR SIZE        |
+        #  -------------------------------
+        # | will result in SIZE begin     |
+        # | used as the line_width value  |
+        # | and COLOR begin used as the   |
+        # | color of the progress         |
+        #  -------------------------------
+        # | background fill     | background-color
+        # |---------------------|--------
+        # | radius fill         | color
+        # |---------------------|--------
+        # | progress fill       | border-color
+        # |---------------------|--------
+        # | progress line width | border-width
+        #  ------------------------------
+
         state = self.get_state_flags()
         style_context = self.get_style_context()
 

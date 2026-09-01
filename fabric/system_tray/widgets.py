@@ -63,7 +63,13 @@ class SystemTrayItem(Button):
 
 
 class SystemTray(Box):
+    """Dead simple implementation of a system-tray widget (using the provided service)"""
+
     def __init__(self, icon_size: int = 24, **kwargs):
+        """
+        :param icon_size: size of tray items' icons (in pixels), defaults to 24
+        :type icon_size: int, optional
+        """
         super().__init__(**kwargs)
         self._icon_size = icon_size
         self._items: dict[str, SystemTrayItem] = {}

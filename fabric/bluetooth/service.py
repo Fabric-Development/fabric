@@ -22,6 +22,7 @@ except Exception:
 P = ParamSpec("P")
 
 
+# TODO: document
 class BluetoothDevice(Service):
     @Signal
     def changed(self) -> None: ...

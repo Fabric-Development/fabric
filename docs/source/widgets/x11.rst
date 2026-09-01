@@ -1,0 +1,4 @@
+.. automodule:: fabric.widgets.x11
+    :members:
+    :undoc-members:
+    :show-inheritance:

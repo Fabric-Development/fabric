@@ -55,8 +55,13 @@ class HyprlandReply:
 
 class Hyprland(Service):
     """
-    a connection to the Hyprland's socket
-    this can be used for ONLY sending commands or both sending and receiving events
+    A connection to Hyprland's socket, can do both sending commands (via a hyprctl-alike interface) and receive events
+
+    .. note::
+
+        Since version v0.40.0 of Hyprland, the IPC socket path has been changed from `/tmp/hypr/` to `$XDG_RUNTIME_DIR/hypr/`
+
+        This service is backward compaitible so this is just a friendly note
     """
 
     # refs
@@ -73,6 +78,10 @@ class Hyprland(Service):
 
     @Property(bool, "readable", "is-ready", default_value=False)
     def ready(self) -> bool:
+        """Whether the connection to Hyprland's has successfully established or not
+
+        :rtype: bool
+        """
         return self._ready
 
     @Signal
@@ -86,10 +95,6 @@ class Hyprland(Service):
         """
         :param commands_only: set to `True` if you're going to use this connection for sending commands only, defaults to False
         :type commands_only: bool, optional
-
-        NOTE: since version v0.40.0 of Hyprland, the IPC socket path has been changed from `/tmp/hypr/` to `$XDG_RUNTIME_DIR/hypr/`
-
-        this service is backward compaitible so this is just a friendly note
         """
         super().__init__(**kwargs)
         self._ready = False
@@ -98,7 +103,9 @@ class Hyprland(Service):
         # all aboard...
         if not commands_only:
             self.event_socket_thread = GLib.Thread.new(
-                "hyprland-socket-service", self.event_socket_task, self.EVENTS_SOCKET
+                "hyprland-socket-service",
+                self.do_handle_events_socket,
+                self.EVENTS_SOCKET,
             )
 
         self._ready = True
@@ -146,13 +153,14 @@ class Hyprland(Service):
     @staticmethod
     def send_command(command: str) -> HyprlandReply:
         """
-        send hyprctl-like commands over hyprland socket
+        Send hyprctl-like commands over hyprland socket
 
-        example usage:
-        ```python
-        # next workspace...
-        Hyprland.send_command("/dispatch workspace e+1")
-        ```
+        **Example usage**:
+
+        .. code-block:: python
+
+            # next workspace...
+            Hyprland.send_command("/dispatch workspace e+1")
 
         :param command: the Hyprland command to send, see Hyprland's wiki for more info
         :type command: str
@@ -192,14 +200,15 @@ class Hyprland(Service):
     @staticmethod
     def send_command_async(
         command: str,
-        callback: Callable[Concatenate[HyprlandReply, P], Any],
+        callback: Callable[Concatenate[HyprlandReply, P], Any] | None = None,
         *args: P.args,
         **kwargs: P.kwargs,
     ) -> None:
-        """send hyprctl-like commands asynchronously
-        this function will act same as `send_command` but in a asynchronous manner
+        """
+        Same as `send_command` but this works in an asynchronous manner
 
-        NOTE: `*args` and `**kwargs` are passed directly into your callback
+        .. tip::
+            `*args` and `**kwargs` are passed directly into your callback
 
         :param command: the Hyprland command to send, see Hyprland's wiki for more info
         :type command: str
@@ -216,6 +225,8 @@ class Hyprland(Service):
         def reader_callback(
             input_stream: Gio.DataInputStream, res: Gio.AsyncResult, *_
         ):
+            if not callback:
+                return
             raw_data: GLib.Bytes = input_stream.read_bytes_finish(res)
             resp: bytes = raw_data.get_data()  # type: ignore
             callback(
@@ -258,7 +269,7 @@ class Hyprland(Service):
 
         return None
 
-    def event_socket_task(self, socket_addr: Gio.UnixSocketAddress) -> bool:
+    def do_handle_events_socket(self, socket_addr: Gio.UnixSocketAddress) -> bool:
         client = Gio.SocketClient()
         conn: Gio.SocketConnection = client.connect(socket_addr)
         stream: Gio.InputStream = conn.get_input_stream()  # type: ignore
@@ -273,12 +284,12 @@ class Hyprland(Service):
                 )
                 continue
 
-            idle_add(self.handle_raw_event, raw_data[0])
+            idle_add(self.do_handle_raw_event, raw_data[0])
 
         logger.warning("[HyprlandService] events socket thread ended")
         return False
 
-    def handle_raw_event(self, raw_event: bytes):
+    def do_handle_raw_event(self, raw_event: bytes):
         raw_listed = str((raw_event).decode()).split(">>")
         if len(raw_listed) < 1:
             return  # how?.. i mean Why?

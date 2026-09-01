@@ -24,6 +24,12 @@ except Exception:
 
 
 class AudioStream(Service):
+    """
+    A class representing a stream of audio (i.e. speakers, microphones, applications and recorders)
+
+    This class also enables the control of the contained stream (e.g. volume and mute state)
+    """
+
     @Signal
     def changed(self) -> None: ...
 
@@ -33,42 +39,68 @@ class AudioStream(Service):
     # TODO: implement a interface for getting the icon as a Gdk.Pixbuf (from stream.get_gicon())
     @Property(str, "readable")
     def icon_name(self) -> str:
+        """A suggested icon name for this stream type
+
+        :rtype: str
+        """
         return self._stream.get_icon_name()
 
     @Property(int, "readable")
     def id(self) -> int:
+        """The identifier of this stream
+
+        :rtype: int
+        """
         return self._stream.get_id()
 
     @Property(str, "readable")
     def name(self) -> str:
+        """The display name associated with this stream
+
+        :rtype: str
+        """
         return self._stream.get_name()
 
     @Property(str, "readable")
     def description(self) -> str:
+        """Text descriping this stream's purpose
+
+        :rtype: str
+        """
         return self._stream.get_description()
 
     @Property(str, "readable")
     def application_id(self) -> str:
+        """This stream's application's identifier (if any)
+
+        :rtype: str
+        """
         return self._stream.get_application_id()
 
     @Property(str, "readable")
     def state(self) -> str:
+        """The state this stream is currently in
+
+        :rtype: str
+        """
         return snake_case_to_kebab_case(
             get_enum_member_name(self._stream.get_state(), default="unknown")
         )
 
-    @Property(str, "readable")
-    def control_state(self) -> str:
-        return snake_case_to_kebab_case(
-            get_enum_member_name(self._control.get_state(), default="unknown")
-        )
-
     @Property(Cvc.MixerStream, "readable")
     def stream(self) -> Cvc.MixerStream:
+        """The actual stream object this class is holding
+
+        :rtype: Cvc.MixerStream
+        """
         return self._stream
 
     @Property(float, "read-write")
     def volume(self) -> float:
+        """The current volume value for this stream (limited to parent's `max_volume`)
+
+        :rtype: float
+        """
         return float(
             (self._stream.props.volume / self._control.get_vol_max_norm()) * 100
         )
@@ -84,6 +116,10 @@ class AudioStream(Service):
 
     @Property(bool, "read-write", "is-muted", default_value=False)
     def muted(self) -> bool:
+        """Whether this stream is in a mute state currently or not
+
+        :rtype: bool
+        """
         return self._stream.get_is_muted()
 
     @muted.setter
@@ -150,30 +186,58 @@ class Audio(Service):
 
     @Property(AudioStream, "readable")
     def speaker(self) -> AudioStream:
+        """The default speaker stream begin currently in use (if any)
+
+        :rtype: AudioStream
+        """
         return self._speaker
 
     @Property(list[AudioStream], "readable")
     def speakers(self) -> list[AudioStream]:
+        """A list of all speaker streams connected to this device
+
+        :rtype: list[AudioStream]
+        """
         return self.do_list_stream_type(Cvc.MixerSink)
 
     @Property(AudioStream, "readable")
     def microphone(self) -> AudioStream:
+        """The default microphone stream (if any)
+
+        :rtype: AudioStream
+        """
         return self._microphone
 
     @Property(list[AudioStream], "readable")
     def microphones(self) -> list[AudioStream]:
+        """A list of all microphone streams connected to this device
+
+        :rtype: list[AudioStream]
+        """
         return self.do_list_stream_type(Cvc.MixerSource)
 
     @Property(list[AudioStream], "readable")
     def applications(self) -> list[AudioStream]:
+        """A list of all application streams outputing audio at the moment
+
+        :rtype: list[AudioStream]
+        """
         return self.do_list_stream_type(Cvc.MixerSinkInput)
 
     @Property(list[AudioStream], "readable")
     def recorders(self) -> list[AudioStream]:
+        """A list of application streams recording audio at the moment
+
+        :rtype: list[AudioStream]
+        """
         return self.do_list_stream_type(Cvc.MixerSourceOutput)
 
     @Property(int, "read-write")
     def max_volume(self) -> int:
+        """The maximum volume value all streams can reach by setting the volume through **this service**
+
+        :rtype: int
+        """
         return self._max_volume
 
     @max_volume.setter
@@ -193,6 +257,12 @@ class Audio(Service):
         controller_name: str = "fabric audio control",
         **kwargs,
     ):
+        """
+        :param max_volume: default maximum volume for all streams, this limit only works if volume setting is done through this service, defaults to 100
+        :type max_volume: int, optional
+        :param controller_name: the name of this service's mixer controll, defaults to "fabric audio control"
+        :type controller_name: str, optional
+        """
         super().__init__(**kwargs)
         self._control = Cvc.MixerControl(name=controller_name)
         self._max_volume = max_volume
@@ -299,7 +369,7 @@ class Audio(Service):
             or not Audio.get_stream_type(stream, None)  # type: ignore
             or not stream
         ):
-            return  # No.
+            return  # do not add it twice
 
         audio_stream = AudioStream(stream, self._control, self)
         self._streams[stream_id] = audio_stream

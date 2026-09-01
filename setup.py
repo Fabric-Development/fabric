@@ -36,6 +36,13 @@ setup(
     python_requires=">=3.11",
     extras_require={
         "system-status": ["psutil"],
+        "sphinx": [
+            "sphinx==8.1.3",
+            "sphinx-toolbox==3.8.1",
+            "sphinx-markdown-builder==0.6.7",
+            "sphinxawesome-theme",
+            "recommonmark",
+        ],
     },
     package_data={"*": ["*.xml", "*.js"]},
 )

@@ -3,6 +3,13 @@
 
 .. toctree::
    :maxdepth: 2
+   :caption: Core
+   :glob:
+
+   core/*
+
+.. toctree::
+   :maxdepth: 2
    :caption: Services
    :glob:
 
@@ -12,7 +19,7 @@
    :maxdepth: 2
    :caption: Utilities
 
-   utils/utils
+   ./utils.rst
 
 .. toctree::
    :maxdepth: 2
@@ -21,3 +28,13 @@
 
    widgets/Shapes/*
    widgets/*
+
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Window Manager Specials
+   :glob:
+
+   i3/*
+   niri/*
+   hyprland/*

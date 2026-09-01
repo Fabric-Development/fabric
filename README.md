@@ -36,7 +36,7 @@ A Collection of Desktop rices that muscle-show what you are able to do using Fab
 - [Spacerice](https://github.com/SlumberDemon/dotfiles/tree/spacerice)
   ![](https://wiki.ffpy.org/showcase/slumberdemon-spacerice.webp)
 - [Fabrika - فابريكا](https://github.com/its-darsh/fabrika)
-  ![](https://wiki.ffpy.org/showcase/darsh-fabrika.png)
+  ![](https://wiki.ffpy.org/showcase/darsh-fabrika.webp)
 
 ## Hacking and Contributing
 

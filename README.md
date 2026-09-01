@@ -1,4 +1,8 @@
 <div align="center">
+<img src="https://github.com/Fabric-Development/fabric-wiki/blob/main/src/assets/logo-tmp.webp?raw=true" width="670">
+
+   <sub>art by @SlumberDemon</sub>
+
 
 Ricing, Made <b>Easy</b> 🍚⚡
 

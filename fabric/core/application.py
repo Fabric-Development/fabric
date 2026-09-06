@@ -20,6 +20,8 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gdk, GLib, Gio
 
 
+VALID_NAME_PATTERN = re.compile(r"^[A-Za-z0-9-]+$")
+
 FABRIC_DBUS_INTERFACE_NAME = "org.Fabric.fabric"
 FABRIC_DBUS_OBJECT_PATH = "/org/Fabric/fabric"
 FABRIC_DBUS_INTERFACE_NODES = load_dbus_xml(
@@ -381,8 +383,7 @@ class Application(Gtk.Application, Service):
 
     @staticmethod
     def validate_name(name: str) -> bool:
-        pattern = re.compile(r"^[A-Za-z0-9-]+$")
-        return bool(pattern.match(name))
+        return bool(VALID_NAME_PATTERN.match(name))
 
     @staticmethod
     def name_running(name: str) -> bool:

@@ -7,7 +7,7 @@ from loguru import logger
 from typing import ParamSpec
 from dataclasses import dataclass
 from fabric.core.service import Service, Signal, Property
-from fabric.utils.helpers import exec_shell_command, idle_add
+from fabric.utils.helpers import exec_shell_command, idle_add, invoke_repeater
 from gi.repository import GLib
 
 P = ParamSpec("P")
@@ -97,16 +97,16 @@ class I3(Service):
         super().__init__(**kwargs)
 
         self._ready = False
-        self.lookup_socket()
-
-        self.event_socket_thread = GLib.Thread.new(
-            "i3-socket-service",
-            self.event_socket_task,  # type: ignore
-            self.SOCKET_PATH,
-        )
-
-        self._ready = True
-        self.notify("ready")
+        try:
+            self.lookup_socket()
+            self._connect_event_socket()
+            self._ready = True
+            self.notify("ready")
+        except I3SocketNotFoundError as e:
+            logger.error(
+                f"[I3Service] initial connection failed: {e}. Attempting reconnection..."
+            )
+            idle_add(self._reconnect_socket, pin=True)
 
     @staticmethod
     def lookup_socket() -> str:
@@ -124,6 +124,13 @@ class I3(Service):
 
         raise I3SocketNotFoundError(
             "Couldn't find i3 or Sway socket, is either of them running?"
+        )
+
+    def _connect_event_socket(self):
+        self.event_socket_thread = GLib.Thread.new(
+            "i3-socket-service",
+            self.event_socket_task,
+            self.SOCKET_PATH,
         )
 
     @staticmethod
@@ -212,10 +219,48 @@ class I3(Service):
                 while True:
                     idle_add(self.handle_raw_event, *self.unpack(sock))
 
+        except (I3SocketError, ConnectionError) as e:
+            logger.warning(f"[I3Service] socket connection error: {e}")
+            self._ready = False
+            self.notify("ready")
+            idle_add(self._reconnect_socket)
         except Exception as e:
             logger.warning(f"[I3Service] events socket thread ended with an error: {e}")
 
         return False
+
+    def _reconnect_socket(self):
+        logger.debug("[I3Service] starting reconnection loop...")
+        tries = 0
+        max_tries = 500
+
+        def reconnect() -> bool:
+            nonlocal tries
+            tries += 1
+
+            if tries > max_tries:
+                logger.error(
+                    f"[I3Service] gave up reconnecting after {max_tries} attempts"
+                )
+                return False
+
+            try:
+                # the socket path doesn't change from my testing
+                if not os.path.exists(self.lookup_socket()):
+                    raise I3SocketNotFoundError
+            except I3SocketNotFoundError:
+                logger.debug(
+                    f"[I3Service] socket not yet available, (attempt {tries}/{max_tries}) retrying..."
+                )
+                return True
+
+            logger.info("[I3Service] socket available, reconnecting...")
+            self._connect_event_socket()
+            self._ready = True
+            self.notify("ready")
+            return False  # stop repeating
+
+        invoke_repeater(1, reconnect, initial_call=False)
 
     def handle_raw_event(self, message_type: int, payload: str):
         event_data = json.loads(payload)

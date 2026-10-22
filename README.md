@@ -41,6 +41,8 @@ A Collection of Desktop rices that muscle-show what you are able to do using Fab
   ![](https://wiki.ffpy.org/showcase/slumberdemon-spacerice.webp)
 - [Fabrika - فابريكا](https://github.com/its-darsh/fabrika)
   ![](https://wiki.ffpy.org/showcase/darsh-fabrika.webp)
+- [Zenith](https://github.com/amansxcalibur/zenith-shell)
+  ![](https://wiki.ffpy.org/showcase/amansxcalibur-zenith.webp)
 
 ## Hacking and Contributing
 

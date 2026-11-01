@@ -1,7 +1,7 @@
 [project]
 name = "fabric"
 version = "0.0.2"
-dependencies = ["click", "loguru", "pycairo", "PyGObject==3.50.0"]
+dependencies = ["click", "loguru", "pycairo", "PyGObject>=3.50.0"]
 requires-python = ">=3.11"
 authors = [
   { name = "Yousef El-Darsh", email = "yousef.eldarsh@gmail.com" },

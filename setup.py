@@ -31,7 +31,7 @@ setup(
         "click",
         "loguru",
         "pycairo",
-        "PyGObject==3.50.0",
+        "PyGObject>=3.50.0",
     ],
     python_requires=">=3.11",
     extras_require={
